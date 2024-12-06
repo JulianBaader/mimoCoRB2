@@ -8,43 +8,29 @@ import mimo_logger
 # TODO decide if SimpleQueue or Queue is better
 
 """
-This file contains the implementation of a ring buffer that can be used to store data.
+This module contains the implementation of a ring buffer that can be used to store data.
 The buffer can easily be accessed by multiple processes using the Reader, Writer and Observer classes.
 
 ### Reading from the buffer ###
 to gain full access to a filled slot of the buffer use
 with Reader(ring_buffer) as buffer: 
 
-or to get a copy of the data use
-reader = Reader(ring_buffer)
-data = reader.get_copy()
-
 
 ### Writing to the buffer ###
 to gain full access to an empty slot of the buffer use
 with Writer(ring_buffer) as buffer:
 
-or to write data to the buffer use
-writer = Writer(ring_buffer)
-writer.from_data(data)
 
-or to write data from a generator use
-writer = Writer(ring_buffer)
-writer.from_generator(generator)
-
-### Observing the buffer ###
+### Observing the buffer ### NOT YET TESTED
 to get a copy of the data in a filled slot of the buffer use
 with Observer(ring_buffer) as data:
-
-or
-
 """
 
 
 class RingBuffer:
     """
     A ring buffer that can be used to store data.
-    The buffer is divided into slots, each slot has a fixed size.
+    The buffer is divided into slots, each slot has a fixed byte size.
 
     Management of the slots is done by two queues: empty_slots and filled_slots.
     empty_slots contains the indices of the slots that are empty and can be written to.
@@ -54,6 +40,10 @@ class RingBuffer:
 
     The buffer is implemented as a shared memory, so it can be accessed by multiple processes.
     The Queues are used to manage the access to the shared memory.
+    
+    To shutdown the Buffer a flush event can be added to the filled_slots queue.
+    This event will be used to signal a reader to finish the process.
+    Upon this Reader returning the token to the buffer it will be added again to the filled_slots queue for another Reader to find it.
     """
 
     def __init__(self, name, slot_count, slot_byte_size, overwrite=True, sleep_time=0.05):
@@ -203,12 +193,8 @@ if __name__ == "__main__":
                 print(buffer)
                 time.sleep(1 / CONSUMER_RATE)
 
-    producers = []
-    consumers = []
-    for i in range(PRODUCER_COUNT):
-        producers.append(Process(target=producer, args=(ring_buffer,)))
-    for i in range(CONSUMER_COUNT):
-        consumers.append(Process(target=consumer, args=(ring_buffer,)))
+    producers = [Process(target=producer, args=(ring_buffer,)) for i in range(PRODUCER_COUNT)]
+    consumers = [Process(target=consumer, args=(ring_buffer,)) for i in range(CONSUMER_COUNT)]
 
     for c in consumers:
         c.start()
