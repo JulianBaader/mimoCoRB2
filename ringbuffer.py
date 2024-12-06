@@ -69,8 +69,10 @@ class RingBuffer:
 
         # initialize the buffer as a shared memory
         self.shared_memory_buffer = shared_memory.SharedMemory(create=True, size=self.slot_count * self.slot_byte_size)
-        self.buffer = np.ndarray((self.slot_count, self.slot_byte_size), dtype=np.uint8, buffer=self.shared_memory_buffer.buf)
-        
+        self.buffer = np.ndarray(
+            (self.slot_count, self.slot_byte_size), dtype=np.uint8, buffer=self.shared_memory_buffer.buf
+        )
+
         # initialize a flag for shutdown
         self.received_flush_event = Value('b', False)
 
@@ -81,35 +83,40 @@ class RingBuffer:
         # initialize the empty slots
         for i in range(slot_count):
             self.empty_slots.put(i)
-            
+
     def send_flush_event(self):
-        self.received_flush_event.value = True
         self.filled_slots.put(None)
 
     def get_read_token(self):
         return self.filled_slots.get()
 
     def return_read_token(self, token):
-        self.empty_slots.put(token)
+        if token is not None:
+            self.empty_slots.put(token)
+        else:
+            self.filled_slots.put(None)
 
     def get_write_token(self):
-        if self.received_flush_event.value:
-            return None
         # if overwriting is allowed, try to immideatly get a new slot (block=False)
-        #   if there is no empty slot available (wait for) a filled slot
+        #   if there is no empty slot available try to immideatly get a filled slot nowait
+        #   if there is no filled slot available, wait for an empty slot
         # if overwriting is not allowed, wait for an empty slot (block=True)
         try:
-            return self.empty_slots.get(block=not self.overwrite)
+            return self.empty_slots.get(block=(not self.overwrite))
         except queue.Empty:
-            token = self.filled_slots.get()
-            # dont overwrite the flush event
-            if token is None:
-                self.return_write_token(None)
-            return token
+            # this can only happen if overwrite is True
+            try:
+                token = (
+                    self.filled_slots.get_nowait()
+                )  # If all slots are being read, this queue will be empty, wait for a slot to be emptied
+                if token is None:  # never overwrite a flush event
+                    return self.empty_slots.get()
+                return token
+            except queue.Empty:
+                return self.empty_slots.get()
 
     def return_write_token(self, token):
-        if token is not None:
-            self.filled_slots.put(token)
+        self.filled_slots.put(token)
 
     def __del__(self):
         self.shared_memory_buffer.close()
@@ -136,10 +143,7 @@ class Reader:
         return self.ring_buffer.buffer[self.token]
 
     def __exit__(self, exc_type, exc_value, traceback):
-        if self.token is not None:
-            self.ring_buffer.return_read_token(self.token)
-        else:
-            self.ring_buffer.return_write_token(None)
+        self.ring_buffer.return_read_token(self.token)
 
 
 class Writer:
@@ -148,60 +152,75 @@ class Writer:
 
     def __enter__(self):
         self.token = self.ring_buffer.get_write_token()
-        if self.token is None:
-            return None
         return self.ring_buffer.buffer[self.token]
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.ring_buffer.return_write_token(self.token)
 
 
-class Observer:
-    def __init__(self, ring_buffer):
-        self.ring_buffer = ring_buffer
+# class Observer:
+#     def __init__(self, ring_buffer):
+#         self.ring_buffer = ring_buffer
 
-    def __enter__(self):
-        token = self.ring_buffer.get_read_token()
-        if token is None:
-            data = None
-        else:
-            data = self.ring_buffer.buffer[token].copy()
-        self.ring_buffer.return_read_token(token)
-        return data
+#     def __enter__(self):
+#         token = self.ring_buffer.get_read_token()
+#         if token is None:
+#             data = None
+#         else:
+#             data = self.ring_buffer.buffer[token].copy()
+#         self.ring_buffer.return_read_token(token)
+#         return data
 
-    def __exit__(self, exc_type, exc_value, traceback):
-        pass
+#     def __exit__(self, exc_type, exc_value, traceback):
+#         pass
 
 
 if __name__ == "__main__":
-    ring_buffer = RingBuffer(name="test", slot_count=10, slot_byte_size=10)
+    # Number of Consumers and Producers
+    CONSUMER_COUNT = 5
+    PRODUCER_COUNT = 5
+
+    # Number of events each producer produces
+    EVENT_COUNT = 256
+
+    # Maximum average rate of the consumers and producers
+    CONSUMER_RATE = 1000
+    PRODUCER_RATE = 1000
+
+    ring_buffer = RingBuffer(name="test", slot_count=10, slot_byte_size=10, overwrite=True)
 
     def producer(ring_buffer):
-        for i in range(10):
+        for i in range(EVENT_COUNT):
             with Writer(ring_buffer) as buffer:
-                buffer[:] = i
-                time.sleep(1)
+                if buffer is None:
+                    print("shutdown received")
+                    break
+                buffer[:] = i % 256
+                time.sleep(-np.log(np.random.rand()) / PRODUCER_RATE)
 
     def consumer(ring_buffer):
-        for i in range(100):
+        while True:
             with Reader(ring_buffer) as buffer:
                 if buffer is None:
                     break
                 print(buffer)
+                time.sleep(1 / CONSUMER_RATE)
 
     producers = []
     consumers = []
-    for j in range(10):
+    for i in range(PRODUCER_COUNT):
         producers.append(Process(target=producer, args=(ring_buffer,)))
+    for i in range(CONSUMER_COUNT):
         consumers.append(Process(target=consumer, args=(ring_buffer,)))
 
-    for p1, p2 in zip(producers, consumers):
-        p1.start()
-        p2.start()
-        
-    time.sleep(5)
+    for c in consumers:
+        c.start()
+    for p in producers:
+        p.start()
+
     for p in producers:
         p.join()
+    print("producers finished")
     ring_buffer.send_flush_event()
     for c in consumers:
         c.join()
