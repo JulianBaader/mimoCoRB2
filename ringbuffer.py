@@ -192,9 +192,6 @@ if __name__ == "__main__":
     def producer(ring_buffer):
         for i in range(EVENT_COUNT):
             with Writer(ring_buffer) as buffer:
-                if buffer is None:
-                    print("shutdown received")
-                    break
                 buffer[:] = i % 256
                 time.sleep(-np.log(np.random.rand()) / PRODUCER_RATE)
 
