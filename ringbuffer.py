@@ -1,4 +1,4 @@
-from multiprocessing import Process, shared_memory, Queue
+from multiprocessing import Process, shared_memory, Queue, Value
 import queue
 import numpy as np
 import time
@@ -69,7 +69,10 @@ class RingBuffer:
 
         # initialize the buffer as a shared memory
         self.shared_memory_buffer = shared_memory.SharedMemory(create=True, size=self.slot_count * self.slot_byte_size)
-        self.buffer = np.ndarray((self.slot_count, self.slot_byte_size), dtype=np.uint8, buffer=self.shared_memory.buf)
+        self.buffer = np.ndarray((self.slot_count, self.slot_byte_size), dtype=np.uint8, buffer=self.shared_memory_buffer.buf)
+        
+        # initialize a flag for shutdown
+        self.received_flush_event = Value('b', False)
 
         # initialize the queues
         self.empty_slots = Queue(self.slot_count)
@@ -78,6 +81,10 @@ class RingBuffer:
         # initialize the empty slots
         for i in range(slot_count):
             self.empty_slots.put(i)
+            
+    def send_flush_event(self):
+        self.received_flush_event.value = True
+        self.filled_slots.put(None)
 
     def get_read_token(self):
         return self.filled_slots.get()
@@ -86,20 +93,27 @@ class RingBuffer:
         self.empty_slots.put(token)
 
     def get_write_token(self):
+        if self.received_flush_event.value:
+            return None
         # if overwriting is allowed, try to immideatly get a new slot (block=False)
         #   if there is no empty slot available (wait for) a filled slot
         # if overwriting is not allowed, wait for an empty slot (block=True)
         try:
             return self.empty_slots.get(block=not self.overwrite)
         except queue.Empty:
-            return self.filled_slots.get()
+            token = self.filled_slots.get()
+            # dont overwrite the flush event
+            if token is None:
+                self.return_write_token(None)
+            return token
 
     def return_write_token(self, token):
-        self.filled_slots.put(token)
+        if token is not None:
+            self.filled_slots.put(token)
 
     def __del__(self):
-        self.shared_memory.close()
-        self.shared_memory.unlink()
+        self.shared_memory_buffer.close()
+        self.shared_memory_buffer.unlink()
 
     def get_metadata(self):
         return {
@@ -122,7 +136,10 @@ class Reader:
         return self.ring_buffer.buffer[self.token]
 
     def __exit__(self, exc_type, exc_value, traceback):
-        self.ring_buffer.return_read_token(self.token)
+        if self.token is not None:
+            self.ring_buffer.return_read_token(self.token)
+        else:
+            self.ring_buffer.return_write_token(None)
 
 
 class Writer:
@@ -131,6 +148,8 @@ class Writer:
 
     def __enter__(self):
         self.token = self.ring_buffer.get_write_token()
+        if self.token is None:
+            return None
         return self.ring_buffer.buffer[self.token]
 
     def __exit__(self, exc_type, exc_value, traceback):
@@ -143,7 +162,10 @@ class Observer:
 
     def __enter__(self):
         token = self.ring_buffer.get_read_token()
-        data = self.ring_buffer.buffer[token].copy()
+        if token is None:
+            data = None
+        else:
+            data = self.ring_buffer.buffer[token].copy()
         self.ring_buffer.return_read_token(token)
         return data
 
@@ -163,6 +185,8 @@ if __name__ == "__main__":
     def consumer(ring_buffer):
         for i in range(100):
             with Reader(ring_buffer) as buffer:
+                if buffer is None:
+                    break
                 print(buffer)
 
     producers = []
@@ -174,8 +198,10 @@ if __name__ == "__main__":
     for p1, p2 in zip(producers, consumers):
         p1.start()
         p2.start()
-    for p1, p2 in zip(producers, consumers):
-        p1.join()
-        p2.join()
-
-    # flush event und jeder consumer schiebt ein flush event wieder zurück
+        
+    time.sleep(5)
+    for p in producers:
+        p.join()
+    ring_buffer.send_flush_event()
+    for c in consumers:
+        c.join()
