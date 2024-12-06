@@ -46,7 +46,7 @@ class RingBuffer:
     Upon this Reader returning the token to the buffer it will be added again to the filled_slots queue for another Reader to find it.
     """
 
-    def __init__(self, name, slot_count, slot_byte_size, overwrite=True, sleep_time=0.05):
+    def __init__(self, name, slot_count, slot_byte_size, overwrite=True):
         self.log = mimo_logger.Logger("RingBuffer: " + name)
 
         # constant_metadata
@@ -54,7 +54,6 @@ class RingBuffer:
         self.slot_count = slot_count
         self.slot_byte_size = slot_byte_size
 
-        self.sleep_time = sleep_time
         self.overwrite = overwrite
 
         # initialize the buffer as a shared memory
@@ -118,7 +117,6 @@ class RingBuffer:
             "slot_count": self.slot_count,
             "slot_byte_size": self.slot_byte_size,
             "overwrite": self.overwrite,
-            "sleep_time": self.sleep_time,
         }
 
 
