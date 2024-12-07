@@ -2,6 +2,7 @@ from multiprocessing import Process, shared_memory, Queue, Value
 import queue
 import numpy as np
 import time
+import ctypes
 
 import mimo_logger
 
@@ -55,15 +56,16 @@ class RingBuffer:
         self.slot_byte_size = slot_byte_size
 
         self.overwrite = overwrite
+        
+        # dynamic metadata
+        self.event_count = Value(ctypes.c_ulonglong, 0)
+        self.overwrite_count = Value(ctypes.c_ulong, 0)
 
         # initialize the buffer as a shared memory
         self.shared_memory_buffer = shared_memory.SharedMemory(create=True, size=self.slot_count * self.slot_byte_size)
         self.buffer = np.ndarray(
             (self.slot_count, self.slot_byte_size), dtype=np.uint8, buffer=self.shared_memory_buffer.buf
         )
-
-        # initialize a flag for shutdown
-        self.received_flush_event = Value('b', False)
 
         # initialize the queues
         self.empty_slots = Queue(self.slot_count)
@@ -100,11 +102,15 @@ class RingBuffer:
                 )  # If all slots are being read, this queue will be empty, wait for a slot to be emptied
                 if token is None:  # never overwrite a flush event
                     return self.empty_slots.get()
+                with self.overwrite_count.get_lock():
+                    self.overwrite_count.value += 1
                 return token
             except queue.Empty:
                 return self.empty_slots.get()
 
     def return_write_token(self, token):
+        with self.event_count.get_lock():
+            self.event_count.value += 1
         self.filled_slots.put(token)
 
     def __del__(self):
