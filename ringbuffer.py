@@ -4,8 +4,6 @@ import numpy as np
 import time
 import ctypes
 
-import mimo_logger
-
 # TODO decide if SimpleQueue or Queue is better
 
 """
@@ -48,8 +46,6 @@ class RingBuffer:
     """
 
     def __init__(self, name, slot_count, slot_byte_size, overwrite=True):
-        self.log = mimo_logger.Logger("RingBuffer: " + name)
-
         # constant_metadata
         self.name = name
         self.slot_count = slot_count
@@ -60,6 +56,7 @@ class RingBuffer:
         # dynamic metadata
         self.event_count = Value(ctypes.c_ulonglong, 0)
         self.overwrite_count = Value(ctypes.c_ulong, 0)
+        self.flush_event_received = Value(ctypes.c_bool, False)
 
         # initialize the buffer as a shared memory
         self.shared_memory_buffer = shared_memory.SharedMemory(create=True, size=self.slot_count * self.slot_byte_size)
@@ -86,7 +83,10 @@ class RingBuffer:
         }
 
     def send_flush_event(self):
-        self.filled_slots.put(None)
+        with self.flush_event_received.get_lock():
+            if not self.flush_event_received.value:
+                self.flush_event_received.value = True
+                self.filled_slots.put(None)
 
     def get_read_token(self):
         return self.filled_slots.get()
