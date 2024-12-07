@@ -74,6 +74,16 @@ class RingBuffer:
         # initialize the empty slots
         for i in range(slot_count):
             self.empty_slots.put(i)
+            
+    def get_metadata(self):
+        return {
+            "name": self.name,
+            "slot_count": self.slot_count,
+            "slot_byte_size": self.slot_byte_size,
+            "overwrite": self.overwrite,
+            "event_count": self.event_count.value,
+            "overwrite_count": self.overwrite_count.value,
+        }
 
     def send_flush_event(self):
         self.filled_slots.put(None)
@@ -116,14 +126,6 @@ class RingBuffer:
     def __del__(self):
         self.shared_memory_buffer.close()
         self.shared_memory_buffer.unlink()
-
-    def get_metadata(self):
-        return {
-            "name": self.name,
-            "slot_count": self.slot_count,
-            "slot_byte_size": self.slot_byte_size,
-            "overwrite": self.overwrite,
-        }
 
 
 class Reader:
