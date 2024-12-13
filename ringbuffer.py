@@ -152,6 +152,21 @@ class Writer:
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.ring_buffer.return_write_token(self.token)
+        
+class MultiWriter:
+    def __init__(self, ring_buffers):
+        self.ring_buffers = ring_buffers
+        self.number_of_buffers = len(ring_buffers)
+        
+    def __enter__(self):
+        self.tokens = []
+        for rb in self.ring_buffers:
+            self.tokens.append(rb.get_write_token())
+        return [rb.buffer[token] for rb, token in zip(self.ring_buffers, self.tokens)]
+    
+    def __exit__(self, exc_type, exc_value, traceback):
+        for rb, token in zip(self.ring_buffers, self.tokens):
+            rb.return_write_token(token)
 
 
 # class Observer:
