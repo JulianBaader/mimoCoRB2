@@ -22,15 +22,12 @@ class DAQRingBuffer(ringbuffer.RingBuffer):
         # calculate the sizes in bytes
         self.data_byte_size = self.data_length * self.data_dtype.itemsize
         self.metadata_byte_size = 1 * self.metadata_dtype.itemsize
-        
-        self.slot_byte_size = self.slot_count * (self.data_byte_size + self.metadata_byte_size)
-        
+        self.slot_byte_size = self.data_byte_size + self.metadata_byte_size
     
-        
         # create the ring buffer
         super().__init__(name, self.slot_count, self.slot_byte_size, overwrite)
         
-        self.buffer = self.buffer.reshape((self.slot_count, self.batch_count, self.data_byte_size + self.metadata_byte_size))
+        self.buffer = self.buffer.reshape((self.slot_count, self.slot_byte_size))
         
 class Importer:
     def __init__(self, ringbuffer, ufunc, function_name=None):
@@ -55,10 +52,10 @@ class Importer:
                     self.ringbuffer.send_flush_event()
                     break
                 data, metadata = ret
-                if data.nb_bytes != self.data_byte_size or metadata.nb_bytes != self.metadata_byte_size:
+                if data.nbytes != self.data_byte_size or metadata.nbytes != self.metadata_byte_size:
                     buffer_metadata = self.ringbuffer.get_metadata()
                     print(f"""Importer to ringbuffer {buffer_metadata['name']} received data or metadata from {self.ufunc.__name__} with the wrong size.
-                            Shutting down the buffer and the importer.""")
+                            Shutting down the buffer and the importer.""") # TODO more information about the shapes and dtypes
                     self.ringbuffer.send_flush_event()
                     break
                 slot[:self.data_byte_size] = data.view(np.uint8)
@@ -72,7 +69,7 @@ class Putter:
         self.metadata_byte_size = ringbuffer.metadata_byte_size
         
     def __call__(self, data, metadata):
-        if data.nb_bytes != self.data_byte_size or metadata.nb_bytes != self.metadata_byte_size:
+        if data.nbytes != self.data_byte_size or metadata.nbytes != self.metadata_byte_size:
             buffer_metadata = self.ringbuffer.get_metadata()
             print(f"""Importer to ringbuffer {buffer_metadata['name']} received data or metadata from {self.ufunc.__name__} with the wrong size.
                     Shutting down the buffer and the importer.""")
@@ -89,7 +86,6 @@ class Putter:
 class Exporter:
     def __init__(self, ringbuffer, name):
         self.ringbuffer = ringbuffer
-        self.batch_count = ringbuffer.batch_count
         self.data_byte_size = ringbuffer.data_byte_size
         self.data_dtype = ringbuffer.data_dtype
         self.metadata_dtype = ringbuffer.metadata_dtype
@@ -101,11 +97,9 @@ class Exporter:
                     self.ringbuffer.send_flush_event()
                     yield None
                     break
-                for i in range(self.batch_count):
-                    batch = slot[i]
-                    data = batch[:self.data_byte_size].view(self.data_dtype)
-                    metadata = batch[self.data_byte_size:].view(self.metadata_dtype)
-                    yield data, metadata
+                data = slot[:self.data_byte_size].view(self.data_dtype)
+                metadata = slot[self.data_byte_size:].view(self.metadata_dtype)
+                yield data, metadata
 
   
 class Processor:
@@ -119,7 +113,8 @@ class Processor:
     """
     def __init__(self, input_ringbuffer, output_ringbuffers, ufunc, function_name=None, testing=False):
         self.input_ringbuffer = input_ringbuffer
-        self.ouput_ringbuffers = output_ringbuffers
+        self.data_byte_size = input_ringbuffer.data_byte_size
+        self.output_ringbuffers = output_ringbuffers
         self.number_of_output_buffers = len(output_ringbuffers)
         self.ufunc = ufunc
         self.function_name=function_name
@@ -153,7 +148,7 @@ class Processor:
     
     def map_ufunc_to_buffers(self, return_of_ufunc, metadata):
         if not isinstance(return_of_ufunc, list) or len(return_of_ufunc) != self.number_of_output_buffers:
-            self.error("Output of the processing function is not a list or has the wrong length.", data)
+            self.error("Output of the processing function is not a list or has the wrong length.", return_of_ufunc) # TODO this is not the right data
             return 
         
         for data_list, output_ringbuffer in zip(return_of_ufunc, self.output_ringbuffers):
@@ -162,31 +157,102 @@ class Processor:
             if not isinstance(data_list, list):
                 data_list = [data_list]
             for data in data_list:
-                self.write_to_buffer(data, metadata, output_ringbuffer)
+                self.write_data_to_buffer(data, metadata, output_ringbuffer)
                     
     def write_data_to_buffer(self, data, metadata, output_ringbuffer):
+        data_byte_size = output_ringbuffer.data_byte_size
         if data is None:
             return
         if not isinstance(data, np.ndarray) or data.dtype != output_ringbuffer.data_dtype:
-            self.error("Output of the processing function is not a numpy array or has the wrong dtype.", data)
+            self.error("Output of the processing function is not a numpy array or has the wrong dtype.", data) # TODO this is not the right data
             return
-        if data.nb_bytes != output_ringbuffer.data_byte_size:
+        if data.nbytes != output_ringbuffer.data_byte_size:
             self.error("Output of the processing function has the wrong size.", data)
             return
         with ringbuffer.Writer(output_ringbuffer) as output_slot:
-            output_slot[:self.data_byte_size] = data.view(np.uint8)
-            output_slot[self.data_byte_size:] = metadata.view(np.uint8)
+            output_slot[:data_byte_size] = data.view(np.uint8)
+            output_slot[data_byte_size:] = metadata.view(np.uint8)
         
     
     def __call__(self):
         while True:
             with ringbuffer.Reader(self.input_ringbuffer) as input_slot:
                 if input_slot is None:
-                    return
+                    self.shutdown()
+                    break
                 data = input_slot[:self.data_byte_size].view(self.input_ringbuffer.data_dtype)
                 metadata = input_slot[self.data_byte_size:].view(self.input_ringbuffer.metadata_dtype)
                 
                 ret = self.evaluate(data)
                 if ret is None:
                     continue
-                self.map_to_buffers(ret, metadata)
+                self.map_ufunc_to_buffers(ret, metadata)
+                
+
+if __name__=="__main__":
+    EVENT_COUNT = 10
+    
+    OSCILLOSCOPE_LENGTH = 1000
+    PULSE_SIGMA = 10
+    MAX_PULSE_HEIGHT = 100
+    
+    def pulse():
+        x = np.arange(OSCILLOSCOPE_LENGTH)
+        # random position and height of the pulse
+        pulse_position = np.random.randint(0,OSCILLOSCOPE_LENGTH)
+        pulse_height = np.random.randint(0,MAX_PULSE_HEIGHT)
+        return np.exp(-((x-pulse_position)**2)/(2*PULSE_SIGMA**2))*pulse_height
+    
+    OSC_DTYPE = np.dtype([("osc", np.float64)])
+    
+    def oscilloscope():
+        for i in range(EVENT_COUNT):
+            data = np.zeros(OSCILLOSCOPE_LENGTH, dtype=OSC_DTYPE)
+            data["osc"] = pulse()
+            metadata = np.zeros(1, dtype=DAQRingBuffer.metadata_dtype)
+            metadata["counter"] = i
+            metadata["timestamp"] = 0
+            metadata["deadtime"] = 0
+            yield data, metadata
+        yield None
+    
+    PULSE_HEIGHT_DTYPE = np.dtype([("pulse_height", np.float64)])
+    
+    def pulse_height_analyzer(data):
+        pulse_height = np.max(data["osc"])
+        return [np.array([pulse_height], dtype=PULSE_HEIGHT_DTYPE)]
+    
+    def printer(exporter):
+        generator = exporter()
+        while True:
+            ret = next(generator)
+            if ret is None:
+                break
+            print(ret)
+            
+    
+    osc_buffer = DAQRingBuffer("oscilloscope", 10, OSCILLOSCOPE_LENGTH, OSC_DTYPE)
+    pulse_height_buffer = DAQRingBuffer("pulse_height", 10, 1, PULSE_HEIGHT_DTYPE)
+    
+    osc_importer = Importer(osc_buffer, oscilloscope)
+    pulse_height_processor = Processor(osc_buffer, [pulse_height_buffer], pulse_height_analyzer)
+    pulse_height_exporter = Exporter(pulse_height_buffer, "Export")
+    
+    from multiprocessing import Process
+    imp = Process(target=osc_importer)
+    ana = Process(target=pulse_height_processor)
+    exp = Process(target=printer, args=(pulse_height_exporter,))
+    
+    exp.start()
+    ana.start()
+    imp.start()
+    
+    imp.join()
+    ana.join()
+    exp.join()
+    
+    
+    
+    
+    
+        
