@@ -6,14 +6,14 @@ This module builds upon the ringbuffer module and is an api designed for data ac
 """
 
 class DAQRingBuffer(ringbuffer.RingBuffer):
+    metadata_dtype = np.dtype([
+        ("counter", np.longlong),
+        ("timestamp", np.float64),
+        ("deadtime", np.float64),
+    ])
     def __init__(self, name, slot_count, data_length, dtype, overwrite=True):
-        # create dtype for the buffer and metadata
+        # create dtype for the buffer
         self.data_dtype = np.dtype(dtype)
-        self.metadata_dtype = np.dtype([
-            ("counter", np.longlong),
-            ("timestamp", np.float64),
-            ("deadtime", np.float64),
-        ])
         
         # load dimensions
         self.slot_count = slot_count
