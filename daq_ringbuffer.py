@@ -17,20 +17,13 @@ class DAQRingBuffer(ringbuffer.RingBuffer):
         
         # load dimensions
         self.slot_count = slot_count
-        self.batch_count = batch_count
         self.data_length = data_length
-        
-        if self.batch_count == 1:
-            self.get_data = self._get_data
-            self.put_data = self._put_data
         
         # calculate the sizes in bytes
         self.data_byte_size = self.data_length * self.data_dtype.itemsize
         self.metadata_byte_size = 1 * self.metadata_dtype.itemsize
         
-        self.batch_byte_size = self.data_byte_size + self.metadata_byte_size
-        
-        self.slot_byte_size = self.batch_byte_size * self.batch_count
+        self.slot_byte_size = self.slot_count * (self.data_byte_size + self.metadata_byte_size)
         
     
         
