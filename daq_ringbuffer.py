@@ -124,7 +124,6 @@ class Exporter:
         while True:
             with ringbuffer.Reader(self.ringbuffer) as slot:
                 if slot is None:
-                    self.ringbuffer.send_flush_event()
                     yield None
                     break
                 data = slot[: self.data_byte_size].view(self.data_dtype)
