@@ -387,7 +387,7 @@ class Observer:
             data = None
         else:
             data = self.ring_buffer.buffer[token].copy()
-        self.ring_buffer.return_read_token(token)
+        self.ring_buffer.return_write_token(token)
         return data
 
     def __exit__(self, exc_type, exc_value, traceback):
