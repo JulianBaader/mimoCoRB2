@@ -80,6 +80,8 @@ class RingBuffer:
             "overwrite": self.overwrite,
             "event_count": self.event_count.value,
             "overwrite_count": self.overwrite_count.value,
+            "empty_slots": self.empty_slots.qsize(),
+            "filled_slots": self.filled_slots.qsize(),
         }
 
     def send_flush_event(self):
