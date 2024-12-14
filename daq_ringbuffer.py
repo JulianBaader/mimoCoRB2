@@ -129,6 +129,22 @@ class Exporter:
                 data = slot[: self.data_byte_size].view(self.data_dtype)
                 metadata = slot[self.data_byte_size :].view(self.metadata_dtype)
                 yield data, metadata
+                
+class Observer:
+    def __init__(self, ringbuffer, name):
+        self.ringbuffer = ringbuffer
+        self.data_byte_size = ringbuffer.data_byte_size
+        self.metadata_byte_size = ringbuffer.metadata_byte_size
+        
+    def __call__(self):
+        while True:
+            with ringbuffer.Observer(self.ringbuffer) as slot:
+                if slot is None:
+                    yield None
+                    break
+                data = slot[: self.data_byte_size].view(self.data_dtype)
+                metadata = slot[self.data_byte_size :].view(self.metadata_dtype)
+                yield data, metadata
 
 
 class Processor:
