@@ -53,3 +53,16 @@ class DAQRingBuffer(ringbuffer.RingBuffer):
         # create the ring buffer
         super().__init__(name, self.slot_count, self.slot_byte_size, overwrite)
         self.buffer = self.buffer.reshape((self.slot_count, self.slot_byte_size))
+        
+        self.buffer_information = {
+            "name": name,
+            "slot_count": slot_count,
+            "data_length": data_length,
+            "dtype": dtype,
+            "overwrite": overwrite,
+            "example_data": np.zeros(data_length, dtype=dtype),
+        }
+    
+    
+
+
