@@ -23,6 +23,7 @@ TODO
 
 import ringbuffer
 import numpy as np
+import yaml
 
 
 
@@ -36,33 +37,19 @@ class DAQRingBuffer(ringbuffer.RingBuffer):
         ]
     )
 
-    def __init__(self, name: str, slot_count: int, data_length: int, dtype, overwrite=True):
-        # create dtype for the buffer
-        self.data_dtype = np.dtype(dtype)
-
-        # load dimensions
-        self.slot_count = slot_count
-        self.data_length = data_length
-
+    def __init__(self, name: str, slot_count: int, shape, dtype=float, overwrite=True):  
+        self.buffer_information = {
+            'name': name,
+            'slot_count': slot_count,
+            'overwrite': overwrite,
+            'example_data': np.zeros(shape=shape, dtype=dtype),
+            'example_metadata': np.zeros(shape=1, dtype=self.metadata_dtype),
+        }      
         # calculate the sizes in bytes
-        self.data_byte_size = self.data_length * self.data_dtype.itemsize
-        self.metadata_byte_size = 1 * self.metadata_dtype.itemsize
+        self.data_byte_size = self.buffer_information['example_data'].nbytes
+        self.metadata_byte_size = self.buffer_information['example_metadata'].nbytes
         
         self.slot_byte_size = self.data_byte_size + self.metadata_byte_size
 
         # create the ring buffer
-        super().__init__(name, self.slot_count, self.slot_byte_size, overwrite)
-        self.buffer = self.buffer.reshape((self.slot_count, self.slot_byte_size))
-        
-        self.buffer_information = {
-            "name": name,
-            "slot_count": slot_count,
-            "data_length": data_length,
-            "dtype": dtype,
-            "overwrite": overwrite,
-            "example_data": np.zeros(data_length, dtype=dtype),
-        }
-    
-    
-
-
+        super().__init__(name, self.slot_count, self.slot_byte_size, self.overwrite)
