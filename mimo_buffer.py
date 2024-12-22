@@ -16,7 +16,8 @@ class mimoBuffer:
     metadata_example = np.zeros(shape=metadata_length, dtype=metadata_dtype)
     metadata_byte_size = metadata_example.nbytes
 
-    def __init__(self, slot_count: int, data_length: int, data_dtype: np.dtype, overwrite: bool = True):
+    def __init__(self, name, slot_count: int, data_length: int, data_dtype: np.dtype, overwrite: bool = True):
+        self.name = name
         self.slot_count = slot_count
         self.data_length = data_length
         self.data_dtype = data_dtype
