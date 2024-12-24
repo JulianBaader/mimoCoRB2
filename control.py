@@ -5,14 +5,15 @@ import numpy as np
 import multiprocessing
 import os
 from graphviz import Digraph
+import time
+import shutil
 
 
 class mimoControl:
-    def __init__(self, buffers_setup: dict, functions_setup: dict, options_setup: dict, function_configs: dict):
+    def __init__(self, buffers_setup: dict, functions_setup: dict, function_configs: dict):
         
         self.buffers_setup = buffers_setup
         self.functions_setup = functions_setup
-        self.options_setup = options_setup
         self.function_configs = function_configs
         
             
@@ -29,7 +30,10 @@ class mimoControl:
             
     def initialize_functions(self):
         self.functions_dict = {}
-        for name, setup in self.functions_setup.items():
+        for name in self.functions_setup.items():
+            setup = self.functions_setup[name]
+            config = self.functions_config[name]
+            
             self.functions_dict[name] = mimoWorker(
                 name = name,
                 function = setup['function'],
@@ -37,6 +41,7 @@ class mimoControl:
                     self._get_buffers_from_strings(setup['source_list']),
                     self._get_buffers_from_strings(setup['sink_list']),
                     self._get_buffers_from_strings(setup['observe_list']),
+                    config,
                 ),
                 number_of_processes = setup['number_of_processes']
             )
@@ -58,7 +63,7 @@ class mimoControl:
         
         
         """
-        # resort the setup, i.e. for each buffer a list of reader, writer and observer functions
+        # re-sort the setup, i.e. for each buffer a list of reader, writer and observer functions
         writers = {buffer_name: [] for buffer_name in self.buffers_setup.keys()}
         readers = {buffer_name: [] for buffer_name in self.buffers_setup.keys()}
         observers = {buffer_name: [] for buffer_name in self.buffers_setup.keys()}
@@ -134,3 +139,116 @@ class mimoControl:
     def visualize_arboresence(self, **kwargs):
         """TODO visualize only a view of the ringbuffers with the functions in between"""
         raise NotImplementedError
+    
+    
+class fileReader:
+    def __init__(self, setup_file):
+        self.setup_file = os.path.abspath(setup_file)
+        self.setup_dir = os.path.dirname(self.setup_file)
+        
+        self.loaded_config_files = {}
+    
+    def __call__(self):
+        self.load_setup()
+        self.create_buffers_setup()
+        self.create_functions_setup()
+        self.create_config_dicts()
+        return self.buffers_setup, self.functions_setup, self.function_configs
+        
+    def load_setup(self):
+        # load the setup file
+        with open(self.setup_file, 'r') as stream:
+            setup = yaml.safe_load(stream)
+        
+        # read the setup
+        self.options = setup.get('Options', {})
+        self.buffers = setup.get('Buffers', {})
+        self.functions = setup.get('Functions', {})
+        
+        # create the target directory
+        self.output_directory = os.path.join(self.setup_dir, self.options.get('output_directory', 'target'))
+        os.makedirs(self.output_directory, exist_ok=True)
+        
+        # create the run directory
+        start_time = time.strftime('%Y-%m-%d_%H-%M-%S')
+        self.run_directory = os.path.join(
+            self.output_directory,
+            self.options.get('run_directory', 'run') + '_' + start_time
+            )
+        os.makedirs(self.run_directory, exist_ok=False)
+        
+        # copy the setup file to the run directory
+        shutil.copy(self.setup_file, self.run_directory)
+        
+
+        
+    def load_config_file(self, file: str):
+        file = os.path.join(self.input_path, file)
+        if file in self.loaded_config_files:
+            return self.loaded_config_files[file]
+        shutil.copy(file, self.run_directory)
+        with open(file, 'r') as stream:
+            config = yaml.safe_load(stream)
+        self.loaded_config_files[file] = config
+        return config
+        
+    def create_buffers_setup(self):
+        # main overwrite
+        overwrite = self.options.get('overwrite', True)
+        
+        self.buffers_setup = {}
+        for name, setup in self.buffers.items():
+            self.buffers_setup[name] = {
+                'slot_count': setup.get('slot_count', 1),
+                'data_length': setup.get('data_length', 1),
+                'data_dtype': setup.get('data_dtype', 'float64'),
+                'overwrite': setup.get('overwrite', overwrite)
+            }
+            
+    def create_functions_setup(self):
+        self.functions_setup = {}
+        for name, setup in self.functions.items():
+            self.functions_setup[name] = {
+                'function': setup['function'],
+                'source_list': setup.get('source_list', []),
+                'sink_list': setup.get('sink_list', []),
+                'observe_list': setup.get('observe_list', []),
+                'number_of_processes': setup.get('number_of_processes', 1)
+            }
+            
+    def create_config_dicts(self):
+        # overarching config dict
+        if 'overarching_config' in self.options:
+            overarching_config = self.load_config_file(self.options['overarching_config'])
+        else:
+            overarching_config = {}
+        
+        self.function_configs = {key: overarching_config for key in self.functions_setup.keys()}
+        
+        # main config file
+        if 'main_config' in self.options:
+            main_config = self.load_config_file(self.options['main_config'])
+        else:
+            main_config = {}
+        for function_name in self.functions_setup.keys():
+            if function_name in main_config:
+                self.function_configs[function_name].update(main_config[function_name])
+                
+        # individual config files
+        for function_name, setup in self.functions_setup.items():
+            if 'config' in setup:
+                self.function_configs[function_name].update(self.load_config_file(setup['config']))
+                
+        # obligatory config
+        OBLIGATORY_KEYS = ['run_directory', 'name']
+        for function_name in self.functions_setup.keys():
+            overwriting_keys = [key for key in OBLIGATORY_KEYS if key in self.function_configs[function_name]]
+            if overwriting_keys:
+                raise RuntimeWarning(f"Overwriting keys {overwriting_keys} in config of {function_name}")
+            
+            self.function_configs[function_name].update({
+                'run_directory': self.run_directory,
+                'name': function_name,
+            })
+                
+                
