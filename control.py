@@ -1,5 +1,5 @@
 import yaml
-from mimo_buffer import mimoBuffer
+from mimo_buffer import mimoBuffer, Reader, Writer, Observer
 from mimo_worker import mimoWorker
 import numpy as np
 import os
@@ -35,9 +35,9 @@ class mimoControl:
                 name=name,
                 function=setup['function'],
                 args=(
-                    self._get_buffers_from_strings(setup['source_list']),
-                    self._get_buffers_from_strings(setup['sink_list']),
-                    self._get_buffers_from_strings(setup['observe_list']),
+                    Reader(self._get_buffers_from_strings(setup['source_list'])),
+                    Writer(self._get_buffers_from_strings(setup['sink_list'])),
+                    Observer(self._get_buffers_from_strings(setup['observe_list'])),
                     config,
                 ),
                 number_of_processes=setup['number_of_processes'],
