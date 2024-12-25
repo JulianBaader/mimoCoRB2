@@ -3,6 +3,7 @@ from mimo_buffer import mimoBuffer, Reader, Writer, Observer
 from mimo_worker import mimoWorker
 import numpy as np
 import os
+import sys
 from graphviz import Digraph
 import time
 import shutil
@@ -218,7 +219,7 @@ class fileReader:
         self.functions_setup = {}
         for name, setup in self.functions.items():
             self.functions_setup[name] = {
-                'function': setup['function'],
+                'function': self._import_function(setup['file'], setup['function']),
                 'source_list': setup.get('source_list', []),
                 'sink_list': setup.get('sink_list', []),
                 'observe_list': setup.get('observe_list', []),
@@ -260,3 +261,29 @@ class fileReader:
                     'name': function_name,
                 }
             )
+
+    def _import_function(self, file, function_name):
+        """
+        Import a named object defined in a config yaml file from a module.
+
+        Parameters:
+            file (str): name of the python module containing the function/class
+            function_name (str): python function/class name
+        Returns:
+            (obj): function/method name callable as object
+        Raises:
+            ImportError: returns None
+        """
+        path = os.path.join(self.setup_dir, file)
+        directory = os.path.dirname(path)
+        module_name = os.path.basename(path).removesuffix('.py')
+
+        if directory not in sys.path:
+            sys.path.append(directory)
+            module = __import__(module_name, globals(), locals(), fromlist=[function_name])
+            sys.path.remove(directory)
+        else:
+            module = __import__(module_name, globals(), locals(), fromlist=[function_name])
+        if function_name not in vars(module):
+            raise ImportError(f"Function {function_name} not found in module {path}")
+        return vars(module)[function_name]
