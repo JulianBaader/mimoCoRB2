@@ -17,6 +17,7 @@ class mimoControl:
     def initialize_buffers(self):
         self.buffers_dict = {}
         for name, setup in self.buffers_setup_dict.items():
+            print(f"Initializing Buffer {name}") # TODO logging
             self.buffers_dict[name] = mimoBuffer(
                 name=name,
                 slot_count=setup['slot_count'],
@@ -32,7 +33,7 @@ class mimoControl:
         for name in self.functions_setup.items():
             setup = self.functions_setup[name]
             config = self.functions_config[name]
-
+            print(f"Initializing Function {name}")
             self.functions_dict[name] = mimoWorker(
                 name=name,
                 function=setup['function'],
@@ -49,9 +50,11 @@ class mimoControl:
         [self.buffers_dict[name] for name in strings]
 
     def start_functions(self):
-        for function in self.functions_dict.values():
+        for name, function in self.functions_dict.items():
+            print(f"Initalizing Function {name}") # TODO logging
             function.initialize_processes()
-        for function in self.functions_dict.values():
+        for name, function in self.functions_dict.items():
+            print(f"Starting Function {name}")
             function.start_processes()
 
     def check_data_flow(self) -> bool:
@@ -111,15 +114,20 @@ class mimoControl:
         self.buffers_for_shutdown = {name: self._get_buffers_from_strings([name]) for name in root_buffers}
         return True
     
-    def soft_shutdown(self):
+    def soft_shutdown_buffers(self):
         for name, buffer in self.buffers_for_shudown.items():
-            # debug log
+            print(f"Shutting down Buffer {name}") # TODO logging
             buffer.send_flush_event()
             
-    def hard_shutdown(self):
+    def hard_shutdown_buffers(self):
         for name, buffer in self.buffers_dict.items():
-            #TODO debug log
+            print(f"Shutting down Buffer {name}") # TODO logging
             buffer.send_flush_event()
+            
+    def shutdown_functions(self):
+        for name, function in self.functions_dict.items():
+            print(f"Shutting down Function {name}")
+            function.shutdown()
 
     def visualize_buffers_and_functions(self, **kwargs):
         dot = Digraph(**kwargs)
@@ -138,9 +146,6 @@ class mimoControl:
         dot.view()
         # TODO how do i want to return the visualization?
 
-    def visualize_arboresence(self, **kwargs):
-        """TODO visualize only a view of the ringbuffers with the functions in between"""
-        raise NotImplementedError
 
 
 class fileReader:

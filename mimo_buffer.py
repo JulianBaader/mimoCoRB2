@@ -124,6 +124,7 @@ class mimoBuffer:
     def __del__(self):
         self.shared_memory_buffer.close()
         self.shared_memory_buffer.unlink()
+        print(f"Buffer {self.name} is shut down.") # TODO Logging
 
 
 class Reader:

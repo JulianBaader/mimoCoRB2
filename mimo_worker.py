@@ -20,6 +20,9 @@ class mimoWorker:
     def start_processes(self):
         for process in self.processes:
             process.start()
+            
+    def alive_processes(self):
+        return [p.is_alive() for p in self.processes]
 
     def shutdown(self):
         for p in self.processes:
