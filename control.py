@@ -98,19 +98,20 @@ class mimoControl:
         root_buffer = root_buffers[0]
 
         # -> check that all other buffers are reachable from the root buffer
-        reachable = set([root_buffer])
+        reachable = [root_buffer]
         while True:
             previous = reachable.copy()
 
             for buffer_name in reachable:
                 # add all sinks of the functions, that read from this buffer to the reachables
                 for function_name in readers[buffer_name]:
-                    reachable.update(self.functions_setup[function_name]['sink_list'])
+                    for sink in self.functions_setup[function_name]['sink_list']:
+                        if sink not in reachable:
+                            reachable.append(sink)
 
             if previous == reachable:
                 break
-
-        if set(self.buffers_setup.keys()) != reachable:
+        if set(self.buffers_setup.keys()) != set(reachable):
             return False
 
         # now every buffer has at most one writer and every buffer is reachable from the root buffer => data flow is an arborescence
