@@ -21,13 +21,13 @@ class mimoControl:
 
     def initialize_buffers(self):
         self.buffers_dict = {}
-        for name, setup in self.buffers_setup_dict.items():
+        for name, setup in self.buffers_setup.items():
             logger.info(f"Initializing Buffer {name}")
             self.buffers_dict[name] = mimoBuffer(
                 name=name,
                 slot_count=setup['slot_count'],
                 data_length=setup['data_length'],
-                data_dtype=np.dtype(setup['data_dtype']),
+                data_dtype=setup['data_dtype'],
                 overwrite=setup['overwrite'],
             )
         
@@ -35,10 +35,11 @@ class mimoControl:
 
     def initialize_functions(self):
         self.functions_dict = {}
-        for name in self.functions_setup.items():
+        for name in self.functions_setup.keys():
             setup = self.functions_setup[name]
-            config = self.functions_config[name]
+            config = self.function_configs[name]
             logger.info(f"Initializing Function {name}")
+            #logger.debug(f"Function {name} with sources {self._get_buffers_from_strings(setup['source_list'])}")
             self.functions_dict[name] = mimoWorker(
                 name=name,
                 function=setup['function'],
@@ -52,7 +53,7 @@ class mimoControl:
             )
 
     def _get_buffers_from_strings(self, strings: list[str]):
-        [self.buffers_dict[name] for name in strings]
+        return [self.buffers_dict[name] for name in strings]
 
     def start_functions(self):
         for name, function in self.functions_dict.items():
@@ -117,10 +118,10 @@ class mimoControl:
             return False
 
         # now every buffer has at most one writer and every buffer is reachable from the root buffer => data flow is an arborescence
-        self.buffers_for_shutdown = {name: self._get_buffers_from_strings([name]) for name in root_buffers}
         return True
     
     def soft_shutdown_buffers(self):
+        # TODO check earlier for the data flow and update the buffers_for_shutdown accordingly
         for name, buffer in self.buffers_for_shutdown.items():
             logger.info(f"Shutting down Buffer {name}")
             buffer.send_flush_event()
@@ -151,6 +152,8 @@ class mimoControl:
         dot.render(os.path.join(self.run_directory, 'data_flow'), cleanup=True)
         dot.view()
         # TODO how do i want to return the visualization?
+        
+
 
 
 
@@ -209,9 +212,9 @@ class fileReader:
         self.buffers_setup = {}
         for name, setup in self.buffers.items():
             self.buffers_setup[name] = {
-                'slot_count': setup.get('slot_count', 1),
-                'data_length': setup.get('data_length', 1),
-                'data_dtype': setup.get('data_dtype', 'float64'),
+                'slot_count': setup['slot_count'],
+                'data_length': setup['data_length'],
+                'data_dtype': self._read_dtype(setup['data_dtype']),
                 'overwrite': setup.get('overwrite', overwrite),
             }
 
@@ -287,3 +290,7 @@ class fileReader:
         if function_name not in vars(module):
             raise ImportError(f"Function {function_name} not found in module {path}")
         return vars(module)[function_name]
+    
+    @staticmethod
+    def _read_dtype(dtype_setup):
+        return np.dtype([(name, dtype) for name, dtype in dtype_setup.items()])

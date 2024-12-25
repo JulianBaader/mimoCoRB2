@@ -54,11 +54,11 @@ class mimoBuffer:
 
     def access_slot(self, token):
         if token is None:
-            return None, None
+            return None
         slot = self.buffer[token]
         metadata = slot[: self.metadata_byte_size].view(self.metadata_dtype)
         data = slot[self.metadata_byte_size :].view(self.data_dtype)
-        return data, metadata
+        return [data, metadata]
 
     def send_flush_event(self):
         """Send a flush event to the buffer."""
@@ -154,6 +154,10 @@ class Writer:
     def __exit__(self, exc_type, exc_value, traceback):
         for buffer, token in zip(self.buffers, self.tokens):
             buffer.return_write_token(token)
+            
+    def send_flush_event(self):
+        for buffer in self.buffers:
+            buffer.send_flush_event()
 
 
 class Observer:
