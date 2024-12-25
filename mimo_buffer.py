@@ -2,6 +2,9 @@ import numpy as np
 from multiprocessing import shared_memory, Queue, Value
 import queue
 import ctypes
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class mimoBuffer:
@@ -124,7 +127,7 @@ class mimoBuffer:
     def __del__(self):
         self.shared_memory_buffer.close()
         self.shared_memory_buffer.unlink()
-        print(f"Buffer {self.name} is shut down.") # TODO Logging
+        logger.info(f"Buffer {self.name} is shut down.")
 
 
 class Reader:

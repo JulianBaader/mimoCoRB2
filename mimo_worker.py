@@ -1,4 +1,7 @@
 import multiprocessing
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class mimoWorker:
@@ -27,10 +30,8 @@ class mimoWorker:
     def shutdown(self):
         for p in self.processes:
             if p.is_alive():
-                # TODO Logging
-                print(f"Waiting 3s for process {p.name} to finish")
+                logger.info(f"Waiting 3s for process {p.name} to finish")
                 p.join(3)
             if p.is_alive():
-                # TODO Logging
-                print(f"Killing process {p.name}")
+                logger.info(f"Killing process {p.name}")
                 p.terminate()
