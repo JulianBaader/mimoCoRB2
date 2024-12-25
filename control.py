@@ -24,6 +24,8 @@ class mimoControl:
                 data_dtype=np.dtype(setup['data_dtype']),
                 overwrite=setup['overwrite'],
             )
+        
+        self.buffers_for_shutdown = self.buffers_dict
 
     def initialize_functions(self):
         self.functions_dict = {}
@@ -106,7 +108,18 @@ class mimoControl:
             return False
 
         # now every buffer has at most one writer and every buffer is reachable from the root buffer => data flow is an arborescence
+        self.buffers_for_shutdown = {name: self._get_buffers_from_strings([name]) for name in root_buffers}
         return True
+    
+    def soft_shutdown(self):
+        for name, buffer in self.buffers_for_shudown.items():
+            # debug log
+            buffer.send_flush_event()
+            
+    def hard_shutdown(self):
+        for name, buffer in self.buffers_dict.items():
+            #TODO debug log
+            buffer.send_flush_event()
 
     def visualize_buffers_and_functions(self, **kwargs):
         dot = Digraph(**kwargs)
