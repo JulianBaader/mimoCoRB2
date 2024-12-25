@@ -190,7 +190,7 @@ class fileReader:
         shutil.copy(self.setup_file, self.run_directory)
 
     def load_config_file(self, file: str):
-        file = os.path.join(self.input_path, file)
+        file = os.path.join(self.setup_dir, file)
         if file in self.loaded_config_files:
             return self.loaded_config_files[file]
         shutil.copy(file, self.run_directory)
@@ -230,25 +230,24 @@ class fileReader:
         else:
             overarching_config = {}
 
-        self.function_configs = {key: overarching_config for key in self.functions_setup.keys()}
+        self.function_configs = {key: overarching_config.copy() for key in self.functions.keys()} # copy to avoid overwriting the overarching config
 
         # main config file
         if 'main_config' in self.options:
             main_config = self.load_config_file(self.options['main_config'])
         else:
             main_config = {}
-        for function_name in self.functions_setup.keys():
+        for function_name in self.functions.keys():
             if function_name in main_config:
                 self.function_configs[function_name].update(main_config[function_name])
 
         # individual config files
-        for function_name, setup in self.functions_setup.items():
+        for function_name, setup in self.functions.items():
             if 'config' in setup:
                 self.function_configs[function_name].update(self.load_config_file(setup['config']))
-
         # obligatory config
         OBLIGATORY_KEYS = ['run_directory', 'name']
-        for function_name in self.functions_setup.keys():
+        for function_name in self.functions.keys():
             overwriting_keys = [key for key in OBLIGATORY_KEYS if key in self.function_configs[function_name]]
             if overwriting_keys:
                 raise RuntimeWarning(f"Overwriting keys {overwriting_keys} in config of {function_name}")
