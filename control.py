@@ -12,10 +12,11 @@ logger = logging.getLogger(__name__)
 
 
 class mimoControl:
-    def __init__(self, buffers_setup: dict, functions_setup: dict, function_configs: dict):
+    def __init__(self, buffers_setup: dict, functions_setup: dict, function_configs: dict, run_directory: str):
         self.buffers_setup = buffers_setup
         self.functions_setup = functions_setup
         self.function_configs = function_configs
+        self.run_directory = run_directory
 
     def initialize_buffers(self):
         self.buffers_dict = {}
@@ -146,7 +147,7 @@ class mimoControl:
                 dot.edge('F' + function_name, 'B' + sink)
             for observe in setup['observe_list']:
                 dot.edge('F' + function_name, 'B' + observe, style='dotted')
-        dot.render('data_flow', cleanup=True)
+        dot.render(os.path.join(self.run_directory, 'data_flow'), cleanup=True)
         dot.view()
         # TODO how do i want to return the visualization?
 
@@ -164,7 +165,7 @@ class fileReader:
         self.create_buffers_setup()
         self.create_functions_setup()
         self.create_config_dicts()
-        return self.buffers_setup, self.functions_setup, self.function_configs
+        return self.buffers_setup, self.functions_setup, self.function_configs, self.run_directory
 
     def load_setup(self):
         # load the setup file
