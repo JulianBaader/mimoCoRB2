@@ -30,7 +30,7 @@ class mimoControl:
                 data_dtype=setup['data_dtype'],
                 overwrite=setup['overwrite'],
             )
-        
+
         self.buffers_for_shutdown = self.buffers_dict
 
     def initialize_functions(self):
@@ -39,7 +39,6 @@ class mimoControl:
             setup = self.functions_setup[name]
             config = self.function_configs[name]
             logger.info(f"Initializing Function {name}")
-            #logger.debug(f"Function {name} with sources {self._get_buffers_from_strings(setup['source_list'])}")
             self.functions_dict[name] = mimoWorker(
                 name=name,
                 function=setup['function'],
@@ -119,18 +118,18 @@ class mimoControl:
 
         # now every buffer has at most one writer and every buffer is reachable from the root buffer => data flow is an arborescence
         return True
-    
+
     def soft_shutdown_buffers(self):
         # TODO check earlier for the data flow and update the buffers_for_shutdown accordingly
         for name, buffer in self.buffers_for_shutdown.items():
             logger.info(f"Shutting down Buffer {name}")
             buffer.send_flush_event()
-            
+
     def hard_shutdown_buffers(self):
         for name, buffer in self.buffers_dict.items():
             logger.info(f"Shutting down Buffer {name}")
             buffer.send_flush_event()
-            
+
     def shutdown_functions(self):
         for name, function in self.functions_dict.items():
             logger.info(f"Shutting down Function {name}")
@@ -152,9 +151,6 @@ class mimoControl:
         dot.render(os.path.join(self.run_directory, 'data_flow'), cleanup=True)
         dot.view()
         # TODO how do i want to return the visualization?
-        
-
-
 
 
 class fileReader:
@@ -236,7 +232,9 @@ class fileReader:
         else:
             overarching_config = {}
 
-        self.function_configs = {key: overarching_config.copy() for key in self.functions.keys()} # copy to avoid overwriting the overarching config
+        self.function_configs = {
+            key: overarching_config.copy() for key in self.functions.keys()
+        }  # copy to avoid overwriting the overarching config
 
         # main config file
         if 'main_config' in self.options:
@@ -291,7 +289,7 @@ class fileReader:
         if function_name not in vars(module):
             raise ImportError(f"Function {function_name} not found in module {path}")
         return vars(module)[function_name]
-    
+
     @staticmethod
     def _read_dtype(dtype_setup):
         return np.dtype([(name, dtype) for name, dtype in dtype_setup.items()])
