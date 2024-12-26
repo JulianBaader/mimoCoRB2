@@ -3,6 +3,11 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+SOURCES = 0
+SINKS = 1
+OBSERVES = 2
+CONFIG = 3
+
 
 class mimoWorker:
     def __init__(self, name: str, function, args, number_of_processes: int):
