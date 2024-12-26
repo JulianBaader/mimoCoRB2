@@ -130,10 +130,15 @@ class mimoBuffer:
         logger.info(f"Buffer {self.name} is shut down.")
 
 
-class Reader:
+class Interface:
     def __init__(self, buffers: list[mimoBuffer]):
         self.buffers = buffers
+        self.data_examples = [buffer.data_example for buffer in self.buffers]
+        self.names = [buffer.name for buffer in self.buffers]
+        self.overwrites = [buffer.overwrite for buffer in self.buffers]
 
+
+class Reader(Interface):
     def __enter__(self):
         self.tokens = [buffer.get_read_token() for buffer in self.buffers]
         return [buffer.access_slot(token) for buffer, token in zip(self.buffers, self.tokens)]
@@ -143,10 +148,7 @@ class Reader:
             buffer.return_read_token(token)
 
 
-class Writer:
-    def __init__(self, buffers: list[mimoBuffer]):
-        self.buffers = buffers
-
+class Writer(Interface):
     def __enter__(self):
         self.tokens = [buffer.get_write_token() for buffer in self.buffers]
         return [buffer.access_slot(token) for buffer, token in zip(self.buffers, self.tokens)]
@@ -154,16 +156,13 @@ class Writer:
     def __exit__(self, exc_type, exc_value, traceback):
         for buffer, token in zip(self.buffers, self.tokens):
             buffer.return_write_token(token)
-            
+
     def send_flush_event(self):
         for buffer in self.buffers:
             buffer.send_flush_event()
 
 
-class Observer:
-    def __init__(self, buffers: list[mimoBuffer]):
-        self.buffers = buffers
-
+class Observer(Interface):
     def __enter__(self):
         self.tokens = [buffer.get_observe_token() for buffer in self.buffers]
         return [buffer.access_slot(token) for buffer, token in zip(self.buffers, self.tokens)]
