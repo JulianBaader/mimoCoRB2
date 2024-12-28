@@ -179,6 +179,7 @@ class fileReader:
 
         # create the target directory
         self.output_directory = os.path.join(self.setup_dir, self.options.get('output_directory', 'target'))
+        self.debug = self.options.get('debug', False)
         os.makedirs(self.output_directory, exist_ok=True)
 
         # create the run directory
@@ -250,7 +251,7 @@ class fileReader:
             if 'config' in setup:
                 self.function_configs[function_name].update(self.load_config_file(setup['config']))
         # obligatory config
-        OBLIGATORY_KEYS = ['run_directory', 'name', 'process_number']
+        OBLIGATORY_KEYS = ['run_directory', 'name', 'process_number', 'debug']
         for function_name in self.functions.keys():
             overwriting_keys = [key for key in OBLIGATORY_KEYS if key in self.function_configs[function_name]]
             if overwriting_keys:
@@ -261,6 +262,7 @@ class fileReader:
                     'run_directory': self.run_directory,
                     'name': function_name,
                     'process_number': -1,
+                    'debug': self.debug,
                 }
             )
 
