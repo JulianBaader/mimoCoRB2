@@ -136,6 +136,11 @@ class Interface:
         self.data_examples = [buffer.data_example for buffer in self.buffers]
         self.names = [buffer.name for buffer in self.buffers]
         self.overwrites = [buffer.overwrite for buffer in self.buffers]
+        
+        self.len = len(self.buffers)
+        
+    def __len__(self):
+        return self.len
 
 
 class Reader(Interface):
