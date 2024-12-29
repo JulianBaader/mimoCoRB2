@@ -131,47 +131,35 @@ class mimoBuffer:
 
 
 class Interface:
-    def __init__(self, buffers: list[mimoBuffer]):
-        self.buffers = buffers
-        self.data_examples = [buffer.data_example for buffer in self.buffers]
-        self.names = [buffer.name for buffer in self.buffers]
-        self.overwrites = [buffer.overwrite for buffer in self.buffers]
-
-        self.len = len(self.buffers)
-
-    def __len__(self):
-        return self.len
+    def __init__(self, buffer: mimoBuffer):
+        self.buffer = buffer
 
 
 class Reader(Interface):
     def __enter__(self):
-        self.tokens = [buffer.get_read_token() for buffer in self.buffers]
-        return [buffer.access_slot(token) for buffer, token in zip(self.buffers, self.tokens)]
+        self.token = self.buffer.get_read_token()
+        return self.buffer.access_slot(self.token)
 
     def __exit__(self, exc_type, exc_value, traceback):
-        for buffer, token in zip(self.buffers, self.tokens):
-            buffer.return_read_token(token)
+        self.buffer.return_read_token(self.token)
 
 
 class Writer(Interface):
     def __enter__(self):
-        self.tokens = [buffer.get_write_token() for buffer in self.buffers]
-        return [buffer.access_slot(token) for buffer, token in zip(self.buffers, self.tokens)]
+        self.token = self.buffer.get_write_token()
+        return self.buffer.access_slot(self.token)
 
     def __exit__(self, exc_type, exc_value, traceback):
-        for buffer, token in zip(self.buffers, self.tokens):
-            buffer.return_write_token(token)
+        self.buffer.return_write_token(self.token)
 
     def send_flush_event(self):
-        for buffer in self.buffers:
-            buffer.send_flush_event()
+        self.buffer.send_flush_event()
 
 
 class Observer(Interface):
     def __enter__(self):
-        self.tokens = [buffer.get_observe_token() for buffer in self.buffers]
-        return [buffer.access_slot(token) for buffer, token in zip(self.buffers, self.tokens)]
+        self.token = self.buffer.get_observe_token()
+        return self.buffer.access_slot(self.token)
 
     def __exit__(self, exc_type, exc_value, traceback):
-        for buffer, token in zip(self.buffers, self.tokens):
-            buffer.return_observe_token(token)
+        self.buffer.return_observe_token(self.token)
