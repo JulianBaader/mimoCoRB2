@@ -188,6 +188,8 @@ class fileReader:
             self.output_directory, self.options.get('run_directory', 'run') + '_' + start_time
         )
         os.makedirs(self.run_directory, exist_ok=False)
+        errors_directory = os.path.join(self.run_directory, 'errors')
+        os.makedirs(errors_directory, exist_ok=True)
 
         # copy the setup file to the run directory
         shutil.copy(self.setup_file, self.run_directory)
