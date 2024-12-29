@@ -54,7 +54,7 @@ class mimoBuffer:
 
     def access_slot(self, token):
         if token is None:
-            return None
+            return [None, None]
         slot = self.buffer[token]
         metadata = slot[: self.metadata_byte_size].view(self.metadata_dtype)
         data = slot[self.metadata_byte_size :].view(self.data_dtype)
@@ -136,9 +136,9 @@ class Interface:
         self.data_examples = [buffer.data_example for buffer in self.buffers]
         self.names = [buffer.name for buffer in self.buffers]
         self.overwrites = [buffer.overwrite for buffer in self.buffers]
-        
+
         self.len = len(self.buffers)
-        
+
     def __len__(self):
         return self.len
 
