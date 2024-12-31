@@ -1,3 +1,43 @@
+"""
+mimo_buffer.py
+==============
+
+Multiple In Multiple Out buffer. A module for managing multiprocessing-safe buffers using shared memory. 
+This module is designed for high-performance data processing tasks where data must be shared across multiple processes efficiently.
+
+
+Classes
+-------
+mimoBuffer
+    Implements a ring buffer using shared memory to manage slots containing structured data and metadata.
+
+Interface
+    Base class for interacting with the buffer (Reader, Writer, Observer).
+
+Reader
+    Provides context management for reading data from the buffer.
+
+Writer
+    Provides context management for writing data to the buffer and sending flush events.
+
+Observer
+    Provides context management for observing data from the buffer without modifying it.
+
+Examples
+--------
+Creating and using a buffer for multiprocessing data handling:
+
+>>> import numpy as np
+>>> from mimo_buffer import mimoBuffer, Writer, Reader
+>>> buffer = mimoBuffer("example", slot_count=4, data_length=10, data_dtype=np.dtype([('value', '<f4')]))
+>>> with Writer(buffer) as (data, metadata):
+...     data['value'][:] = np.arange(10)
+...     metadata['counter'][0] = 1
+>>> with Reader(buffer) as (data, metadata):
+...     print(data['value'], metadata['counter'])
+[0. 1. 2. 3. 4. 5. 6. 7. 8. 9.] [1]
+"""
+
 import numpy as np
 from multiprocessing import shared_memory, Queue, Value
 import queue
@@ -8,6 +48,64 @@ logger = logging.getLogger(__name__)
 
 
 class mimoBuffer:
+    """
+    A multiprocessing-safe ring buffer with shared memory for data and metadata.
+
+    Parameters
+    ----------
+    name : str
+        Unique name for the buffer.
+    slot_count : int
+        Number of slots in the buffer.
+    data_length : int
+        Length of the structured data array in each slot.
+    data_dtype : np.dtype
+        Data type of the structured data array.
+    overwrite : bool, optional
+        If True, allows overwriting filled slots when the buffer is full, by default True.
+
+    Attributes
+    ----------
+    metadata_dtype : np.dtype
+        Data type for the metadata array.
+    metadata_length : int
+        Length of the metadata array.
+    slot_byte_size : int
+        Total byte size of a single slot (data + metadata).
+    buffer : np.ndarray
+        Shared memory buffer managed as a 2D array.
+    empty_slots : multiprocessing.Queue
+        Queue of empty slots available for writing.
+    filled_slots : multiprocessing.Queue
+        Queue of filled slots available for reading or observing.
+    event_count : multiprocessing.Value
+        Total number of events (writes) that have occurred.
+    overwrite_count : multiprocessing.Value
+        Total number of slots overwritten.
+    flush_event_received : multiprocessing.Value
+        Indicates whether a flush event has been sent.
+
+    Methods
+    -------
+    get_stats()
+        Retrieve statistics about the buffer's usage.
+    access_slot(token)
+        Access the data and metadata of a specific slot.
+    send_flush_event()
+        Send a flush event to notify consumers.
+    get_write_token()
+        Get a token for writing data to a slot.
+    return_write_token(token)
+        Return a token after writing data to it.
+    get_read_token()
+        Get a token for reading data from a slot.
+    return_read_token(token)
+        Return a token after reading data from it.
+    get_observe_token()
+        Get a token for observing data from a slot.
+    return_observe_token(token)
+        Return a token after observing data from it.
+    """
     metadata_dtype = np.dtype(
         [
             ("counter", np.longlong),
@@ -144,6 +242,16 @@ class Interface:
 
 
 class Reader(Interface):
+    """
+    A context manager for reading data from a mimoBuffer.
+
+    Methods
+    -------
+    __enter__()
+        Get a token and access the slot for reading.
+    __exit__(exc_type, exc_value, traceback)
+        Return the token after reading.
+    """
     def __enter__(self):
         self.token = self.buffer.get_read_token()
         return self.buffer.access_slot(self.token)
@@ -153,6 +261,18 @@ class Reader(Interface):
 
 
 class Writer(Interface):
+    """
+    A context manager for writing data to a mimoBuffer.
+
+    Methods
+    -------
+    __enter__()
+        Get a token and access the slot for writing.
+    __exit__(exc_type, exc_value, traceback)
+        Return the token after writing.
+    send_flush_event()
+        Send a flush event to notify consumers.
+    """
     def __enter__(self):
         self.token = self.buffer.get_write_token()
         return self.buffer.access_slot(self.token)
@@ -165,6 +285,16 @@ class Writer(Interface):
 
 
 class Observer(Interface):
+    """
+    A context manager for observing data in a mimoBuffer.
+
+    Methods
+    -------
+    __enter__()
+        Get a token and access the slot for observation.
+    __exit__(exc_type, exc_value, traceback)
+        Return the token after observation.
+    """
     def __enter__(self):
         self.token = self.buffer.get_observe_token()
         return self.buffer.access_slot(self.token)
