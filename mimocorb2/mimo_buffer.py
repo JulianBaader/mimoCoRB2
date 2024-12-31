@@ -51,6 +51,14 @@ class mimoBuffer:
         self.event_count = Value(ctypes.c_ulonglong, 0)
         self.overwrite_count = Value(ctypes.c_ulong, 0)
         self.flush_event_received = Value(ctypes.c_bool, False)
+        
+    def get_stats(self):
+        return {
+            "event_count": self.event_count.value,
+            "overwrite_count": self.overwrite_count.value,
+            "filled_slots": self.filled_slots.qsize(),
+            "empty_slots": self.empty_slots.qsize(),
+        }
 
     def access_slot(self, token):
         if token is None:
