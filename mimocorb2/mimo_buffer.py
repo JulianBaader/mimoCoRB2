@@ -154,8 +154,8 @@ class mimoBuffer:
         return {
             "event_count": self.event_count.value,
             "overwrite_count": self.overwrite_count.value,
-            "filled_slots": self.filled_slots.qsize(),
-            "empty_slots": self.empty_slots.qsize(),
+            "filled_slots": self.filled_slots.qsize()/self.slot_count,
+            "empty_slots": self.empty_slots.qsize()/self.slot_count,
         }
 
     def access_slot(self, token):
