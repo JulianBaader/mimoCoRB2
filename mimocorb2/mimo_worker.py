@@ -13,7 +13,7 @@ class mimoWorker:
         self.function = function
         self.args = args
         self.number_of_processes = number_of_processes
-        
+
         self.logger = logging.getLogger(name=name)
         self.processes = []
 

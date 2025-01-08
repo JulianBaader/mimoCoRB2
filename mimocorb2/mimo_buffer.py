@@ -2,7 +2,7 @@
 mimo_buffer.py
 ==============
 
-Multiple In Multiple Out buffer. A module for managing multiprocessing-safe buffers using shared memory. 
+Multiple In Multiple Out buffer. A module for managing multiprocessing-safe buffers using shared memory.
 This module is designed for high-performance data processing tasks where data must be shared across multiple processes efficiently.
 
 
@@ -106,6 +106,7 @@ class mimoBuffer:
     return_observe_token(token)
         Return a token after observing data from it.
     """
+
     metadata_dtype = np.dtype(
         [
             ("counter", np.longlong),
@@ -149,13 +150,13 @@ class mimoBuffer:
         self.event_count = Value(ctypes.c_ulonglong, 0)
         self.overwrite_count = Value(ctypes.c_ulong, 0)
         self.flush_event_received = Value(ctypes.c_bool, False)
-        
+
     def get_stats(self):
         return {
             "event_count": self.event_count.value,
             "overwrite_count": self.overwrite_count.value,
-            "filled_slots": self.filled_slots.qsize()/self.slot_count,
-            "empty_slots": self.empty_slots.qsize()/self.slot_count,
+            "filled_slots": self.filled_slots.qsize() / self.slot_count,
+            "empty_slots": self.empty_slots.qsize() / self.slot_count,
         }
 
     def access_slot(self, token):
@@ -252,6 +253,7 @@ class Reader(Interface):
     __exit__(exc_type, exc_value, traceback)
         Return the token after reading.
     """
+
     def __enter__(self):
         self.token = self.buffer.get_read_token()
         return self.buffer.access_slot(self.token)
@@ -273,6 +275,7 @@ class Writer(Interface):
     send_flush_event()
         Send a flush event to notify consumers.
     """
+
     def __enter__(self):
         self.token = self.buffer.get_write_token()
         return self.buffer.access_slot(self.token)
@@ -295,6 +298,7 @@ class Observer(Interface):
     __exit__(exc_type, exc_value, traceback)
         Return the token after observation.
     """
+
     def __enter__(self):
         self.token = self.buffer.get_observe_token()
         return self.buffer.access_slot(self.token)

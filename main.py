@@ -17,5 +17,5 @@ control.start_functions()
 while sum(control.running_functions().values()) != 0:
     print(control.get_buffer_stats())
     time.sleep(1)
-    
+
 print("No more functions are running")
