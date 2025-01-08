@@ -1,6 +1,6 @@
 import yaml
-from mimo_buffer import mimoBuffer, Reader, Writer, Observer
-from mimo_worker import mimoWorker
+from mimocorb2.mimo_buffer import mimoBuffer, Reader, Writer, Observer
+from mimocorb2.mimo_worker import mimoWorker
 import numpy as np
 import os
 import sys
