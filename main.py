@@ -15,6 +15,6 @@ control.initialize_functions()
 control.start_functions()
 
 while True:
-    stats = control.buffers_dict['raw_osc'].get_stats()
+    stats = control.get_stats()
     print(stats)
     time.sleep(1)

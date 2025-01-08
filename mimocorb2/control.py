@@ -157,6 +157,12 @@ class mimoControl:
         dot.render(os.path.join(self.run_directory, 'data_flow'), cleanup=True)
         dot.view()
         # TODO how do i want to return the visualization?
+        
+    def get_stats(self):
+        stats = {}
+        for name, buffer in self.buffers_dict.items():
+            stats[name] = buffer.get_stats()
+        return stats
 
 
 class fileReader:
