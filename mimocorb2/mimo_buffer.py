@@ -164,7 +164,7 @@ class mimoBuffer:
         slot = self.buffer[token]
         metadata = slot[: self.metadata_byte_size].view(self.metadata_dtype)
         data = slot[self.metadata_byte_size :].view(self.data_dtype)
-        return [data, metadata]
+        return [metadata, data]
 
     def send_flush_event(self):
         """Send a flush event to the buffer."""

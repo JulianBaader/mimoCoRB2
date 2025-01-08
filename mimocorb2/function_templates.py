@@ -4,8 +4,9 @@ import time
 import os
 import numpy as np
 
-DATA = 0
-METADATA = 1
+METADATA = 0
+DATA = 1
+
 
 class Template:
     def __init__(self, mimo_args):
@@ -45,7 +46,7 @@ class Importer(Template):
         super().__init__(mimo_args)
         self.counter = 0
         
-        if len(self.sourses) != 0:
+        if len(self.sources) != 0:
             self.fail("Importer must have 0 sources", force_shutdown=True)
         if len(self.sinks) != 1:
             self.fail("Importer must have 1 sink", force_shutdown=True)
@@ -53,8 +54,6 @@ class Importer(Template):
             self.fail("Importer must have 0 observes", force_shutdown=True)
             
         self.writer = self.sinks[0]
-        self.generator = self.ufunc()
-        self.logger.info("Importer ufunc started")
     def __call__(self):
         if self.ufunc is None:
             self.read_all.send_flush_event()
@@ -81,11 +80,11 @@ class Importer(Template):
                 t_buffer_ready = time.time()
                 sink[METADATA]['deadtime'] = t_buffer_ready - t_data_ready
             self.counter += 1
-        self.sink.buffer.send_flush_event()
+        self.writer.buffer.send_flush_event()
         self.logger.info("Importer finished")
         
 class Exporter(Template):
-    def __int__(self, mimo_args):
+    def __init__(self, mimo_args):
         super().__init__(mimo_args)
         
         if len(self.sources) != 1:
@@ -103,6 +102,7 @@ class Exporter(Template):
                 data = source[DATA]
                 metadata = source[METADATA]
                 if data is None:
+                    yield None, None
                     break
                 yield data, metadata
         self.logger.info("Exporter finished")
@@ -126,13 +126,13 @@ class Filter(Template):
             self.fail("Filter must have 0 observes", force_shutdown=True)
             
         self.reader = self.sources[0]
-        source_shape = self.reader.buffer.shape
-        source_dtype = self.reader.buffer.dtype
+        source_data_shape = self.reader.buffer.data_example.shape
+        source_data_dtype = self.reader.buffer.data_example.dtype
         for writer in self.sinks:
             data_example = writer.buffer.data_example
-            if data_example.shape != source_shape:
+            if data_example.shape != source_data_shape:
                 self.fail("Filter source and sink shapes do not match", force_shutdown=True)
-            if data_example.dtype != source_dtype:
+            if data_example.dtype != source_data_dtype:
                 self.fail("Filter source and sink dtypes do not match", force_shutdown=True)
         self.writers = self.sinks
                 
@@ -172,7 +172,7 @@ class Processor(Template):
         
         if len(self.sources) != 1:
             self.fail("Processor must have 1 source", force_shutdown=True)
-        if len(self.sinks) == 1:
+        if len(self.sinks) != 1:
             self.fail("Processor must have at least 1 sink", force_shutdown=True)
         if len(self.observes) != 0:
             self.fail("Processor must have 0 observes", force_shutdown=True)
@@ -188,13 +188,13 @@ class Processor(Template):
                 metadata = source[METADATA]
                 if data is None:
                     break
-                result = self.ufunc(data)
-                if result is None:
+                results = self.ufunc(data)
+                if results is None:
                     continue
-                for i, result in enumerate(result):
+                for i, result in enumerate(results):
                     if result is not None:
                         with self.writers[i] as sink:
-                            sink[DATA][:] = data
+                            sink[DATA][:] = result
                             sink[METADATA][:] = metadata
         for writer in self.writers:
             writer.buffer.send_flush_event()
