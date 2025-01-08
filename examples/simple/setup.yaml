@@ -1,0 +1,47 @@
+# As a first step define all Buffers which are used in the setup.
+# The Buffer is defined by the following attributes: 
+# - name: a unique name for the Buffer
+# - slot_count: the number of slots in the Buffer
+# - data_length: The length of the structured array which is stored in a slot
+# - dtype: The data type of the structured array
+
+osc_buffer_template: &osc_buffer_template
+  slot_count: 10
+  data_length: 100
+  data_dtype: 
+    ch1: 'f4'
+
+Buffers:
+  raw_osc: *osc_buffer_template
+  filtered_osc: *osc_buffer_template
+  pulse_heights:
+    slot_count: 10
+    data_length: 1
+    data_dtype: 
+      pulse_height: 'f4'
+# Define the functions which interact with the Buffers
+
+Functions:
+  pulse_simulator:
+    file: functions.py
+    function: simulate_osc
+    sink_list: [raw_osc]
+    number_of_processes: 3
+  filter:
+    file: functions.py
+    function: filter_data
+    source_list: [raw_osc]
+    sink_list: [filtered_osc]
+    config: config.yaml
+  calculate_pulse_heights:
+    file: functions.py
+    function: calculate_pulse_heights
+    source_list: [filtered_osc]
+    sink_list: [pulse_heights]
+  print_pulse_heights:
+    file: functions.py
+    function: print_pulse_heights
+    source_list: [pulse_heights]
+  
+Options:
+  output_directory: target
