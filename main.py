@@ -14,7 +14,8 @@ control.initialize_buffers()
 control.initialize_functions()
 control.start_functions()
 
-while True:
-    stats = control.get_stats()
-    print(stats)
+while sum(control.running_functions().values()) != 0:
+    print(control.get_buffer_stats())
     time.sleep(1)
+    
+print("No more functions are running")
