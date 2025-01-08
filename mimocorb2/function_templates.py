@@ -12,11 +12,9 @@ class Template:
     def __init__(self, mimo_args):
         self.sources, self.sinks, self.observes, self.config = mimo_args
         self.function_name = self.config['name']
-        self.process_number = self.config['process_number']
         self.debug = self.config['debug']
         self.run_directory = self.config['run_directory']
-        
-        self.logger = logging.getLogger(f"{self.function_name}_{self.process_number}")
+        self.logger = logging.getLogger(self.function_name)
         self.errors_directory = os.path.join(self.run_directory, 'errors')
         
         self.ufunc = None
