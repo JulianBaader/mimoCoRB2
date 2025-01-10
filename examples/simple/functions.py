@@ -16,10 +16,10 @@ def simulate_osc(*mimo_args):
     rng = np.random.default_rng(seed=abs(hash(mp.current_process().name)))
 
     def ufunc():
-        for i in range(100):
+        for i in range(50000):
             arr = np.linspace(0, 10, 100)
             yield np.sin(arr + i) * rng.normal(1, 0.1)
-            time.sleep(np.random.uniform(0.1, 0.5))
+            time.sleep(np.random.poisson(1/1000))
         yield None
 
     importer.set_ufunc(ufunc)
@@ -30,7 +30,6 @@ def filter_data(*mimo_args):
     filter = Filter(mimo_args)
 
     def ufunc(data):
-        time.sleep(np.random.uniform(0.5, 1))
         if np.max(data['ch1']) > 0.5:
             return True
         else:
@@ -45,7 +44,6 @@ def calculate_pulse_heights(*mimo_args):
     example = processor.sinks[0].buffer.data_example
 
     def ufunc(data):
-        time.sleep(np.random.uniform(0.01, 00.5))
         example['pulse_height'] = np.max(data['ch1'])
         return [example]
 
@@ -57,7 +55,6 @@ def print_pulse_heights(*mimo_args):
     exporter = Exporter(mimo_args)
     gen = exporter()
     while True:
-        time.sleep(np.random.uniform(0.1, 0.5))
         data, metadata = next(gen)
         if data is None:
             break

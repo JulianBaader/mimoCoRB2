@@ -6,19 +6,21 @@
 # - dtype: The data type of the structured array
 
 osc_buffer_template: &osc_buffer_template
-  slot_count: 10
+  slot_count: 500
   data_length: 100
   data_dtype: 
     ch1: 'f4'
+  overwrite: True
 
 Buffers:
   raw_osc: *osc_buffer_template
   filtered_osc: *osc_buffer_template
   pulse_heights:
-    slot_count: 10
+    slot_count: 500
     data_length: 1
     data_dtype: 
       pulse_height: 'f4'
+    overwrite: True
 # Define the functions which interact with the Buffers
 
 Functions:
@@ -26,18 +28,19 @@ Functions:
     file: functions.py
     function: simulate_osc
     sink_list: [raw_osc]
-    number_of_processes: 3
   filter:
     file: functions.py
     function: filter_data
     source_list: [raw_osc]
     sink_list: [filtered_osc]
     config: config.yaml
+    number_of_processes: 2
   calculate_pulse_heights:
     file: functions.py
     function: calculate_pulse_heights
     source_list: [filtered_osc]
     sink_list: [pulse_heights]
+    number_of_processes: 3
   print_pulse_heights:
     file: functions.py
     function: print_pulse_heights

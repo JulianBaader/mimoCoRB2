@@ -2,6 +2,8 @@ from mimocorb2.control import mimoControl, fileReader
 import logging
 import sys
 import time
+from mimocorb2.gui import BufferManagerApp
+from PyQt5 import QtWidgets
 
 logging.basicConfig(level=logging.INFO)
 
@@ -14,8 +16,8 @@ control.initialize_buffers()
 control.initialize_functions()
 control.start_functions()
 
-while sum(control.running_functions().values()) != 0:
-    print(control.get_buffer_stats())
-    time.sleep(1)
 
-print("No more functions are running")
+app = QtWidgets.QApplication(sys.argv)
+window = BufferManagerApp(control)
+window.show()
+sys.exit(app.exec_())
