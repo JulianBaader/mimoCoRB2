@@ -78,7 +78,7 @@ class Importer(Template):
             if data is None:
                 self.writer.buffer.send_flush_event()
                 break
-            if not self.writer.buffer.flush_event_received.value:
+            if self.writer.buffer.flush_event_received.value:
                 break
             with self.writer as sink:
                 sink[DATA][:] = data
