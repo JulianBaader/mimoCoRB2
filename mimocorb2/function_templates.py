@@ -76,6 +76,9 @@ class Importer(Template):
                 generator = self.ufunc()
                 continue
             if data is None:
+                self.writer.buffer.send_flush_event()
+                break
+            if not self.writer.buffer.flush_event_received.value:
                 break
             with self.writer as sink:
                 sink[DATA][:] = data
@@ -84,7 +87,6 @@ class Importer(Template):
                 t_buffer_ready = time.time()
                 sink[METADATA]['deadtime'] = t_buffer_ready - t_data_ready
             self.counter += 1
-        self.writer.buffer.send_flush_event()
         self.logger.info("Importer finished")
 
 
