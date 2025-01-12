@@ -157,6 +157,7 @@ class mimoBuffer:
             "overwrite_count": self.overwrite_count.value,
             "filled_slots": self.filled_slots.qsize() / self.slot_count,
             "empty_slots": self.empty_slots.qsize() / self.slot_count,
+            "flush_event_received": self.flush_event_received.value,
         }
 
     def access_slot(self, token):
@@ -240,6 +241,16 @@ class mimoBuffer:
 class Interface:
     def __init__(self, buffer: mimoBuffer):
         self.buffer = buffer
+        
+        self.shutdown_readers = self.buffer.send_flush_event
+        self.get_stats = self.buffer.get_stats
+        self.buffer_info = {
+            'name': self.buffer.name,
+            'slot_count': self.buffer.slot_count,
+            'data_example': self.buffer.data_example,
+            'metadata_example': self.buffer.metadata_example,
+        }
+        
 
 
 class Reader(Interface):
