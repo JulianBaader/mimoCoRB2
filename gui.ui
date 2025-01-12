@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>800</width>
-    <height>600</height>
+    <width>1000</width>
+    <height>800</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -19,6 +19,9 @@
      <widget class="QTabWidget" name="tabWidget">
       <property name="tabPosition">
        <enum>QTabWidget::North</enum>
+      </property>
+      <property name="currentIndex">
+       <number>3</number>
       </property>
       <property name="tabsClosable">
        <bool>false</bool>
@@ -32,8 +35,8 @@
          <widget class="QWidget" name="ratePlaceholder" native="true">
           <property name="minimumSize">
            <size>
-            <width>400</width>
-            <height>300</height>
+            <width>800</width>
+            <height>600</height>
            </size>
           </property>
          </widget>
@@ -49,8 +52,8 @@
          <widget class="QWidget" name="processPlaceholder" native="true">
           <property name="minimumSize">
            <size>
-            <width>400</width>
-            <height>300</height>
+            <width>800</width>
+            <height>600</height>
            </size>
           </property>
          </widget>
@@ -66,8 +69,8 @@
          <widget class="QWidget" name="bufferPlaceholder" native="true">
           <property name="minimumSize">
            <size>
-            <width>400</width>
-            <height>300</height>
+            <width>800</width>
+            <height>600</height>
            </size>
           </property>
          </widget>
@@ -80,23 +83,23 @@
        </attribute>
        <layout class="QVBoxLayout" name="controlLayout">
         <item>
-         <widget class="QPushButton" name="startButton">
+         <widget class="QPushButton" name="shutdownRootBuffer">
           <property name="text">
-           <string>Start</string>
+           <string>Shutdown Root Buffer</string>
           </property>
          </widget>
         </item>
         <item>
-         <widget class="QPushButton" name="stopButton">
+         <widget class="QPushButton" name="shutdownAllBuffers">
           <property name="text">
-           <string>Stop</string>
+           <string>Shutdown all Buffers</string>
           </property>
          </widget>
         </item>
         <item>
-         <widget class="QPushButton" name="resetButton">
+         <widget class="QPushButton" name="killWorkers">
           <property name="text">
-           <string>Reset</string>
+           <string>Kill Workers</string>
           </property>
          </widget>
         </item>
@@ -113,10 +116,18 @@
     </item>
    </layout>
   </widget>
-  <widget class="QMenuBar" name="menubar"/>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1000</width>
+     <height>24</height>
+    </rect>
+   </property>
+  </widget>
   <widget class="QStatusBar" name="statusbar"/>
  </widget>
  <resources/>
  <connections/>
 </ui>
-

@@ -33,6 +33,13 @@ class BufferManagerApp(QtWidgets.QMainWindow):
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.update_plots)
         self.timer.start(2000)  # Update every second
+        
+        
+        # Connect control buttons
+        self.shutdownRootBuffer.clicked.connect(self.action_shutdownRootBuffer)
+        self.shutdownAllBuffers.clicked.connect(self.action_shutdownAllBuffers)
+        self.killWorkers.clicked.connect(self.action_killWorkers)
+        self.exitButton.clicked.connect(self.action_exit)
 
     def update_plots(self):
         buffer_stats = self.control.get_buffer_stats()
@@ -59,6 +66,18 @@ class BufferManagerApp(QtWidgets.QMainWindow):
                 return
         # Proceed with closing
         event.accept()
+        
+    def action_shutdownRootBuffer(self):
+        self.control.soft_shutdown_buffers()
+
+    def action_shutdownAllBuffers(self):
+        self.control.hard_shutdown_buffers()
+
+    def action_killWorkers(self):
+        self.control.shutdown_functions()
+
+    def action_exit(self):
+        self.close()
         
 
 class PlotCanvas(FigureCanvas):
@@ -165,9 +184,3 @@ class RateCanvas(PlotCanvas):
         self.draw()
             
 
-
-if __name__ == "__main__":
-    app = QtWidgets.QApplication(sys.argv)
-    window = BufferManagerApp()
-    window.show()
-    sys.exit(app.exec_())
