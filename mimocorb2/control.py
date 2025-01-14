@@ -239,7 +239,7 @@ class fileReader:
         self.functions_setup = {}
         for name, setup in self.functions.items():
             self.functions_setup[name] = {
-                'function': self._import_function(setup['file'], setup['function']),
+                'function': self._import_function(setup.get('file', None), setup['function']),
                 'source_list': setup.get('source_list', []),
                 'sink_list': setup.get('sink_list', []),
                 'observe_list': setup.get('observe_list', []),
@@ -290,14 +290,22 @@ class fileReader:
         Import a named object defined in a config yaml file from a module.
 
         Parameters:
-            file (str): name of the python module containing the function/class
+            file (str, None): name of the python module containing the function/class. None -> use mimocorb functions
             function_name (str): python function/class name
         Returns:
             (obj): function/method name callable as object
         Raises:
             ImportError: returns None
         """
-        path = os.path.join(self.setup_dir, file)
+        if file is None:
+            # TODO
+            # currently expecting modulename.functionname where modulename is a file in the functions directory
+            if len(function_name.split('.')) != 2:
+                raise NotImplementedError("This has to be implemented more cleanly")
+            path = '/home/julian/git/mimoCoRB2/mimocorb2/functions/' + function_name.split('.')[0] + '.py'
+            function_name = function_name.split('.')[1]
+        else:
+            path = os.path.join(self.setup_dir, file)
         directory = os.path.dirname(path)
         module_name = os.path.basename(path).removesuffix('.py')
 
