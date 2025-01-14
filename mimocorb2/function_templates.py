@@ -232,4 +232,5 @@ class Observer(Template):
                 if data is None:
                     break
                 yield data, metadata
-        self.logger.info("Exporter finished")
+        yield None, None
+        self.logger.info("Observer finished")

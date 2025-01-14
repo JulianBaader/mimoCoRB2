@@ -70,3 +70,7 @@ Functions:
   # drain3:
   #   function: exporters.drain
   #   source_list: [PulseParametersDown]
+
+  oscilloscope:
+    function: observers.oscilloscope
+    observe_list: [InputBuffer]

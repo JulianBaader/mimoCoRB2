@@ -40,8 +40,14 @@ def simulate_source(*mimo_args):
     noise = pulse_height.mean() / 30.0
     tau_mu = 2197  # muon life time in ns
     
+    
     def ufunc():
-        for event in range(events_required):
+        event_count = 0
+        while True:
+            if events_required != -1 and event_count > events_required:
+                break
+            else:
+                event_count += 1
             nchan = number_of_channels
             pulse = np.float32(noise * (0.5 - np.random.rand(nchan, number_of_values)))
 

@@ -2,6 +2,6 @@ analogue_offset: -0.48
 trigger_level: -440
 sample_time_ns: 4
 pre_trigger_samples: 500
-eventcount: 1000
+eventcount: 100000
 sleeptime: 0.003
 random: True
