@@ -154,7 +154,11 @@ class Filter(Template):
                 metadata = source[METADATA]
                 if data is None:
                     break
-                result = self.ufunc(data)
+                try:
+                    result = self.ufunc(data)
+                except Exception:
+                    self.fail("ufunc failed")
+                    continue
                 if not result:
                     continue
                 if isinstance(result, bool):
@@ -183,7 +187,7 @@ class Processor(Template):
 
         if len(self.sources) != 1:
             self.fail("Processor must have 1 source", force_shutdown=True)
-        if len(self.sinks) != 1:
+        if len(self.sinks) == 0:
             self.fail("Processor must have at least 1 sink", force_shutdown=True)
         if len(self.observes) != 0:
             self.fail("Processor must have 0 observes", force_shutdown=True)
@@ -199,7 +203,10 @@ class Processor(Template):
                 metadata = source[METADATA]
                 if data is None:
                     break
-                results = self.ufunc(data)
+                try:
+                    results = self.ufunc(data) #TODO this should be a try?
+                except Exception:
+                    self.fail("ufunc failed")
                 if results is None:
                     continue
                 for i, result in enumerate(results):
