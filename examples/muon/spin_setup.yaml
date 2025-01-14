@@ -41,35 +41,33 @@ param_template: &param_template
 
 Buffers:
   InputBuffer: *osc_template
-  # AcceptedPulses: *osc_template
-  # PulseParametersUp: *param_template
-  # PulseParametersDown: *param_template
+  AcceptedPulses: *osc_template
+  PulseParametersUp: *param_template
+  PulseParametersDown: *param_template
 
 Functions:
   input:
     file: simulate_source.py
     function: simulate_source
     sink_list: [InputBuffer]
-    config: source_config.yaml
-  # filter:
-  #   file: lifetime_filter
-  #   function: calculate_decay_time
-  #   number_of_processes: 2
-  #   source_list: [InputBuffer]
-  #   sink_list: [AcceptedPulses, PulseParametersUp, PulseParametersDown]
+    config: config.yaml
   filter:
-    function: exporters.drain
+    file: lifetime_filter
+    function: calculate_decay_time
+    number_of_processes: 2
     source_list: [InputBuffer]
+    sink_list: [AcceptedPulses, PulseParametersUp, PulseParametersDown]
+    config: config.yaml
   
-  # drain1:
-  #   function: exporters.drain
-  #   source_list: [AcceptedPulses]
-  # drain2:
-  #   function: exporters.drain
-  #   source_list: [PulseParametersUp]
-  # drain3:
-  #   function: exporters.drain
-  #   source_list: [PulseParametersDown]
+  drain1:
+    function: exporters.drain
+    source_list: [AcceptedPulses]
+  drain2:
+    function: exporters.drain
+    source_list: [PulseParametersUp]
+  drain3:
+    function: exporters.drain
+    source_list: [PulseParametersDown]
 
   oscilloscope:
     function: observers.oscilloscope
