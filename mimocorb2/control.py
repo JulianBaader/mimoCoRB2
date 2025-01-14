@@ -1,5 +1,5 @@
 import yaml
-from mimocorb2.mimo_buffer import mimoBuffer, Reader, Writer, Observer
+from mimocorb2.mimo_buffer import mimoBuffer, BufferReader, BufferWriter, BufferObserver
 from mimocorb2.mimo_worker import mimoWorker
 import numpy as np
 import os
@@ -52,13 +52,13 @@ class mimoControl:
             )
 
     def _get_readers_from_strings(self, strings: list[str]):
-        return [Reader(self.buffers_dict[name]) for name in strings]
+        return [BufferReader(self.buffers_dict[name]) for name in strings]
 
     def _get_writers_from_strings(self, strings: list[str]):
-        return [Writer(self.buffers_dict[name]) for name in strings]
+        return [BufferWriter(self.buffers_dict[name]) for name in strings]
 
     def _get_observers_from_strings(self, strings: list[str]):
-        return [Observer(self.buffers_dict[name]) for name in strings]
+        return [BufferObserver(self.buffers_dict[name]) for name in strings]
 
     def start_functions(self):
         for name, function in self.functions_dict.items():

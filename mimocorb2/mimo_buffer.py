@@ -253,7 +253,7 @@ class Interface:
         
 
 
-class Reader(Interface):
+class BufferReader(Interface):
     """
     A context manager for reading data from a mimoBuffer.
 
@@ -273,7 +273,7 @@ class Reader(Interface):
         self.buffer.return_read_token(self.token)
 
 
-class Writer(Interface):
+class BufferWriter(Interface):
     """
     A context manager for writing data to a mimoBuffer.
 
@@ -298,7 +298,7 @@ class Writer(Interface):
         self.buffer.send_flush_event()
 
 
-class Observer(Interface):
+class BufferObserver(Interface):
     """
     A context manager for observing data in a mimoBuffer.
 
