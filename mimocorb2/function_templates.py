@@ -213,16 +213,15 @@ class Processor(Template):
 
 
 class Observer(Template):
-    def __int__(self, mimo_args):
+    def __init__(self, mimo_args):
         super().__init__(mimo_args)
 
         if len(self.sources) != 0:
             self.fail("Observer must have 0 source", force_shutdown=True)
         if len(self.sinks) != 0:
             self.fail("Observer must have 0 sinks", force_shutdown=True)
-        if len(self.observes) != 0:
+        if len(self.observes) != 1:
             self.fail("Observer must have 1 observes", force_shutdown=True)
-
         self.observer = self.observes[0]
 
     def __call__(self):
