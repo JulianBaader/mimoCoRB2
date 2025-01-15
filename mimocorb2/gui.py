@@ -6,8 +6,8 @@ import numpy as np
 import time
 
 
-WIDTH = 10
-HEIGHT = 8
+WIDTH = 5
+HEIGHT = 4
 DPI = 100
 
 NUMBER_OF_DATA_POINTS = 10
@@ -106,6 +106,7 @@ class BufferCanvas(PlotCanvas):
         self.axes.set_ylim(0, 1)
         self.axes.legend(loc = "upper right")
         self.axes.tick_params(axis="x", rotation=45)
+        self.axes.set_ylabel("Ratio")
         
         
         
@@ -130,6 +131,7 @@ class WorkerCanvas(PlotCanvas):
         self.axes.tick_params(axis="x", rotation=45)
         for label in self.axes.get_xticklabels():
             label.set_horizontalalignment('right')
+        self.axes.set_ylabel("Number of Workers")
         
     def update_plot(self, buffer_stats, worker_stats):
         for bar, key in zip(self.bars, self.workers):
@@ -158,6 +160,7 @@ class RateCanvas(PlotCanvas):
         self.axes.legend(loc="upper left")
         self.axes.set_ylim(.1, 2000)
         self.axes.set_yscale("log")
+        self.axes.set_ylabel("Rate (events/s)")
         for label in self.axes.get_xticklabels():
             label.set_horizontalalignment('right')
         
