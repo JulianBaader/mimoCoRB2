@@ -62,12 +62,14 @@ Functions:
   drain1:
     function: exporters.drain
     source_list: [AcceptedPulses]
-  drain2:
-    function: exporters.drain
+  histUp:
+    function: exporters.histogram
     source_list: [PulseParametersUp]
-  drain3:
-    function: exporters.drain
+    config: hist_config.yaml
+  histDown:
+    function: exporters.histogram
     source_list: [PulseParametersDown]
+    config: hist_config.yaml
 
   oscilloscope:
     function: observers.oscilloscope
