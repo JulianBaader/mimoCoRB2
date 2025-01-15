@@ -4,28 +4,49 @@ import numpy as np
 import time
 
 def oscilloscope(*mimo_args):
-    # TODO axis labeling and range should be better
+    # Get info from the buffer
     observer = Observer(mimo_args)
     data_example = observer.observer.buffer_info['data_example']
-    tmax = data_example.size
-    channels = data_example.dtype.names
+    number_of_samples = data_example.size
+    available_channels = data_example.dtype.names
 
+    # Get the configuration parameters
     update_interval = observer.config.get('update_interval', 1)
-    ylim = observer.config.get('ylim', (-750,0))
+    ylim = observer.config.get('ylim')
+    t_scaling = observer.config.get('t_scaling', (1, 0, 'Samples')) # (scaling, offset, unit)
+    y_scaling = observer.config.get('y_scaling', (1, 0, 'Value')) # (scaling, offset, unit)
+    requested_channels = observer.config.get('channels', available_channels)
+    trigger_level = observer.config.get('trigger_level')
+    
+    # Apply the t scaling
+    t = np.arange(number_of_samples) * t_scaling[0] + t_scaling[1]
+    
+    # Get the channels to be plotted
+    for rch in requested_channels:
+        if rch not in available_channels:
+            raise ValueError(f"Channel '{rch}' not found in the data")
+    channels = requested_channels
+    
 
     fig = plt.figure()
     fig.canvas.manager.set_window_title('Oscilloscope')
     ax = fig.add_subplot(111)
-    ax.set_xlim(0, tmax)
-    ax.set_ylim(ylim[0], ylim[1])
-
-    ax.hlines(0, 0, tmax, linestyles='dashed')
-
-    ys = {ch: np.zeros(tmax) for ch in channels}
-    lines = {ch: ax.plot(ys[ch], label=ch)[0] for ch in channels}
     
-    ax.set_xlabel('Time [Samples]')
-    ax.set_ylabel('Amplitude [ADC]')
+    # set limits
+    ax.set_xlim(t[0], t[-1])
+    if ylim is not None:
+        ax.set_ylim(ylim[0], ylim[1])
+
+    
+    if trigger_level is not None:
+        ax.hlines(trigger_level, t[0], t[-1], linestyles='dotted', label='Trigger Level')
+
+
+    ys = {ch: np.zeros(number_of_samples) for ch in channels}
+    lines = {ch: ax.plot(t, ys[ch], label=ch)[0] for ch in channels}
+    
+    ax.set_xlabel(t_scaling[2])
+    ax.set_ylabel(y_scaling[2])
 
     # create the legend and make it interactive
     legend = ax.legend(title='Click to hide/show')
@@ -71,6 +92,9 @@ def oscilloscope(*mimo_args):
             for ch in channels:
                 ys[ch] = data[ch]
                 lines[ch].set_ydata(ys[ch])
+            if ylim is None:
+                ax.relim()
+                ax.autoscale_view()
             fig.canvas.draw()
             last_update = time.time()
         fig.canvas.flush_events()
