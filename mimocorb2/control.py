@@ -61,6 +61,10 @@ class mimoControl:
         return [BufferObserver(self.buffers_dict[name]) for name in strings]
 
     def start_functions(self):
+        # TODO differentiate more from other initialization steps
+        for name, function in self.functions_dict.items():
+            logger.info(f"Initalizing Function {name}")
+            function.initialize_processes()
         for name, function in self.functions_dict.items():
             logger.info(f"Starting Function {name}")
             function.start_processes()
