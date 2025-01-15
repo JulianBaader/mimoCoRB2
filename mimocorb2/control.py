@@ -62,9 +62,6 @@ class mimoControl:
 
     def start_functions(self):
         for name, function in self.functions_dict.items():
-            logger.info(f"Initalizing Function {name}")
-            function.initialize_processes()
-        for name, function in self.functions_dict.items():
             logger.info(f"Starting Function {name}")
             function.start_processes()
 
@@ -219,6 +216,9 @@ class fileReader:
         shutil.copy(file, self.run_directory)
         with open(file, 'r') as stream:
             config = yaml.safe_load(stream)
+        # if the file is empty None is returned
+        if config is None:
+            config = {}
         self.loaded_config_files[file] = config
         return config
 
