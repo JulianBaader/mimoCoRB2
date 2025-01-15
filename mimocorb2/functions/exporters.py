@@ -22,7 +22,6 @@ def histogram(*mimo_args):
     
     if data_example.size != 1:
         raise ValueError('histogram exporter only supports data_length = 1')
-    print(exporter.config)
     run_directory = exporter.config['run_directory']
     update_interval = exporter.config.get('update_interval', 1)
     bin_config = exporter.config['bins']
