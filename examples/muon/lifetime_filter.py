@@ -63,7 +63,7 @@ def calculate_decay_time(*mimo_args):
         None if "reference_pulse_file" not in config else np.fromfile(config["reference_pulse_file"])
     )
 
-    pulse_par_dtype = processor.writers[1].buffer_info['data_example'].dtype
+    pulse_par_dtype = processor.writers[1].data_example.dtype
 
 
     def find_double_pulses(input_data):

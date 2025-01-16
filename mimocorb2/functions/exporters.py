@@ -18,8 +18,8 @@ def histogram(*mimo_args):
     exporter = Exporter(mimo_args)
     
     # Get info from the buffer
-    name = exporter.reader.buffer_info['name']
-    data_example = exporter.reader.buffer_info['data_example']
+    name = exporter.reader.name
+    data_example = exporter.reader.data_example
     available_channels = data_example.dtype.names
     
     if data_example.size != 1:

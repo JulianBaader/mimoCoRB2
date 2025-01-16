@@ -244,12 +244,10 @@ class Interface:
         
         self.shutdown_readers = self.buffer.send_flush_event
         self.get_stats = self.buffer.get_stats
-        self.buffer_info = {
-            'name': self.buffer.name,
-            'slot_count': self.buffer.slot_count,
-            'data_example': self.buffer.data_example,
-            'metadata_example': self.buffer.metadata_example,
-        }
+        self.name = self.buffer.name
+        self.slot_count = self.buffer.slot_count
+        self.data_example = self.buffer.data_example
+        self.metadata_example = self.buffer.metadata_example
         
 
 

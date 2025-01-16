@@ -27,7 +27,7 @@ def simulate_source(*mimo_args):
     detector_efficiency = config.get("prbIteraction", 0.95)
     stopping_probability = config.get("prb2ndPulse", 0.10)
 
-    data_example = importer.writer.buffer_info['data_example']
+    data_example = importer.writer.data_example
     number_of_channels = len(data_example.dtype)
     number_of_values = data_example.size
     channel_names = data_example.dtype.names

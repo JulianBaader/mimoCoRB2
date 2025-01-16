@@ -6,7 +6,7 @@ import time
 def oscilloscope(*mimo_args):
     # Get info from the buffer
     observer = Observer(mimo_args)
-    data_example = observer.observer.buffer_info['data_example']
+    data_example = observer.observer.data_example
     number_of_samples = data_example.size
     available_channels = data_example.dtype.names
 
