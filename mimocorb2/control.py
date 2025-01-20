@@ -34,12 +34,12 @@ class mimoControl:
         self.buffers_for_shutdown = self.buffers_dict
 
     def initialize_functions(self):
-        self.functions_dict = {}
+        self.workers_dict = {}
         for name in self.functions_setup.keys():
             setup = self.functions_setup[name]
             config = self.function_configs[name]
             logger.info(f"Initializing Function {name}")
-            self.functions_dict[name] = mimoWorker(
+            self.workers_dict[name] = mimoWorker(
                 name=name,
                 function=setup['function'],
                 args=(
@@ -62,10 +62,10 @@ class mimoControl:
 
     def start_functions(self):
         # TODO differentiate more from other initialization steps
-        for name, function in self.functions_dict.items():
+        for name, function in self.workers_dict.items():
             logger.info(f"Initalizing Function {name}")
             function.initialize_processes()
-        for name, function in self.functions_dict.items():
+        for name, function in self.workers_dict.items():
             logger.info(f"Starting Function {name}")
             function.start_processes()
 
@@ -137,8 +137,8 @@ class mimoControl:
             logger.info(f"Shutting down Buffer {name}")
             buffer.send_flush_event()
 
-    def shutdown_functions(self):
-        for name, function in self.functions_dict.items():
+    def shutdown_workers(self):
+        for name, function in self.workers_dict.items():
             logger.info(f"Shutting down Function {name}")
             function.shutdown()
 
@@ -165,11 +165,11 @@ class mimoControl:
             stats[name] = buffer.get_stats()
         return stats
 
-    def running_functions(self):
-        running = {}
-        for name, function in self.functions_dict.items():
-            running[name] = sum(function.alive_processes())
-        return running
+    def active_workers(self):
+        active = {}
+        for name, worker in self.workers_dict.items():
+            active[name] = sum(worker.alive_processes())
+        return active
 
 
 class fileReader:
@@ -194,7 +194,7 @@ class fileReader:
         # read the setup
         self.options = setup.get('Options', {})
         self.buffers = setup.get('Buffers', {})
-        self.functions = setup.get('Functions', {})
+        self.functions = setup.get('Workers', {})
 
         # create the target directory
         self.output_directory = os.path.join(self.setup_dir, self.options.get('output_directory', 'target'))

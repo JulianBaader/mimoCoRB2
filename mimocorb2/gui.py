@@ -20,7 +20,7 @@ class BufferManagerApp(QtWidgets.QMainWindow):
         self.control = control
         
         buffers = control.buffers_dict.keys()
-        workers = control.functions_dict.keys()
+        workers = control.workers_dict.keys()
 
         # Setup matplotlib canvases
         self.rate_canvas = RateCanvas(self.rate_tab, buffers, workers, title="Rate Information")
@@ -43,7 +43,7 @@ class BufferManagerApp(QtWidgets.QMainWindow):
 
     def update_plots(self):
         buffer_stats = self.control.get_buffer_stats()
-        worker_stats = self.control.running_functions()
+        worker_stats = self.control.active_workers()
 
         self.rate_canvas.update_plot(buffer_stats, worker_stats)
         self.process_canvas.update_plot(buffer_stats, worker_stats)
@@ -52,7 +52,7 @@ class BufferManagerApp(QtWidgets.QMainWindow):
     def closeEvent(self, event):
         """Handle the window close event."""
         # Replace this with your test condition
-        if sum(self.control.running_functions().values()) != 0:
+        if sum(self.control.active_workers().values()) != 0:
             # Show a warning message
             reply = QtWidgets.QMessageBox.warning(
                 self,
@@ -74,7 +74,7 @@ class BufferManagerApp(QtWidgets.QMainWindow):
         self.control.hard_shutdown_buffers()
 
     def action_killWorkers(self):
-        self.control.shutdown_functions()
+        self.control.shutdown_workers()
 
     def action_exit(self):
         self.close()

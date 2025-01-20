@@ -23,7 +23,7 @@ Buffers:
     overwrite: True
 # Define the functions which interact with the Buffers
 
-Functions:
+Workers:
   pulse_simulator:
     file: functions.py
     function: simulate_osc

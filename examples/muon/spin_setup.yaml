@@ -45,7 +45,7 @@ Buffers:
   PulseParametersUp: *param_template
   PulseParametersDown: *param_template
 
-Functions:
+Workers:
   input:
     file: simulate_source.py
     function: simulate_source

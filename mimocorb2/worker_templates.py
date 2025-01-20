@@ -10,10 +10,10 @@ DATA = 1
 class Template:
     def __init__(self, mimo_args):
         self.sources, self.sinks, self.observes, self.config = mimo_args
-        self.function_name = self.config['name']
+        self.name = self.config['name']
         self.debug = self.config['debug']
         self.run_directory = self.config['run_directory']
-        self.logger = logging.getLogger(self.function_name)
+        self.logger = logging.getLogger(self.name)
         self.errors_directory = os.path.join(self.run_directory, 'errors')
 
         self.ufunc = None
@@ -29,7 +29,7 @@ class Template:
             np.save(
                 os.path.join(
                     self.errors_directory,
-                    f"counter_{metadata['counter']}_function_{self.function_name}_{self.process_number}.npy",
+                    f"counter_{metadata['counter']}_worker_{self.name}_{self.process_number}.npy",
                 ),
                 data,
             )
