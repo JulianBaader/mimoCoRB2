@@ -1,4 +1,4 @@
-from mimocorb2.function_templates import Importer
+from mimocorb2.worker_templates import Importer
 
 import numpy as np
 import time

@@ -1,4 +1,4 @@
-from mimocorb2.function_templates import Exporter, Importer
+from mimocorb2.worker_templates import Exporter, Importer
 
 import numpy as np
 import pickle

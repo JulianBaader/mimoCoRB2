@@ -17,7 +17,7 @@ The relevant configuration parameters can be found in the section
 
 """
 
-from mimocorb2.function_templates import Processor
+from mimocorb2.worker_templates import Processor
 import numpy as np
 import os
 import sys

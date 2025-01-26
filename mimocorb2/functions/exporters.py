@@ -1,4 +1,4 @@
-from mimocorb2.function_templates import Exporter
+from mimocorb2.worker_templates import Exporter
 
 import numpy as np
 import multiprocessing
