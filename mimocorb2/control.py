@@ -1,5 +1,5 @@
-from mimo_buffer import mimoBuffer, BufferReader, BufferWriter, BufferObserver
-from mimo_worker import mimoWorker
+from mimocorb2.mimo_buffer import mimoBuffer, BufferReader, BufferWriter, BufferObserver
+from mimocorb2.mimo_worker import mimoWorker
 
 import os
 import yaml
