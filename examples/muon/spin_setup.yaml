@@ -49,28 +49,28 @@ Workers:
   input:
     file: simulate_source.py
     function: simulate_source
-    sink_list: [InputBuffer]
+    sinks: [InputBuffer]
     config: config.yaml
   filter:
-    file: lifetime_filter
+    file: lifetime_filter.py
     function: calculate_decay_time
     number_of_processes: 2
-    source_list: [InputBuffer]
-    sink_list: [AcceptedPulses, PulseParametersUp, PulseParametersDown]
+    sources: [InputBuffer]
+    sinks: [AcceptedPulses, PulseParametersUp, PulseParametersDown]
     config: config.yaml
   
   drain1:
     function: exporters.drain
-    source_list: [AcceptedPulses]
+    sources: [AcceptedPulses]
   histUp:
     function: exporters.histogram
-    source_list: [PulseParametersUp]
+    sources: [PulseParametersUp]
     config: hist_config.yaml
   histDown:
     function: exporters.histogram
-    source_list: [PulseParametersDown]
+    sources: [PulseParametersDown]
     config: hist_config.yaml
 
   oscilloscope:
     function: observers.oscilloscope
-    observe_list: [InputBuffer]
+    observes: [InputBuffer]

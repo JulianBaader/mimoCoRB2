@@ -19,8 +19,8 @@ class BufferManagerApp(QtWidgets.QMainWindow):
         
         self.control = control
         
-        buffers = control.buffers_dict.keys()
-        workers = control.workers_dict.keys()
+        buffers = control.setup['Buffers'].keys()
+        workers = control.setup['Workers'].keys()
 
         # Setup matplotlib canvases
         self.rate_canvas = RateCanvas(self.rate_tab, buffers, workers, title="Rate Information")
@@ -43,7 +43,7 @@ class BufferManagerApp(QtWidgets.QMainWindow):
 
     def update_plots(self):
         buffer_stats = self.control.get_buffer_stats()
-        worker_stats = self.control.active_workers()
+        worker_stats = self.control.get_active_workers()
 
         self.rate_canvas.update_plot(buffer_stats, worker_stats)
         self.process_canvas.update_plot(buffer_stats, worker_stats)
@@ -52,7 +52,7 @@ class BufferManagerApp(QtWidgets.QMainWindow):
     def closeEvent(self, event):
         """Handle the window close event."""
         # Replace this with your test condition
-        if sum(self.control.active_workers().values()) != 0:
+        if sum(self.control.get_active_workers().values()) != 0:
             # Show a warning message
             reply = QtWidgets.QMessageBox.warning(
                 self,
@@ -68,13 +68,13 @@ class BufferManagerApp(QtWidgets.QMainWindow):
         event.accept()
         
     def action_shutdownRootBuffer(self):
-        self.control.soft_shutdown_buffers()
+        self.control.clean_shutdown()
 
     def action_shutdownAllBuffers(self):
-        self.control.hard_shutdown_buffers()
+        self.control.hard_shutdown()
 
     def action_killWorkers(self):
-        self.control.shutdown_workers()
+        self.control.kill_workers()
 
     def action_exit(self):
         self.close()
@@ -102,6 +102,9 @@ class BufferCanvas(PlotCanvas):
         self.bar_filled = self.axes.bar(self.buffers, 0, label="Filled", color="tab:red")
         self.bar_working = self.axes.bar(self.buffers, 0, label="Working", color="tab:blue")
         self.bar_empty = self.axes.bar(self.buffers, 1, label="Empty", color="tab:green")
+        self.shutdown_overlay = self.axes.bar(
+            self.buffers, 0, label="Shutdown", color="black", alpha=0.3, hatch="//"
+        )
         
         self.axes.set_ylim(0, 1)
         self.axes.legend(loc = "upper right")
@@ -113,6 +116,7 @@ class BufferCanvas(PlotCanvas):
     def update_plot(self, buffer_stats, worker_stats):
         filled = np.array([buffer_stats[key]["filled_slots"] for key in self.buffers])
         empty = np.array([buffer_stats[key]["empty_slots"] for key in self.buffers])
+        shutdown = np.array([buffer_stats[key]["flush_event_received"] for key in self.buffers])
         
         for bar, new_height in zip(self.bar_filled, [1] * len(self.buffers)):
             bar.set_height(new_height)
@@ -120,6 +124,8 @@ class BufferCanvas(PlotCanvas):
             bar.set_height(new_height)
         for bar, new_height in zip(self.bar_empty, empty):
             bar.set_height(new_height)
+        for bar, is_shutdown in zip(self.shutdown_overlay, shutdown):
+            bar.set_height(1 if is_shutdown else 0)
         
         self.draw()
         
@@ -170,8 +176,6 @@ class RateCanvas(PlotCanvas):
             update_time = time.time()
             
             rate = (event_count - self.last_event_count[key]) / (update_time - self.last_update_time[key])
-            if key == 'raw_osc':
-                print(rate)
             self.rates[key].append(rate)
             self.rates[key].pop(0)
 

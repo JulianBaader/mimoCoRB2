@@ -27,24 +27,24 @@ Workers:
   pulse_simulator:
     file: functions.py
     function: simulate_osc
-    sink_list: [raw_osc]
+    sinks: [raw_osc]
   filter:
     file: functions.py
     function: filter_data
-    source_list: [raw_osc]
-    sink_list: [filtered_osc]
+    sources: [raw_osc]
+    sinks: [filtered_osc]
     config: config.yaml
     number_of_processes: 2
   calculate_pulse_heights:
     file: functions.py
     function: calculate_pulse_heights
-    source_list: [filtered_osc]
-    sink_list: [pulse_heights]
+    sources: [filtered_osc]
+    sinks: [pulse_heights]
     number_of_processes: 3
   print_pulse_heights:
     file: functions.py
     function: print_pulse_heights
-    source_list: [pulse_heights]
+    sources: [pulse_heights]
   
 Options:
   output_directory: target

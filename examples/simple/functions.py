@@ -30,6 +30,7 @@ def filter_data(*mimo_args):
     filter = Filter(mimo_args)
 
     def ufunc(data):
+        #print("hey")
         if np.max(data['ch1']) > 0.5:
             return True
         else:
