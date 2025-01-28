@@ -4,6 +4,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 import numpy as np
 import time
+import os
 
 
 WIDTH = 5
@@ -15,7 +16,7 @@ NUMBER_OF_DATA_POINTS = 10
 class BufferManagerApp(QtWidgets.QMainWindow):
     def __init__(self, control):
         super().__init__()
-        uic.loadUi("gui.ui", self)
+        uic.loadUi(os.path.join(os.path.dirname(__file__), "gui.ui"), self)
         
         self.control = control
         
