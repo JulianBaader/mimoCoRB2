@@ -34,8 +34,5 @@ class mimoWorker:
     def shutdown(self):
         for p in self.processes:
             if p.is_alive():
-                self.logger.info(f"Waiting 3s for process {p.name} to finish")
-                p.join(3)
-            if p.is_alive():
                 self.logger.info(f"Killing process {p.name}")
                 p.terminate()
