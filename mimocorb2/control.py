@@ -378,16 +378,16 @@ class Control:
     def __init__(self, initialized_setup):
         self.setup = initialized_setup
         self.logger = logging.getLogger(__name__)
+        self.find_buffers_for_clean_shutdown()
         
         
     def find_buffers_for_clean_shutdown(self):
-        """Finds all buffers which are not being written to."""
-        buffers = list(self.setup['Buffers'].keys())
+        buffers = []
         for name, info in self.setup['Workers'].items():
-            for sink in info['sinks']:
-                if sink in self.clean_shutdown_buffers:
-                    buffers.remove(sink)
+            if len(info['sources']) == 0 and len(info['observes']) == 0:
+                buffers.extend(info['sinks'])
         self.buffers_for_shutdown = buffers
+        print(buffers)
                 
         
         
