@@ -309,10 +309,7 @@ class SetupRun:
                 raise SetupError(f"Buffer {name} slot_count must be a positive integer.")
             if not self._is_whole(info['data_length']):
                 raise SetupError(f"Buffer {name} data_length must be a positive integer.")
-            try:
-                info['data_dtype_obj'] = np.dtype(info['data_dtype'])
-            except (TypeError, ValueError):
-                raise SetupError(f"Buffer {name} data_dtype can not be interpreted as a numpy dtype.")
+            info['data_dtype_obj'] = self._interpret_dtype(name, info['data_dtype'])
             info['overwrite'] = bool(info['overwrite'])
             info['buffer_obj'] = mimoBuffer(
                 name = name,
@@ -322,6 +319,13 @@ class SetupRun:
                 overwrite = info['overwrite']
             )
         self.buffer_objects_created = True
+    
+    
+    def _interpret_dtype(self, buffer_name, dtype_setup):
+        try:
+            return np.dtype([(name, dtype) for name, dtype in dtype_setup.items()])
+        except (TypeError, ValueError):
+            raise SetupError(f"Buffer {buffer_name} data_dtype {dtype_setup} can not be interpreted as a numpy dtype.")
         
     # <--- buffer handeling
     
