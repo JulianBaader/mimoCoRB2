@@ -1,6 +1,6 @@
 import numpy as np
 
-from mimocorb2.function_templates import Importer, Filter, Processor, Exporter
+from mimocorb2.worker_templates import Importer, Filter, Processor, Exporter
 import time
 
 import multiprocessing as mp
@@ -30,6 +30,7 @@ def filter_data(*mimo_args):
     filter = Filter(mimo_args)
 
     def ufunc(data):
+        #print("hey")
         if np.max(data['ch1']) > 0.5:
             return True
         else:
