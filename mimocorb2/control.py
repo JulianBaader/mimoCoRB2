@@ -38,8 +38,10 @@ OPTIONS = {
     'overarching_config': [],
 }
 
+# TODO This has to be made much more clear, i had a headache fixing this
+# TODO maybe add a check somewhere, that sources are always BufferReader and so on
 BUFFER_TYPES = ['sources', 'sinks', 'observes']
-INTERFACE_TYPES = [BufferWriter, BufferReader, BufferObserver]
+INTERFACE_TYPES = [BufferReader, BufferWriter, BufferObserver]
 
 
 
