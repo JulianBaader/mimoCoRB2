@@ -202,7 +202,7 @@ class SetupRun:
     
     # ---> config handeling
     def replace_configs(self):
-        overarching_config = self._ensure_config_dict(self.setup['Options']['overarching_config'])
+        overarching_config = self._ensure_config_dict("OVERARCHING", self.setup['Options']['overarching_config'])
         
         for name, info in self.setup['Workers'].items():
             config = overarching_config.copy()
@@ -211,7 +211,18 @@ class SetupRun:
             if shared_keys:
                 self.logger.debug(f"Worker {name} overwrites keys {shared_keys} of the overarching config.")
             config.update(worker_config)
-            info['config'] = config
+            
+
+            obligatory_config = {
+                'name': name,
+                'debug': self.setup['Options']['debug_workers'],
+                'run_directory': self.run_directory,
+            }
+            shared_keys = list(config.keys() & obligatory_config.keys())
+            if shared_keys:
+                self.logger.debug(f"Worker {name} overwrites keys {shared_keys} of the obligatory config.")
+            config.update(obligatory_config)
+            info['config'] = config.copy()
             
         self.configs_are_dict = True
             
