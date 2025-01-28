@@ -362,7 +362,7 @@ class SetupRun:
         for name, info in self.setup['Workers'].items():
             if not self._is_whole(info['number_of_processes']):
                 raise SetupError(f"Worker {name} number_of_processes must be a positive integer.")
-            self.info['worker_obj'] = mimoWorker(
+            info['worker_obj'] = mimoWorker(
                 name = name,
                 function = info['callable_function'],
                 args = info['args'],
@@ -371,7 +371,7 @@ class SetupRun:
         self.workers_created = True
     
     @staticmethod
-    def _is_whole(self, value):
+    def _is_whole(value):
         return isinstance(value, int) and value > 0
     
 class Control:
