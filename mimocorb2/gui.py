@@ -176,8 +176,6 @@ class RateCanvas(PlotCanvas):
             update_time = time.time()
             
             rate = (event_count - self.last_event_count[key]) / (update_time - self.last_update_time[key])
-            if key == 'raw_osc':
-                print(rate)
             self.rates[key].append(rate)
             self.rates[key].pop(0)
 
