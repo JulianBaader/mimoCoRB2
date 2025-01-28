@@ -67,7 +67,7 @@ class FileReader:
             'Buffers': norm_buffers, 
             'Workers': norm_workers, 
             'Options': norm_options,
-        }
+        }, self.setup_dir
             
         
     def load_setup(self):
@@ -170,8 +170,9 @@ class SetupRun:
         }
     }
     """
-    def __init__(self, normalized_setup):
+    def __init__(self, normalized_setup, setup_dir):
         self.setup = normalized_setup
+        self.setup_dir = setup_dir
         
         self.configs_are_dict = False
         self.functions_are_callable = False
