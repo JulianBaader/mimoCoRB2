@@ -286,7 +286,7 @@ class SetupRun:
             
         self.functions_are_callable = True
 
-    def _import_function_from_file(file, function_name):
+    def _import_function_from_file(self, file, function_name):
         directory = os.path.dirname(file)
         module_name = os.path.basename(file).removesuffix('.py')
 
