@@ -1,6 +1,6 @@
 import numpy as np
 
-from mimocorb2.function_templates import Importer, Filter, Processor, Exporter
+from mimocorb2.worker_templates import Importer, Filter, Processor, Exporter
 import time
 
 import multiprocessing as mp
