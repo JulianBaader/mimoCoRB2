@@ -38,7 +38,7 @@ OPTIONS = {
     'overarching_config': [],
 }
 
-BUFFER_TYPES = ['sinks', 'sources', 'observes']
+BUFFER_TYPES = ['sources', 'sinks', 'observes']
 INTERFACE_TYPES = [BufferWriter, BufferReader, BufferObserver]
 
 
