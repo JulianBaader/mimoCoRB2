@@ -1,20 +1,22 @@
-from mimocorb2.control import mimoControl, fileReader
+import mimocorb2.control as ctrl
 import logging
 import sys
-import time
 from mimocorb2.gui import BufferManagerApp
 from PyQt5 import QtWidgets
 
 logging.basicConfig(level=logging.INFO)
+logging.getLogger('matplotlib').setLevel(logging.WARNING)
+logging.getLogger('PyQt5').setLevel(logging.WARNING)
 
-reader = fileReader(sys.argv[1])
-control = mimoControl(*reader())
-if not control.check_data_flow():
-    raise ValueError("Data flow is not correct")
-control.visualize_buffers_and_functions()
-control.initialize_buffers()
-control.initialize_functions()
-control.start_functions()
+if len(sys.argv) != 2:
+    setup_file = "examples/muon/spin_setup.yaml"
+    print(f"Using {setup_file}")
+else:
+    setup_file = sys.argv[1]
+reader = ctrl.FileReader(setup_file)
+setup = ctrl.SetupRun(*reader())
+control = ctrl.Control(setup())
+control.start_workers()
 
 
 app = QtWidgets.QApplication(sys.argv)
