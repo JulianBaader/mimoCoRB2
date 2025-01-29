@@ -87,7 +87,13 @@ def sub_histogram(files, bins, update_interval, name):
     axes = axes.flatten()
 
     lines = {ch: ax.plot(bins[ch][:-1], np.load(files[ch]))[0] for ch, ax in zip(channels, axes)}
-
+    for ch, ax in zip(channels, axes):
+        ax.set_title(ch)
+        ax.set_xlabel('Value')
+        ax.set_ylabel('Count')
+        ax.set_xlim(bins[ch][0], bins[ch][-1])
+    
+    fig.tight_layout()
     plt.ion()
     plt.show()
 
@@ -97,7 +103,7 @@ def sub_histogram(files, bins, update_interval, name):
             for i, ch in enumerate(channels):
                 try:
                     lines[ch].set_ydata(np.load(files[ch]))
-                except EOFError:
+                except (EOFError, ValueError):
                     continue
                 axes[i].relim()
                 axes[i].autoscale_view()
