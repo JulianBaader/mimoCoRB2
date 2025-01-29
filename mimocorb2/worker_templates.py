@@ -2,13 +2,16 @@ import logging
 import time
 import os
 import numpy as np
+from typing import List, Dict, Any, TypeAlias, Callable, Generator
+
+ArgsAlias: TypeAlias = list[list, list, list, dict]
 
 METADATA = 0
 DATA = 1
 
 
 class Template:
-    def __init__(self, mimo_args):
+    def __init__(self, mimo_args: ArgsAlias) -> None:
         self.sources, self.sinks, self.observes, self.config = mimo_args
         self.name = self.config['name']
         self.debug = self.config['debug']
@@ -18,13 +21,13 @@ class Template:
 
         self.ufunc = None
 
-    def set_ufunc(self, ufunc):
+    def set_ufunc(self, ufunc: Callable) -> None:
         if not callable(ufunc):
             self.sinks.send_flush_event()
             raise RuntimeError("ufunc not callable")
         self.ufunc = ufunc
 
-    def fail(self, msg, data=None, metadata=None, exception=None, force_shutdown=False):
+    def fail(self, msg: str, data: np.ndarray | None = None, metadata: np.ndarray | None = None, exception: BaseException | None = None, force_shutdown: bool = False):
         if (data is not None) and (metadata is not None):
             np.save(
                 os.path.join(
@@ -45,7 +48,7 @@ class Template:
 
 
 class Importer(Template):
-    def __init__(self, mimo_args):
+    def __init__(self, mimo_args: ArgsAlias) -> None:
         super().__init__(mimo_args)
         self.counter = 0
 
@@ -58,7 +61,7 @@ class Importer(Template):
 
         self.writer = self.sinks[0]
 
-    def __call__(self):
+    def __call__(self) -> None:
         if self.ufunc is None:
             self.read_all.send_flush_event()
             raise RuntimeError("ufunc not set")
@@ -91,7 +94,7 @@ class Importer(Template):
 
 
 class Exporter(Template):
-    def __init__(self, mimo_args):
+    def __init__(self, mimo_args: ArgsAlias) -> None:
         super().__init__(mimo_args)
 
         if len(self.sources) != 1:
@@ -103,7 +106,7 @@ class Exporter(Template):
 
         self.reader = self.sources[0]
 
-    def __call__(self):
+    def __call__(self) -> Generator:
         while True:
             with self.reader as source:
                 data = source[DATA]
@@ -124,7 +127,7 @@ class Filter(Template):
 
     """
 
-    def __init__(self, mimo_args):
+    def __init__(self, mimo_args: ArgsAlias) -> None:
         super().__init__(mimo_args)
 
         if len(self.sources) != 1:
@@ -145,7 +148,7 @@ class Filter(Template):
                 self.fail("Filter source and sink dtypes do not match", force_shutdown=True)
         self.writers = self.sinks
 
-    def __call__(self):
+    def __call__(self) -> None:
         self.true_map = [True] * len(self.sinks)
         self.logger.info("Filter started")
         while True:
@@ -182,7 +185,7 @@ class Processor(Template):
     list[data, None] -> if none, dont write to that buffer, if data, write to that buffer
     """
 
-    def __init__(self, mimo_args):
+    def __init__(self, mimo_args: ArgsAlias) -> None:
         super().__init__(mimo_args)
 
         if len(self.sources) != 1:
@@ -195,7 +198,7 @@ class Processor(Template):
         self.reader = self.sources[0]
         self.writers = self.sinks
 
-    def __call__(self):
+    def __call__(self) -> None:
         self.logger.info("Processor started")
         while True:
             with self.reader as source:
@@ -220,7 +223,7 @@ class Processor(Template):
 
 
 class Observer(Template):
-    def __init__(self, mimo_args):
+    def __init__(self, mimo_args: ArgsAlias) -> None:
         super().__init__(mimo_args)
 
         if len(self.sources) != 0:
@@ -231,7 +234,7 @@ class Observer(Template):
             self.fail("Observer must have 1 observes", force_shutdown=True)
         self.observer = self.observes[0]
 
-    def __call__(self):
+    def __call__(self) -> Generator:
         while True:
             with self.observer as source:
                 data = source[DATA]

@@ -1,4 +1,5 @@
 from mimocorb2.worker_templates import Exporter, Importer
+from mimocorb2.mimo_buffer import mimoBuffer
 
 import numpy as np
 import pickle
@@ -8,7 +9,7 @@ HEADER = """This is a mimoCoRB file"""
 
 
 class mimoFile:
-    def __init__(self, filename, data_dtype, data_length, metadata_dtype, metadata_length, mode):
+    def __init__(self, filename: str, data_dtype: np.dtype, data_length: int, metadata_dtype: np.dtype, metadata_length: int, mode: str) -> None:
         self.filename = filename
         self.data_dtype = data_dtype
         self.data_length = data_length
@@ -28,7 +29,7 @@ class mimoFile:
             raise ValueError("Mode must be 'read' or 'write'")
 
     @classmethod
-    def from_file(cls, filename):
+    def from_file(cls, filename: str) -> 'mimoFile':
         with open(filename, 'rb') as file:
             info = pickle.load(file)
         return cls(
@@ -41,7 +42,7 @@ class mimoFile:
         )
     
     @classmethod
-    def from_buffer_object(cls, buffer):
+    def from_buffer_object(cls, buffer: mimoBuffer) -> 'mimoFile':
         filename = buffer.name + '.mimo'
         data_example = buffer.data_example
         metadata_example = buffer.metadata_example
@@ -64,7 +65,7 @@ class mimoFile:
             mode='write'
         )
 
-    def write_data(self, data, metadata):
+    def write_data(self, data: np.ndarray, metadata: np.ndarray) -> None:
         if self.mode != 'write':
             raise RuntimeError("File is not open in write mode")
         
@@ -76,7 +77,7 @@ class mimoFile:
         self.file.write(data_bytes)
         self.file.write(metadata_bytes)
         
-    def read_data(self):
+    def read_data(self) -> tuple[np.ndarray, np.ndarray] | tuple[None, None]:
         if self.mode != 'read':
             raise RuntimeError("File is not open in read mode")
         
@@ -89,15 +90,15 @@ class mimoFile:
         metadata = np.frombuffer(metadata_bytes, dtype=self.metadata_dtype)
         return data, metadata
 
-    def close(self):
+    def close(self) -> None:
         """Ensure the file is closed when no longer needed."""
         if not self.file.closed:
             self.file.close()
     
-    def __enter__(self):
+    def __enter__(self) -> 'mimoFile':
         return self
     
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(self, exc_type, exc_value, traceback) -> None:
         self.close()
 
 

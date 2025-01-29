@@ -10,6 +10,7 @@ import shutil
 import time
 
 from graphviz import Digraph
+from typing import Callable, Any
 
 STANDARD_OVERWRITE = True
 FUNCTIONS_FOLDER = os.path.join(os.path.dirname(__file__), 'functions')
@@ -51,13 +52,13 @@ class SetupError(Exception):
     pass
 
 class FileReader:
-    def __init__(self, setup_file):
+    def __init__(self, setup_file: str) -> None:
         self.setup_file = os.path.abspath(setup_file)
         self.setup_dir = os.path.dirname(self.setup_file)
 
         self.logger = logging.getLogger(__name__)
         
-    def __call__(self):
+    def __call__(self) -> tuple[dict, str]:
         buffers, workers, options = self.load_setup()
         norm_buffers = {name: self.normalize_section('Buffer: ' + name, data, BUFFERS) for name, data in buffers.items()}
         norm_workers = {name: self.normalize_section('Worker: ' + name, data, WORKERS) for name, data in workers.items()}
@@ -72,7 +73,7 @@ class FileReader:
         }, self.setup_dir
             
         
-    def load_setup(self):
+    def load_setup(self) -> tuple[dict, dict, dict]:
         with open(self.setup_file, 'r') as f:
             setup = yaml.safe_load(f)
             
@@ -90,7 +91,7 @@ class FileReader:
 
         
         
-    def normalize_section(self, section_name, section_data, defaults):
+    def normalize_section(self, section_name: str, section_data: dict, defaults: dict) -> dict:
         """
         Normalize a section from the setup file (e.g., buffers or workers).
 
@@ -121,7 +122,7 @@ class FileReader:
             normalized[parameter] = section_data.get(parameter, value)
         return normalized
     
-    def visualize_setup(self, min_diameter = 3, min_width = 3, min_height = 1, **digraph_kwargs):
+    def visualize_setup(self, min_diameter: float = 3, min_width: float = 3, min_height: float = 1, **digraph_kwargs) -> None:
         dot = Digraph(**digraph_kwargs)
         normalized_setup = self()
         for buffer_name in normalized_setup['Buffers'].keys():
@@ -172,7 +173,7 @@ class SetupRun:
         }
     }
     """
-    def __init__(self, normalized_setup, setup_dir):
+    def __init__(self, normalized_setup: dict, setup_dir: str) -> None:
         self.setup = normalized_setup
         self.setup_dir = setup_dir
         
@@ -182,7 +183,7 @@ class SetupRun:
         self.args_made = False
         self.workers_created = False
         
-    def __call__(self):
+    def __call__(self) -> dict:
         self.setup_run_directory()
         self.replace_configs()
         self.dump_setup()
@@ -194,7 +195,7 @@ class SetupRun:
         return self.setup
         
         
-    def setup_run_directory(self):
+    def setup_run_directory(self) -> None:
         output_directory = self.setup['Options']['output_directory']
         os.makedirs(output_directory, exist_ok=True)
         start_time = time.strftime('%Y-%m-%d_%H-%M-%S')
@@ -203,7 +204,7 @@ class SetupRun:
         
     
     # ---> config handeling
-    def replace_configs(self):
+    def replace_configs(self) -> None:
         overarching_config = self._ensure_config_dict("OVERARCHING", self.setup['Options']['overarching_config'])
         
         for name, info in self.setup['Workers'].items():
@@ -245,7 +246,7 @@ class SetupRun:
                 config[key] = value
         return config
     
-    def _load_config_from_file(self, worker_name, file):
+    def _load_config_from_file(self, worker_name: str, file: str) -> dict:
         file = os.path.join(self.setup_dir, file)
         if not os.path.isfile(file):
             raise SetupError(f"Config file {file} of worker {worker_name} does not exist.")
@@ -257,14 +258,14 @@ class SetupRun:
             return config        
     # <--- config handeling
     
-    def dump_setup(self):
+    def dump_setup(self) -> None:
         if not self.configs_are_dict:
             self.replace_configs()
         with open(os.path.join(self.run_directory, 'setup.yaml'), 'w') as file:
             yaml.dump(self.setup, file)
 
     # ---> function handeling
-    def add_callable_functions(self):
+    def add_callable_functions(self) -> None:
         for name, info in self.setup['Workers'].items():
             file = info['file']
             function = info['function']
@@ -288,7 +289,7 @@ class SetupRun:
             
         self.functions_are_callable = True
 
-    def _import_function_from_file(self, file, function_name):
+    def _import_function_from_file(self, file: str, function_name: str) -> Callable:
         directory = os.path.dirname(file)
         module_name = os.path.basename(file).removesuffix('.py')
 
@@ -305,7 +306,7 @@ class SetupRun:
     # <--- function handeling
     
     # ---> buffer handeling
-    def create_buffers(self):
+    def create_buffers(self) -> None:
         for name, info in self.setup['Buffers'].items():
             if not self._is_whole(info['slot_count']):
                 raise SetupError(f"Buffer {name} slot_count must be a positive integer.")
@@ -323,7 +324,7 @@ class SetupRun:
         self.buffer_objects_created = True
     
     
-    def _interpret_dtype(self, buffer_name, dtype_setup):
+    def _interpret_dtype(self, buffer_name: str, dtype_setup: dict) -> np.dtype:
         try:
             return np.dtype([(name, dtype) for name, dtype in dtype_setup.items()])
         except (TypeError, ValueError):
@@ -332,7 +333,7 @@ class SetupRun:
     # <--- buffer handeling
     
     # ---> worker handeling
-    def make_args(self):
+    def make_args(self) -> None:
         if not self.buffer_objects_created:
             self.create_buffers()
         if not self.configs_are_dict:
@@ -347,7 +348,7 @@ class SetupRun:
             info['args'] = args
         self.args_made = True
         
-    def _make_interface_list(self, worker_name, buffer_list, arg_index):
+    def _make_interface_list(self, worker_name: str, buffer_list: list[str], arg_index: int) -> list[BufferReader | BufferWriter | BufferObserver]:
         interface_list = []
         for buffer_name in buffer_list:
             if buffer_name not in self.setup['Buffers']:
@@ -355,7 +356,7 @@ class SetupRun:
             interface_list.append(INTERFACE_TYPES[arg_index](self.setup['Buffers'][buffer_name]['buffer_obj']))
         return interface_list
         
-    def create_workers(self):
+    def create_workers(self) -> None:
         if not self.functions_are_callable:
             self.add_callable_functions()
         if not self.args_made:
@@ -373,54 +374,53 @@ class SetupRun:
         self.workers_created = True
     
     @staticmethod
-    def _is_whole(value):
+    def _is_whole(value: Any) -> bool:
         return isinstance(value, int) and value > 0
     
 class Control:
-    def __init__(self, initialized_setup):
+    def __init__(self, initialized_setup: dict) -> None:
         self.setup = initialized_setup
         self.logger = logging.getLogger(__name__)
         self.find_buffers_for_clean_shutdown()
         
         
-    def find_buffers_for_clean_shutdown(self):
+    def find_buffers_for_clean_shutdown(self) -> None:
         buffers = []
         for name, info in self.setup['Workers'].items():
             if len(info['sources']) == 0 and len(info['observes']) == 0:
                 buffers.extend(info['sinks'])
         self.buffers_for_shutdown = buffers
-        print(buffers)
                 
         
         
-    def clean_shutdown(self):
+    def clean_shutdown(self) -> None:
         for name in self.buffers_for_shutdown:
             self.logger.info(f"Shutting down buffer {name}")
             self.setup['Buffers'][name]['buffer_obj'].send_flush_event()
             
-    def hard_shutdown(self):
+    def hard_shutdown(self) -> None:
         for name, info in self.setup['Buffers'].items():
             self.logger.info(f"Shutting down buffer {name}")
             info['buffer_obj'].send_flush_event()
             
-    def get_buffer_stats(self):
+    def get_buffer_stats(self) -> dict:
         stats = {}
         for name, info in self.setup['Buffers'].items():
             stats[name] = info['buffer_obj'].get_stats()
         return stats
     
-    def get_active_workers(self):
+    def get_active_workers(self) -> dict:
         active = {}
         for name, info in self.setup['Workers'].items():
             active[name] = sum(info['worker_obj'].alive_processes())
         return active
             
-    def kill_workers(self):
+    def kill_workers(self) -> None:
         for name, info in self.setup['Workers'].items():
             self.logger.info(f"Shutting down worker {name}")
             info['worker_obj'].shutdown()
     
-    def start_workers(self):
+    def start_workers(self) -> None:
         for name, info in self.setup['Workers'].items():
             self.logger.info(f"Initalizing processes for worker {name}")
             info['worker_obj'].initialize_processes()

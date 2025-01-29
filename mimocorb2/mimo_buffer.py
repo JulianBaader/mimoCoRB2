@@ -118,7 +118,7 @@ class mimoBuffer:
     metadata_example = np.zeros(shape=metadata_length, dtype=metadata_dtype)
     metadata_byte_size = metadata_example.nbytes
 
-    def __init__(self, name, slot_count: int, data_length: int, data_dtype: np.dtype, overwrite: bool = True):
+    def __init__(self, name: str, slot_count: int, data_length: int, data_dtype: np.dtype, overwrite: bool = True) -> None:
         self.name = name
         self.slot_count = slot_count
         self.data_length = data_length
@@ -151,7 +151,7 @@ class mimoBuffer:
         self.overwrite_count = Value(ctypes.c_ulong, 0)
         self.flush_event_received = Value(ctypes.c_bool, False)
 
-    def get_stats(self):
+    def get_stats(self) -> dict:
         return {
             "event_count": self.event_count.value,
             "overwrite_count": self.overwrite_count.value,
@@ -160,7 +160,7 @@ class mimoBuffer:
             "flush_event_received": self.flush_event_received.value,
         }
 
-    def access_slot(self, token):
+    def access_slot(self, token: int | None) -> list[np.ndarray, np.ndarray] | list[None, None]:
         if token is None:
             return [None, None]
         slot = self.buffer[token]
@@ -168,14 +168,14 @@ class mimoBuffer:
         data = slot[self.metadata_byte_size :].view(self.data_dtype)
         return [metadata, data]
 
-    def send_flush_event(self):
+    def send_flush_event(self) -> None:
         """Send a flush event to the buffer."""
         with self.flush_event_received.get_lock():
             if not self.flush_event_received.value:
                 self.flush_event_received.value = True
                 self.filled_slots.put(None)
 
-    def get_write_token(self):
+    def get_write_token(self) -> int:
         """Get a token to write data to the buffer.
 
         This method handels overwriting.
@@ -207,39 +207,39 @@ class mimoBuffer:
                 # to avoid a deadlock in this case, wait for an empty slot
                 return self.empty_slots.get()
 
-    def return_write_token(self, token):
+    def return_write_token(self, token: int) -> None:
         """Return a token to which data has been written."""
         with self.event_count.get_lock():
             self.event_count.value += 1
         self.filled_slots.put(token)
 
-    def get_read_token(self):
+    def get_read_token(self) -> int | None:
         """Get a token to read data from the buffer."""
         return self.filled_slots.get()
 
-    def return_read_token(self, token):
+    def return_read_token(self, token: int | None) -> None:
         """Return a read token to the ring buffer"""
         if token is not None:
             self.empty_slots.put(token)
         else:
             self.filled_slots.put(None)
 
-    def get_observe_token(self):
+    def get_observe_token(self) -> int | None:
         """Get a token to observe data from the buffer."""
         return self.filled_slots.get()
 
-    def return_observe_token(self, token):
+    def return_observe_token(self, token: int | None) -> None:
         """Return a observe token to the ring buffer"""
         self.filled_slots.put(token)
 
-    def __del__(self):
+    def __del__(self) -> None:
         self.shared_memory_buffer.close()
         self.shared_memory_buffer.unlink()
         logger.info(f"Buffer {self.name} is shut down.")
 
 
 class Interface:
-    def __init__(self, buffer: mimoBuffer):
+    def __init__(self, buffer: mimoBuffer) -> None:
         self.buffer = buffer
         
         self.shutdown_readers = self.buffer.send_flush_event
@@ -263,11 +263,11 @@ class BufferReader(Interface):
         Return the token after reading.
     """
 
-    def __enter__(self):
+    def __enter__(self) -> list[np.ndarray, np.ndarray] | list[None, None]:
         self.token = self.buffer.get_read_token()
         return self.buffer.access_slot(self.token)
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(self, exc_type, exc_value, traceback) -> None:
         self.buffer.return_read_token(self.token)
 
 
@@ -285,14 +285,14 @@ class BufferWriter(Interface):
         Send a flush event to notify consumers.
     """
 
-    def __enter__(self):
+    def __enter__(self) -> list[np.ndarray, np.ndarray]:
         self.token = self.buffer.get_write_token()
         return self.buffer.access_slot(self.token)
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(self, exc_type, exc_value, traceback) -> None:
         self.buffer.return_write_token(self.token)
 
-    def send_flush_event(self):
+    def send_flush_event(self) -> None:
         self.buffer.send_flush_event()
 
 
@@ -308,9 +308,9 @@ class BufferObserver(Interface):
         Return the token after observation.
     """
 
-    def __enter__(self):
+    def __enter__(self) -> list[np.ndarray, np.ndarray] | list[None, None]:
         self.token = self.buffer.get_observe_token()
         return self.buffer.access_slot(self.token)
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(self, exc_type, exc_value, traceback) -> None:
         self.buffer.return_observe_token(self.token)
