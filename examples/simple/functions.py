@@ -19,7 +19,7 @@ def simulate_osc(*mimo_args):
         for i in range(50000):
             arr = np.linspace(0, 10, 100)
             yield np.sin(arr + i) * rng.normal(1, 0.1)
-            time.sleep(np.random.poisson(1/1000))
+            time.sleep(np.random.poisson(1 / 1000))
         yield None
 
     importer.set_ufunc(ufunc)
@@ -30,7 +30,7 @@ def filter_data(*mimo_args):
     filter = Filter(mimo_args)
 
     def ufunc(data):
-        #print("hey")
+        # print("hey")
         if np.max(data['ch1']) > 0.5:
             return True
         else:

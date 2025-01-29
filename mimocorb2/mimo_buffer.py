@@ -118,7 +118,9 @@ class mimoBuffer:
     metadata_example = np.zeros(shape=metadata_length, dtype=metadata_dtype)
     metadata_byte_size = metadata_example.nbytes
 
-    def __init__(self, name: str, slot_count: int, data_length: int, data_dtype: np.dtype, overwrite: bool = True) -> None:
+    def __init__(
+        self, name: str, slot_count: int, data_length: int, data_dtype: np.dtype, overwrite: bool = True
+    ) -> None:
         self.name = name
         self.slot_count = slot_count
         self.data_length = data_length
@@ -241,14 +243,13 @@ class mimoBuffer:
 class Interface:
     def __init__(self, buffer: mimoBuffer) -> None:
         self.buffer = buffer
-        
+
         self.shutdown_readers = self.buffer.send_flush_event
         self.get_stats = self.buffer.get_stats
         self.name = self.buffer.name
         self.slot_count = self.buffer.slot_count
         self.data_example = self.buffer.data_example
         self.metadata_example = self.buffer.metadata_example
-        
 
 
 class BufferReader(Interface):

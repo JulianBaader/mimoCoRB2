@@ -9,7 +9,15 @@ HEADER = """This is a mimoCoRB file"""
 
 
 class mimoFile:
-    def __init__(self, filename: str, data_dtype: np.dtype, data_length: int, metadata_dtype: np.dtype, metadata_length: int, mode: str) -> None:
+    def __init__(
+        self,
+        filename: str,
+        data_dtype: np.dtype,
+        data_length: int,
+        metadata_dtype: np.dtype,
+        metadata_length: int,
+        mode: str,
+    ) -> None:
         self.filename = filename
         self.data_dtype = data_dtype
         self.data_length = data_length
@@ -19,7 +27,7 @@ class mimoFile:
 
         self._data_byte_length = self.data_dtype.itemsize * self.data_length
         self._metadata_byte_length = self.metadata_dtype.itemsize * self.metadata_length
-        
+
         # Open file based on mode
         if mode == 'write':
             self.file = open(self.filename, 'ab')  # Append binary for writing
@@ -38,9 +46,9 @@ class mimoFile:
             info['data_length'],
             info['metadata_dtype'],
             info['metadata_length'],
-            mode='read'
+            mode='read',
         )
-    
+
     @classmethod
     def from_buffer_object(cls, buffer: mimoBuffer) -> 'mimoFile':
         filename = buffer.name + '.mimo'
@@ -57,35 +65,30 @@ class mimoFile:
         with open(filename, 'wb') as file:
             pickle.dump(info, file)
         return cls(
-            filename,
-            data_example.dtype,
-            data_example.size,
-            metadata_example.dtype,
-            metadata_example.size,
-            mode='write'
+            filename, data_example.dtype, data_example.size, metadata_example.dtype, metadata_example.size, mode='write'
         )
 
     def write_data(self, data: np.ndarray, metadata: np.ndarray) -> None:
         if self.mode != 'write':
             raise RuntimeError("File is not open in write mode")
-        
+
         data_bytes = data.tobytes()
         metadata_bytes = metadata.tobytes()
         if len(data_bytes) != self._data_byte_length or len(metadata_bytes) != self._metadata_byte_length:
             raise RuntimeError("Number of bytes to be written does not match expected number")
-        
+
         self.file.write(data_bytes)
         self.file.write(metadata_bytes)
-        
+
     def read_data(self) -> tuple[np.ndarray, np.ndarray] | tuple[None, None]:
         if self.mode != 'read':
             raise RuntimeError("File is not open in read mode")
-        
+
         data_bytes = self.file.read(self._data_byte_length)
         metadata_bytes = self.file.read(self._metadata_byte_length)
         if not data_bytes or not metadata_bytes:
             return None, None
-        
+
         data = np.frombuffer(data_bytes, dtype=self.data_dtype)
         metadata = np.frombuffer(metadata_bytes, dtype=self.metadata_dtype)
         return data, metadata
@@ -94,21 +97,20 @@ class mimoFile:
         """Ensure the file is closed when no longer needed."""
         if not self.file.closed:
             self.file.close()
-    
+
     def __enter__(self) -> 'mimoFile':
         return self
-    
+
     def __exit__(self, exc_type, exc_value, traceback) -> None:
         self.close()
 
 
-
 def export(*mimo_args):
     exporter = Exporter(mimo_args)
-    
+
     file = mimoFile.from_buffer_object(exporter.reader.buffer)
     generator = exporter()
-    
+
     with file:
         while True:
             data, metadata = next(generator)
@@ -116,11 +118,12 @@ def export(*mimo_args):
                 break
             file.write_data(data, metadata)
 
+
 def simulate_importer(*mimo_args):
     importer = Importer(mimo_args)
-    
+
     file = mimoFile.from_file(importer.writer.buffer.name + '.mimo')
-    
+
     def ufunc():
         with file:
             last_send_time = time.time_ns() * 1e-9
@@ -131,7 +134,7 @@ def simulate_importer(*mimo_args):
                     break
                 current_send_time = time.time_ns() * 1e-9
                 current_timestamp = metadata['timestamp']
-                
+
                 time_since_last_send = current_send_time - last_send_time
                 time_since_last_data = current_timestamp - last_timestamp
                 if time_since_last_send < time_since_last_data:
@@ -140,9 +143,9 @@ def simulate_importer(*mimo_args):
 
                 last_send_time = current_send_time
                 last_timestamp = current_timestamp
-                
+
     importer.set_ufunc(ufunc)
     importer()
-    
+
+
 # TODO a function which just puts in the data and metadata from the file, with a uniform/poisson fixed rate
-            

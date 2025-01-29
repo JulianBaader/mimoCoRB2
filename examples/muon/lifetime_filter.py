@@ -58,12 +58,9 @@ def calculate_decay_time(*mimo_args):
     signatures = config["signatures"]
 
     # Load reference pulse
-    reference_pulse = (
-        None if "reference_pulse_file" not in config else np.fromfile(config["reference_pulse_file"])
-    )
+    reference_pulse = None if "reference_pulse_file" not in config else np.fromfile(config["reference_pulse_file"])
 
     pulse_par_dtype = processor.writers[1].data_example.dtype
-
 
     def find_double_pulses(input_data):
         """filter data, function to be called by instance of class mimoCoRB.rbTransfer
@@ -144,12 +141,11 @@ def calculate_decay_time(*mimo_args):
 
         if pulse_parameters is None:
             return None
-        
+
         if signature_type == 0:
             return [True, pulse_parameters, None]
         elif signature_type == 1:
             return [True, None, pulse_parameters]
-        
 
     processor.set_ufunc(find_double_pulses)
     processor()

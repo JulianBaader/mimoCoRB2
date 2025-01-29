@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import time
 
+
 def oscilloscope(*mimo_args):
     # Get info from the buffer
     observer = Observer(mimo_args)
@@ -13,38 +14,35 @@ def oscilloscope(*mimo_args):
     # Get the configuration parameters
     update_interval = observer.config.get('update_interval', 1)
     ylim = observer.config.get('ylim')
-    t_scaling = observer.config.get('t_scaling', (1, 0, 'Samples')) # (scaling, offset, unit)
-    y_scaling = observer.config.get('y_scaling', (1, 0, 'Value')) # (scaling, offset, unit)
+    t_scaling = observer.config.get('t_scaling', (1, 0, 'Samples'))  # (scaling, offset, unit)
+    y_scaling = observer.config.get('y_scaling', (1, 0, 'Value'))  # (scaling, offset, unit)
     requested_channels = observer.config.get('channels', available_channels)
     trigger_level = observer.config.get('trigger_level')
-    
+
     # Apply the t scaling
     t = np.arange(number_of_samples) * t_scaling[0] + t_scaling[1]
-    
+
     # Get the channels to be plotted
     for rch in requested_channels:
         if rch not in available_channels:
             raise ValueError(f"Channel '{rch}' not found in the data")
     channels = requested_channels
-    
 
     fig = plt.figure()
     fig.canvas.manager.set_window_title('Oscilloscope')
     ax = fig.add_subplot(111)
-    
+
     # set limits
     ax.set_xlim(t[0], t[-1])
     if ylim is not None:
         ax.set_ylim(ylim[0], ylim[1])
 
-    
     if trigger_level is not None:
         ax.hlines(trigger_level, t[0], t[-1], linestyles='dotted', label='Trigger Level')
 
-
     ys = {ch: np.zeros(number_of_samples) for ch in channels}
     lines = {ch: ax.plot(t, ys[ch], label=ch)[0] for ch in channels}
-    
+
     ax.set_xlabel(t_scaling[2])
     ax.set_ylabel(y_scaling[2])
 
@@ -80,9 +78,8 @@ def oscilloscope(*mimo_args):
     plt.ion()
     plt.show()
 
-
     last_update = time.time()
-    
+
     generator = observer()
     while True:
         if time.time() - last_update > update_interval:

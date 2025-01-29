@@ -27,7 +27,14 @@ class Template:
             raise RuntimeError("ufunc not callable")
         self.ufunc = ufunc
 
-    def fail(self, msg: str, data: np.ndarray | None = None, metadata: np.ndarray | None = None, exception: BaseException | None = None, force_shutdown: bool = False):
+    def fail(
+        self,
+        msg: str,
+        data: np.ndarray | None = None,
+        metadata: np.ndarray | None = None,
+        exception: BaseException | None = None,
+        force_shutdown: bool = False,
+    ):
         if (data is not None) and (metadata is not None):
             np.save(
                 os.path.join(
@@ -207,7 +214,7 @@ class Processor(Template):
                 if data is None:
                     break
                 try:
-                    results = self.ufunc(data) #TODO this should be a try?
+                    results = self.ufunc(data)  # TODO this should be a try?
                 except Exception:
                     self.fail("ufunc failed")
                 if results is None:

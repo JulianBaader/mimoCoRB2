@@ -3,10 +3,11 @@ from mimocorb2.worker_templates import Importer
 import numpy as np
 import time
 
+
 def simulate_source(*mimo_args):
     importer = Importer(mimo_args)
     config = importer.config
-    
+
     # get parameters
     # self.number_of_samples = config_dict["number_of_samples"]  # not needed here, taken from buffer configuration
     analogue_offset_mv = config.get("analogue_offset") * 1000.0
@@ -17,12 +18,12 @@ def simulate_source(*mimo_args):
     sleeptime = config.get("sleeptime", 0.10)
     random = config.get("random", False)
     plen = config.get("pulseWindow", 100)
-    
+
     pulse_height = config.get("pulseHeight", 250.0)
     if not isinstance(pulse_height, list):
         pulse_height = [pulse_height]
     pulse_height = np.array(pulse_height)
-    
+
     pulse_spread = config.get("pulseSpread", pulse_height * 0.3)
     detector_efficiency = config.get("prbIteraction", 0.95)
     stopping_probability = config.get("prb2ndPulse", 0.10)
@@ -31,7 +32,7 @@ def simulate_source(*mimo_args):
     number_of_channels = len(data_example.dtype)
     number_of_values = data_example.size
     channel_names = data_example.dtype.names
-    
+
     # parameters for pulse simulation and detector porperties
     tau = plen / 4.0  # decay time of exponential pulse
     mn_position = pre_trigger_samples
@@ -39,8 +40,7 @@ def simulate_source(*mimo_args):
     pulse_template = np.exp(-np.float32(np.linspace(0.0, plen, plen, endpoint=False)) / tau)
     noise = pulse_height.mean() / 30.0
     tau_mu = 2197  # muon life time in ns
-    
-    
+
     def ufunc():
         event_count = 0
         while True:
@@ -102,6 +102,6 @@ def simulate_source(*mimo_args):
 
             yield out
         yield None
-        
+
     importer.set_ufunc(ufunc)
     importer()

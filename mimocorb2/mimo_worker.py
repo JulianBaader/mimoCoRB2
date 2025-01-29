@@ -9,7 +9,9 @@ CONFIG = 3
 
 
 class mimoWorker:
-    def __init__(self, name: str, function: Callable, args: list[list, list, list, dict], number_of_processes: int) -> None:
+    def __init__(
+        self, name: str, function: Callable, args: list[list, list, list, dict], number_of_processes: int
+    ) -> None:
         self.name = name
         self.function = function
         self.args = args
