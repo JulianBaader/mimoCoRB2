@@ -6,7 +6,6 @@ import yaml
 import logging
 import numpy as np
 import sys
-import shutil
 import time
 
 from graphviz import Digraph

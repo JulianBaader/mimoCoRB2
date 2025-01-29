@@ -54,7 +54,6 @@ def calculate_decay_time(*mimo_args):
     peak_minimal_prominence = min(peak_minimal_prominence_initial, peak_minimal_prominence_secondary)
     peak_minimal_distance = config["peak_minimal_distance"]
     peak_minimal_width = config["peak_minimal_width"]
-    pre_trigger_samples = config["pre_trigger_samples"]
     trigger_position_tolerance = config["trigger_position_tolerance"]
     signatures = config["signatures"]
 
