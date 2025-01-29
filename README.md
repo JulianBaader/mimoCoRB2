@@ -3,7 +3,12 @@
 ## run examples
 ```python main.py <setup_file>```
 
+To shutdown, try **Shutdown Root Buffer**. This will shutdown every buffer which has no function writing to it (i.e. the root buffers). Ideally this shutdown will triple down into every other buffer and shutdown the corresponding processes.
 
+If still some processes are running, try **Shutdown All Buffers**.
+As a last resort use **Kill Workers** which will terminate all remaining processes.
+
+Exit is only cleanly possible when no processes are alive.
 ## Infrastructure
 ### Buffer Objects
 Buffer Objects consit of two queues and a shared memory.
