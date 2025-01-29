@@ -123,7 +123,7 @@ class FileReader:
         self, min_diameter: float = 3, min_width: float = 3, min_height: float = 1, **digraph_kwargs
     ) -> None:
         dot = Digraph(**digraph_kwargs)
-        normalized_setup = self()
+        normalized_setup = self()[0]
         for buffer_name in normalized_setup['Buffers'].keys():
             dot.node('B' + buffer_name, shape='circle', label=buffer_name, width=str(min_diameter))
         for worker_name in normalized_setup['Workers'].keys():
