@@ -59,8 +59,8 @@ Workers:
     sinks: [AcceptedPulses, PulseParametersUp, PulseParametersDown]
     config: config.yaml
   
-  drain1:
-    function: exporters.drain
+  save_pulses:
+    function: data.export
     sources: [AcceptedPulses]
   histUp:
     function: exporters.histogram

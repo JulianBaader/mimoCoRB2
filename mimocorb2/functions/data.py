@@ -80,18 +80,23 @@ class mimoFile:
         self.file.write(data_bytes)
         self.file.write(metadata_bytes)
 
-    def read_data(self) -> tuple[np.ndarray, np.ndarray] | tuple[None, None]:
+    def read_data(self):
         if self.mode != 'read':
             raise RuntimeError("File is not open in read mode")
 
-        data_bytes = self.file.read(self._data_byte_length)
-        metadata_bytes = self.file.read(self._metadata_byte_length)
-        if not data_bytes or not metadata_bytes:
-            return None, None
+        # Read the header only once
+        if self.file.tell() == 0:
+            pickle.load(self.file)  # Skip the header
 
-        data = np.frombuffer(data_bytes, dtype=self.data_dtype)
-        metadata = np.frombuffer(metadata_bytes, dtype=self.metadata_dtype)
-        return data, metadata
+        while True:
+            data_bytes = self.file.read(self._data_byte_length)
+            metadata_bytes = self.file.read(self._metadata_byte_length)
+            if not data_bytes or not metadata_bytes:
+                yield None, None
+                break
+            data = np.frombuffer(data_bytes, dtype=self.data_dtype)
+            metadata = np.frombuffer(metadata_bytes, dtype=self.metadata_dtype)
+            yield data, metadata
 
     def close(self) -> None:
         """Ensure the file is closed when no longer needed."""
