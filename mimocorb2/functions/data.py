@@ -125,6 +125,7 @@ def export(*mimo_args):
 
 
 def simulate_importer(*mimo_args):
+    raise NotImplementedError("This function is not yet correctly implemented")
     importer = Importer(mimo_args)
 
     file = mimoFile.from_file(importer.writer.buffer.name + '.mimo')
@@ -152,5 +153,6 @@ def simulate_importer(*mimo_args):
     importer.set_ufunc(ufunc)
     importer()
 
-
-# TODO a function which just puts in the data and metadata from the file, with a uniform/poisson fixed rate
+def clocked_importer(*mimo_args):
+    raise NotImplementedError("This function is not yet implemented")
+    # TODO a function which just puts in the data and metadata from the file, with a uniform/poisson fixed rate
