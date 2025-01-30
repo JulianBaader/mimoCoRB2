@@ -4,3 +4,4 @@ bins:
   1st_chB_h: [0, 1000, 75]
   2nd_chC_h: [0, 1000, 75]
 visualize: True
+plot_type: 'step'
