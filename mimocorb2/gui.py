@@ -1,6 +1,7 @@
 from PyQt5 import QtWidgets, uic, QtCore
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
+import matplotlib.pyplot as plt
 import numpy as np
 import time
 import os
@@ -12,9 +13,9 @@ DPI = 100
 
 NUMBER_OF_DATA_POINTS = 10
 
-
 class BufferManagerApp(QtWidgets.QMainWindow):
     def __init__(self, control):
+        self.COLORS = plt.rcParams["axes.prop_cycle"].by_key()["color"]
         super().__init__()
         uic.loadUi(os.path.join(os.path.dirname(__file__), "gui.ui"), self)
 
@@ -95,11 +96,13 @@ class PlotCanvas(FigureCanvas):
 
 class BufferCanvas(PlotCanvas):
     def init_plot(self):
+        colors = ["#E24A33", "#FBC15E", "#2CA02C", "#FFFFFF"]
+        #colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
         # the ordering of the bars is important
-        self.bar_filled = self.axes.bar(self.buffers, 0, label="Filled", color="tab:red")
-        self.bar_working = self.axes.bar(self.buffers, 0, label="Working", color="tab:blue")
-        self.bar_empty = self.axes.bar(self.buffers, 1, label="Empty", color="tab:green")
-        self.shutdown_overlay = self.axes.bar(self.buffers, 0, label="Shutdown", color="black", alpha=0.3, hatch="//")
+        self.bar_filled = self.axes.bar(self.buffers, 0, label="Filled", color=colors[0])
+        self.bar_working = self.axes.bar(self.buffers, 0, label="Working", color=colors[1])
+        self.bar_empty = self.axes.bar(self.buffers, 1, label="Empty", color=colors[2])
+        self.shutdown_overlay = self.axes.bar(self.buffers, 0, label="Shutdown", color=colors[3], alpha=0.3, hatch="//")
 
         self.axes.set_ylim(0, 1)
         self.axes.legend(loc="upper right")
@@ -125,7 +128,8 @@ class BufferCanvas(PlotCanvas):
 
 class WorkerCanvas(PlotCanvas):
     def init_plot(self):
-        self.bars = self.axes.bar(self.workers, 0, label="Workers", color="tab:blue")
+        colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+        self.bars = self.axes.bar(self.workers, 0, label="Workers", color = colors[0])
 
         self.resize_axis(1)
         self.axes.tick_params(axis="x", rotation=45)
