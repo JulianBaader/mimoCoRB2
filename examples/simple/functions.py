@@ -22,8 +22,7 @@ def simulate_osc(*mimo_args):
             time.sleep(np.random.poisson(1 / 1000))
         yield None
 
-    importer.set_ufunc(ufunc)
-    importer()
+    importer(ufunc)
 
 
 def filter_data(*mimo_args):
@@ -36,8 +35,7 @@ def filter_data(*mimo_args):
         else:
             return False
 
-    filter.set_ufunc(ufunc)
-    filter()
+    filter(ufunc)
 
 
 def calculate_pulse_heights(*mimo_args):
@@ -48,8 +46,7 @@ def calculate_pulse_heights(*mimo_args):
         example['pulse_height'] = np.max(data['ch1'])
         return [example]
 
-    processor.set_ufunc(ufunc)
-    processor()
+    processor(ufunc)
 
 
 def print_pulse_heights(*mimo_args):

@@ -103,5 +103,4 @@ def simulate_source(*mimo_args):
             yield out
         yield None
 
-    importer.set_ufunc(ufunc)
-    importer()
+    importer(ufunc)

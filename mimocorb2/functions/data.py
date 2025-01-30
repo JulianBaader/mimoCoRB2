@@ -150,8 +150,7 @@ def simulate_importer(*mimo_args):
                 last_send_time = current_send_time
                 last_timestamp = current_timestamp
 
-    importer.set_ufunc(ufunc)
-    importer()
+    importer(ufunc)
 
 def clocked_importer(*mimo_args):
     raise NotImplementedError("This function is not yet implemented")

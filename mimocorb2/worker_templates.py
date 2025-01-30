@@ -19,13 +19,6 @@ class Template:
         self.logger = logging.getLogger(self.name)
         self.errors_directory = os.path.join(self.run_directory, 'errors')
 
-        self.ufunc = None
-
-    def set_ufunc(self, ufunc: Callable) -> None:
-        if not callable(ufunc):
-            self.sinks.send_flush_event()
-            raise RuntimeError("ufunc not callable")
-        self.ufunc = ufunc
 
     def fail(
         self,
@@ -68,13 +61,13 @@ class Importer(Template):
 
         self.writer = self.sinks[0]
 
-    def __call__(self) -> None:
-        if self.ufunc is None:
+    def __call__(self, ufunc: Callable) -> None:
+        if not callable(ufunc):
             self.read_all.send_flush_event()
-            raise RuntimeError("ufunc not set")
+            raise RuntimeError("ufunc not callable")
         self.logger.info("Importer started")
 
-        generator = self.ufunc()
+        generator = ufunc()
         while True:
             try:
                 data = next(generator)
@@ -83,7 +76,7 @@ class Importer(Template):
             except Exception:
                 self.fail("Generator failed")
                 # restart the generator
-                generator = self.ufunc()
+                generator = ufunc()
                 continue
             if data is None:
                 self.writer.buffer.send_flush_event()
@@ -155,7 +148,10 @@ class Filter(Template):
                 self.fail("Filter source and sink dtypes do not match", force_shutdown=True)
         self.writers = self.sinks
 
-    def __call__(self) -> None:
+    def __call__(self, ufunc) -> None:
+        if not callable(ufunc):
+            self.read_all.send_flush_event()
+            raise RuntimeError("ufunc not callable")
         self.true_map = [True] * len(self.sinks)
         self.logger.info("Filter started")
         while True:
@@ -165,7 +161,7 @@ class Filter(Template):
                 if data is None:
                     break
                 try:
-                    result = self.ufunc(data)
+                    result = ufunc(data)
                 except Exception:
                     self.fail("ufunc failed")
                     continue
@@ -205,7 +201,10 @@ class Processor(Template):
         self.reader = self.sources[0]
         self.writers = self.sinks
 
-    def __call__(self) -> None:
+    def __call__(self, ufunc: Callable) -> None:
+        if not callable(ufunc):
+            self.read_all.send_flush_event()
+            raise RuntimeError("ufunc not callable")
         self.logger.info("Processor started")
         while True:
             with self.reader as source:
@@ -214,7 +213,7 @@ class Processor(Template):
                 if data is None:
                     break
                 try:
-                    results = self.ufunc(data)  # TODO this should be a try?
+                    results = ufunc(data)  # TODO this should be a try?
                 except Exception:
                     self.fail("ufunc failed")
                 if results is None:

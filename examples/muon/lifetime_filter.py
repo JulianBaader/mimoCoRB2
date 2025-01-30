@@ -147,8 +147,7 @@ def calculate_decay_time(*mimo_args):
         elif signature_type == 1:
             return [True, None, pulse_parameters]
 
-    processor.set_ufunc(find_double_pulses)
-    processor()
+    processor(find_double_pulses)
 
 
 if __name__ == "__main__":
