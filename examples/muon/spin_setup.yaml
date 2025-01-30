@@ -65,11 +65,11 @@ Workers:
   histUp:
     function: exporters.histogram
     sources: [PulseParametersUp]
-    config: hist_config.yaml
+    config: hist_config_up.yaml
   histDown:
     function: exporters.histogram
     sources: [PulseParametersDown]
-    config: hist_config.yaml
+    config: hist_config_down.yaml
 
   oscilloscope:
     function: observers.oscilloscope
