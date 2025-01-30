@@ -4,6 +4,7 @@ from mimocorb2.mimo_buffer import mimoBuffer
 import numpy as np
 import pickle
 import time
+import os
 
 HEADER = """This is a mimoCoRB file"""
 
@@ -50,8 +51,8 @@ class mimoFile:
         )
 
     @classmethod
-    def from_buffer_object(cls, buffer: mimoBuffer) -> 'mimoFile':
-        filename = buffer.name + '.mimo'
+    def from_buffer_object(cls, buffer: mimoBuffer, directory: str) -> 'mimoFile':
+        filename = os.path.join(directory, buffer.name + '.mimo')
         data_example = buffer.data_example
         metadata_example = buffer.metadata_example
         info = {
@@ -113,7 +114,7 @@ class mimoFile:
 def export(*mimo_args):
     exporter = Exporter(mimo_args)
 
-    file = mimoFile.from_buffer_object(exporter.reader.buffer)
+    file = mimoFile.from_buffer_object(exporter.reader.buffer, exporter.config['run_directory'])
     generator = exporter()
 
     with file:
