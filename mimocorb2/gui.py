@@ -80,11 +80,21 @@ class BufferManagerApp(QtWidgets.QMainWindow):
 
 
 class PlotCanvas(FigureCanvas):
-    def __init__(self, parent, buffers, workers, width=WIDTH, height=HEIGHT, dpi=100, title=""):
-        fig = Figure(figsize=(width, height), dpi=dpi)
+    def __init__(self, parent, buffers, workers, title=""):
+        fig = Figure()
         self.axes = fig.add_subplot(111)
         super().__init__(fig)
-        self.setParent(parent)
+        
+        layout = parent.layout()  # Get the existing layout
+        if layout is None:
+            layout = QtWidgets.QVBoxLayout(parent)
+            parent.setLayout(layout)
+
+        layout.addWidget(self)
+        layout.setContentsMargins(0, 0, 0, 0)  # Ensure no extra margins
+        layout.setSpacing(0)  # Remove extra spacing
+        self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)  # Allow expansion
+        
         self.axes.set_title(title)
 
         self.buffers = buffers

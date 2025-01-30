@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>MainWindow</class>
  <widget class="QMainWindow" name="MainWindow">
@@ -20,7 +21,7 @@
        <enum>QTabWidget::North</enum>
       </property>
       <property name="currentIndex">
-       <number>0</number>
+       <number>1</number>
       </property>
       <property name="tabsClosable">
        <bool>false</bool>
@@ -31,14 +32,7 @@
        </attribute>
        <layout class="QVBoxLayout" name="rateLayout">
         <item>
-         <widget class="QWidget" name="ratePlaceholder" native="true">
-          <property name="minimumSize">
-           <size>
-            <width>800</width>
-            <height>600</height>
-           </size>
-          </property>
-         </widget>
+         <widget class="QWidget" name="ratePlaceholder" native="true"/>
         </item>
        </layout>
       </widget>
@@ -48,14 +42,7 @@
        </attribute>
        <layout class="QVBoxLayout" name="processLayout">
         <item>
-         <widget class="QWidget" name="processPlaceholder" native="true">
-          <property name="minimumSize">
-           <size>
-            <width>800</width>
-            <height>600</height>
-           </size>
-          </property>
-         </widget>
+         <widget class="QWidget" name="processPlaceholder" native="true"/>
         </item>
        </layout>
       </widget>
@@ -65,14 +52,7 @@
        </attribute>
        <layout class="QVBoxLayout" name="bufferLayout">
         <item>
-         <widget class="QWidget" name="bufferPlaceholder" native="true">
-          <property name="minimumSize">
-           <size>
-            <width>800</width>
-            <height>600</height>
-           </size>
-          </property>
-         </widget>
+         <widget class="QWidget" name="bufferPlaceholder" native="true"/>
         </item>
        </layout>
       </widget>
@@ -109,6 +89,13 @@
        </widget>
       </item>
      </layout>
+    </item>
+    <item>
+     <widget class="QLabel" name="label">
+      <property name="text">
+       <string>TextLabel</string>
+      </property>
+     </widget>
     </item>
    </layout>
   </widget>
