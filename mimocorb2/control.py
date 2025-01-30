@@ -122,7 +122,7 @@ class FileReader:
         return normalized
 
     def visualize_setup(
-        self, min_diameter: float = 3, min_width: float = 3, min_height: float = 1, **digraph_kwargs
+        self, file, min_diameter: float = 3, min_width: float = 3, min_height: float = 1, **digraph_kwargs
     ) -> None:
         dot = Digraph(**digraph_kwargs)
         normalized_setup = self()
@@ -148,7 +148,7 @@ class FileReader:
                 else:
                     raise SetupError(f"Worker {worker_name} references unknown observe {observe}")
 
-        dot.render("test", cleanup=True)
+        dot.render(file, cleanup=True)
         dot.view()
 
 
