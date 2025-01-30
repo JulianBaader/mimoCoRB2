@@ -15,7 +15,7 @@ else:
     setup_file = sys.argv[1]
 reader = ctrl.FileReader(setup_file)
 reader.visualize_setup()
-setup = ctrl.SetupRun(*reader())
+setup = ctrl.SetupRun(reader())
 control = ctrl.Control(setup())
 control.start_workers()
 

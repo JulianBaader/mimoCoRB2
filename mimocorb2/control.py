@@ -36,6 +36,7 @@ OPTIONS = {
     'output_directory': 'target',
     'debug_workers': False,
     'overarching_config': [],
+    # 'setup_dir': None,  # added in FileReader
 }
 
 # TODO This has to be made much more clear, i had a headache fixing this
@@ -65,12 +66,13 @@ class FileReader:
         }
 
         norm_options = self.normalize_section('Options', options, OPTIONS)
+        norm_options['setup_dir'] = self.setup_dir
 
         return {
             'Buffers': norm_buffers,
             'Workers': norm_workers,
             'Options': norm_options,
-        }, self.setup_dir
+        }
 
     def load_setup(self) -> tuple[dict, dict, dict]:
         with open(self.setup_file, 'r') as f:
@@ -123,7 +125,7 @@ class FileReader:
         self, min_diameter: float = 3, min_width: float = 3, min_height: float = 1, **digraph_kwargs
     ) -> None:
         dot = Digraph(**digraph_kwargs)
-        normalized_setup = self()[0]
+        normalized_setup = self()
         for buffer_name in normalized_setup['Buffers'].keys():
             dot.node('B' + buffer_name, shape='circle', label=buffer_name, width=str(min_diameter))
         for worker_name in normalized_setup['Workers'].keys():
@@ -169,9 +171,8 @@ class SetupRun:
     }
     """
 
-    def __init__(self, normalized_setup: dict, setup_dir: str) -> None:
+    def __init__(self, normalized_setup: dict) -> None:
         self.setup = normalized_setup
-        self.setup_dir = setup_dir
 
         self.configs_are_dict = False
         self.functions_are_callable = False
@@ -191,11 +192,12 @@ class SetupRun:
         return self.setup
 
     def setup_run_directory(self) -> None:
-        output_directory = self.setup['Options']['output_directory']
+        output_directory = os.path.join(self.setup['Options']['setup_dir'], self.setup['Options']['output_directory'])
         os.makedirs(output_directory, exist_ok=True)
         start_time = time.strftime('%Y-%m-%d_%H-%M-%S')
         self.run_directory = os.path.join(output_directory, 'run' + '_' + start_time)
         os.makedirs(self.run_directory, exist_ok=False)
+        self.run_directory = os.path.abspath(self.run_directory)
 
     # ---> config handeling
     def replace_configs(self) -> None:
@@ -242,7 +244,7 @@ class SetupRun:
         return config
 
     def _load_config_from_file(self, worker_name: str, file: str) -> dict:
-        file = os.path.join(self.setup_dir, file)
+        file = os.path.join(self.setup['Options']['setup_dir'], file)
         if not os.path.isfile(file):
             raise SetupError(f"Config file {file} of worker {worker_name} does not exist.")
         with open(file, 'r') as stream:
@@ -276,7 +278,7 @@ class SetupRun:
                 file = os.path.join(FUNCTIONS_FOLDER, *split, module_name)
             else:
                 # use function relative to setup file
-                file = os.path.join(self.setup_dir, file)
+                file = os.path.join(self.setup['Options']['setup_dir'], file)
 
             if not os.path.isfile(file):
                 raise SetupError(f"File {file} of worker {name} does not exist.")
