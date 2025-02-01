@@ -409,6 +409,12 @@ class Control:
         stats = {}
         for name, info in self.setup['Buffers'].items():
             stats[name] = info['buffer_obj'].get_stats()
+            with BufferObserver(info['buffer_obj']) as observer:
+                metadata, data = observer.copy()
+            if metadata is None:
+                stats[name]['deadtime'] = None
+            else:
+                stats[name]['deadtime'] = metadata['deadtime'][0]
         return stats
 
     def get_active_workers(self) -> dict:
