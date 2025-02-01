@@ -26,6 +26,38 @@
       <property name="tabsClosable">
        <bool>false</bool>
       </property>
+      <widget class="QWidget" name="main_tab">
+       <attribute name="title">
+        <string>Main</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_2">
+        <item>
+         <layout class="QVBoxLayout" name="verticalLayout_3">
+          <item>
+           <layout class="QHBoxLayout" name="horizontalLayout_2">
+            <item>
+             <widget class="QLabel" name="time_active">
+              <property name="text">
+               <string>Time active: </string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="processes_alive">
+              <property name="text">
+               <string>Processes Alive:</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <widget class="QTableWidget" name="main_table"/>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </widget>
       <widget class="QWidget" name="rate_tab">
        <attribute name="title">
         <string>Rate Information</string>
@@ -89,13 +121,6 @@
        </widget>
       </item>
      </layout>
-    </item>
-    <item>
-     <widget class="QLabel" name="label">
-      <property name="text">
-       <string>TextLabel</string>
-      </property>
-     </widget>
     </item>
    </layout>
   </widget>

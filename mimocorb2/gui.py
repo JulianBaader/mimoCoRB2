@@ -39,6 +39,57 @@ class BufferManagerApp(QtWidgets.QMainWindow):
         self.shutdownAllBuffers.clicked.connect(self.action_shutdownAllBuffers)
         self.killWorkers.clicked.connect(self.action_killWorkers)
         self.exitButton.clicked.connect(self.action_exit)
+        
+        # # display flowchart
+        # placeholder = self.findChild(QtWidgets.QWidget, "flow_chart_widget")
+        # self.svg_widget = QSvgWidget(os.path.join(control.setup['Options']['run_directory'], "dataFlow.svg"))
+        # self.svg_widget.setGeometry(placeholder.geometry())  # Match size
+        # self.svg_widget.setParent(self)
+        # #placeholder.deleteLater()
+        
+        
+        
+        # main tab
+        # time active label
+        self.time_active_label = self.findChild(QtWidgets.QLabel, "time_active")
+        # processes alive label
+        self.processes_alive_label = self.findChild(QtWidgets.QLabel, "processes_alive")
+        self.max_number_of_processes = self.control.total_processes
+        
+        # table
+        self.main_table = self.findChild(QtWidgets.QTableWidget, "main_table")
+        self.main_table.setColumnCount(4)
+        self.main_table.setRowCount(len(self.control.buffers_for_shutdown))
+        self.main_table.setHorizontalHeaderLabels(["Buffer", "EC -> Rate", "EC -> Dead Time", "Number of Events"])
+        self.main_table.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
+        for i, buffer in enumerate(self.control.buffers_for_shutdown):
+            item = QtWidgets.QTableWidgetItem(buffer)
+            item.setFlags(QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled)
+            self.main_table.setItem(i, 0, item)
+        
+    def update_main_table(self):
+        for i, buffer in enumerate(self.control.buffers_for_shutdown):
+            buffer_stats = self.control.get_buffer_stats()[buffer]
+            values = [
+                buffer_stats["event_count"],
+                buffer_stats["event_count"],
+                buffer_stats["event_count"]
+            ]
+            for j in range(3):
+                item = QtWidgets.QTableWidgetItem(str(values[j]))
+                item.setFlags(QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled)
+                self.main_table.setItem(i, j+1, item)
+                
+
+            
+    
+    def update_processes_alive(self):
+        processes_alive = sum(self.control.get_active_workers().values())
+        self.processes_alive_label.setText(f"Processes alive: {processes_alive}/{self.max_number_of_processes}")
+        
+    def update_time_active(self):
+        self.time_active_label.setText(f"Time active: {int(self.control.get_time_active())}s")
+        
 
     def update_plots(self):
         buffer_stats = self.control.get_buffer_stats()
@@ -47,6 +98,10 @@ class BufferManagerApp(QtWidgets.QMainWindow):
         self.rate_canvas.update_plot(buffer_stats, worker_stats)
         self.process_canvas.update_plot(buffer_stats, worker_stats)
         self.buffer_canvas.update_plot(buffer_stats, worker_stats)
+        
+        self.update_processes_alive()
+        self.update_main_table()
+        self.update_time_active()
 
     def closeEvent(self, event):
         """Handle the window close event."""
@@ -56,15 +111,19 @@ class BufferManagerApp(QtWidgets.QMainWindow):
             reply = QtWidgets.QMessageBox.warning(
                 self,
                 "Warning",
-                "Some processes are incomplete. Are you sure you want to exit?",
+                """Some processes are incomplete. Are you sure you want to exit?
+                This will shutdown all buffers and then kill all workers.""",
                 QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
                 QtWidgets.QMessageBox.No,
             )
             if reply == QtWidgets.QMessageBox.No:
                 event.ignore()
                 return
-        # Proceed with closing
-        event.accept()
+            self.control.hard_shutdown()
+            time.sleep(5)
+            self.control.kill_workers()
+            # Proceed with closing
+            event.accept()
 
     def action_shutdownRootBuffer(self):
         self.control.clean_shutdown()

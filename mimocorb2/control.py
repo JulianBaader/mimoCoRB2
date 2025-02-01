@@ -37,6 +37,7 @@ OPTIONS = {
     'debug_workers': False,
     'overarching_config': [],
     # 'setup_dir': None,  # added in FileReader
+    # 'run_directory': None,  # added in SetupRun
 }
 
 # TODO This has to be made much more clear, i had a headache fixing this
@@ -122,14 +123,15 @@ class FileReader:
         return normalized
 
     def visualize_setup(
-        self, file, min_diameter: float = 3, min_width: float = 3, min_height: float = 1, **digraph_kwargs
+        self, file, **digraph_kwargs
     ) -> None:
-        dot = Digraph(**digraph_kwargs)
-        normalized_setup = self()
+        normalized_setup = self()     
+        dot = Digraph(format = 'svg', **digraph_kwargs)
+        
         for buffer_name in normalized_setup['Buffers'].keys():
-            dot.node('B' + buffer_name, shape='circle', label=buffer_name, width=str(min_diameter))
+            dot.node('B' + buffer_name, label=buffer_name)
         for worker_name in normalized_setup['Workers'].keys():
-            dot.node('F' + worker_name, shape='box', label=worker_name, width=str(min_width), height=str(min_height))
+            dot.node('F' + worker_name, shape='box', label=worker_name)
 
         for worker_name, worker_data in normalized_setup['Workers'].items():
             for source in worker_data['sources']:
@@ -149,7 +151,6 @@ class FileReader:
                     raise SetupError(f"Worker {worker_name} references unknown observe {observe}")
 
         dot.render(file, cleanup=True)
-        dot.view()
 
 
 class SetupRun:
@@ -198,6 +199,7 @@ class SetupRun:
         self.run_directory = os.path.join(output_directory, 'run' + '_' + start_time)
         os.makedirs(self.run_directory, exist_ok=False)
         self.run_directory = os.path.abspath(self.run_directory)
+        self.setup['Options']['run_directory'] = self.run_directory
 
     # ---> config handeling
     def replace_configs(self) -> None:
@@ -382,6 +384,9 @@ class Control:
         self.setup = initialized_setup
         self.logger = logging.getLogger(__name__)
         self.find_buffers_for_clean_shutdown()
+        
+        
+        self.total_processes = sum([info['number_of_processes'] for info in self.setup['Workers'].values()])
 
     def find_buffers_for_clean_shutdown(self) -> None:
         buffers = []
@@ -421,6 +426,10 @@ class Control:
         for name, info in self.setup['Workers'].items():
             self.logger.info(f"Initalizing processes for worker {name}")
             info['worker_obj'].initialize_processes()
+        self.start_time = time.time()
         for name, info in self.setup['Workers'].items():
             self.logger.info(f"Starting processes for worker {name}")
             info['worker_obj'].start_processes()
+            
+    def get_time_active(self) -> float:
+        return time.time() - self.start_time
