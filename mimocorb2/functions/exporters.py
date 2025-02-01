@@ -28,7 +28,7 @@ def histogram(*mimo_args):
         raise ValueError('histogram exporter only supports data_length = 1')
     run_directory = exporter.config['run_directory']
     update_interval = exporter.config.get('update_interval', 1)
-    plot_type = exporter.config.get('plot_type', 'line')
+    plot_type = exporter.config.get('plot_type', 'bar')
     bin_config = exporter.config['bins']
     visualize = exporter.config.get('visualize', False)
     requested_channels = bin_config.keys()
@@ -77,7 +77,7 @@ def histogram(*mimo_args):
         p.terminate()
 
 
-def sub_histogram(files, bins, update_interval, name, plot_type='line'):
+def sub_histogram(files, bins, update_interval, name, plot_type):
     channels = list(files.keys())
     fig = plt.figure()
     fig.canvas.manager.set_window_title('Histogram ' + name)
@@ -95,7 +95,7 @@ def sub_histogram(files, bins, update_interval, name, plot_type='line'):
         if plot_type == 'line':
             hist_artists[ch], = ax.plot(bins[ch][:-1], data)
         elif plot_type == 'bar':
-            hist_artists[ch] = ax.bar(bins[ch][:-1], data, width=np.diff(bins[ch]), align='edge')
+            hist_artists[ch] = ax.bar(bins[ch][:-1], data, width=0.8 * np.diff(bins[ch]), align='edge')
         elif plot_type == 'step':
             hist_artists[ch], = ax.step(bins[ch][:-1], data, where='mid')
         else:
