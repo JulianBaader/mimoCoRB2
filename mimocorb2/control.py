@@ -47,10 +47,50 @@ INTERFACE_TYPES = [BufferReader, BufferWriter, BufferObserver]
 
 
 class SetupError(Exception):
+    """Exception raised for errors in the setup process."""
     pass
 
 
 class FileReader:
+    """
+    Reads and normalizes a provided YAML setup file defining buffers, workers and options.
+    
+    The setup file must be constructed as follows (yaml syntax):
+    
+    Buffers:
+        buffer_name:
+            slot_count: int
+            data_length: int
+            data_dtype:
+                name: dtype
+                ...
+            overwrite: bool (optional, default: True)
+        ...
+    
+    Workers:
+        worker_name:
+            function: str
+            file: str (optional, default: "")
+            config: str | list[str] | dict (optional, default: [])
+            number_of_processes: int
+            sinks: list[str]
+            sources: list[str]
+            observes: list[str]
+        ...
+    
+    Options:
+        output_directory: str (optional, default: 'target')
+        debug_workers: bool (optional, default: False)
+        overarching_config: str | list[str] | dict (optional, default: [])
+    
+    
+    Configs provided as strings or lists of strings are interpreted as paths to yaml files.
+    Configs provided as a dictionary are used as is.
+    
+    When file is not provided, the function is assumed to be a built-in function.
+    
+    During normalisation each missing optional key is replaced with its default value.
+    """
     def __init__(self, setup_file: str) -> None:
         self.setup_file = os.path.abspath(setup_file)
         self.setup_dir = os.path.dirname(self.setup_file)
@@ -58,6 +98,7 @@ class FileReader:
         self.logger = logging.getLogger(__name__)
 
     def __call__(self) -> tuple[dict, str]:
+        """Return the normalized setup"""
         buffers, workers, options = self.load_setup()
         norm_buffers = {
             name: self.normalize_section('Buffer: ' + name, data, BUFFERS) for name, data in buffers.items()
@@ -93,7 +134,7 @@ class FileReader:
 
     def normalize_section(self, section_name: str, section_data: dict, defaults: dict) -> dict:
         """
-        Normalize a section from the setup file (e.g., buffers or workers).
+        Normalizes a section from the setup file, ensuring required keys are present.
 
         Parameters
         ----------
@@ -125,6 +166,7 @@ class FileReader:
     def visualize_setup(
         self, file, **digraph_kwargs
     ) -> None:
+        """Creates a Graphviz visualization of the setup and saves it as an SVG file."""
         normalized_setup = self()     
         dot = Digraph(format = 'svg', **digraph_kwargs)
         
@@ -154,23 +196,7 @@ class FileReader:
 
 
 class SetupRun:
-    """
-
-    This class assumes the setup provided is normalized in the following way.
-    setup = {
-        'Buffers': {buffer_name: BUFFERS, ...}
-        'Workers': {worker_name: WORKERS, ...}
-        'Options': OPTIONS
-    }
-
-    after Setting up the run (__call__), the following structure is created:
-
-    setup = {
-        'Buffers': {
-
-        }
-    }
-    """
+    """Processes and initializes the setup configuration, creating buffers and workers."""
 
     def __init__(self, normalized_setup: dict) -> None:
         self.setup = normalized_setup
@@ -182,6 +208,7 @@ class SetupRun:
         self.workers_created = False
 
     def __call__(self) -> dict:
+        """Execute the setup processes and return the initialized setup."""
         self.setup_run_directory()
         self.replace_configs()
         self.dump_setup()
@@ -193,6 +220,7 @@ class SetupRun:
         return self.setup
 
     def setup_run_directory(self) -> None:
+        """Setup the directory for the run output."""
         output_directory = os.path.join(self.setup['Options']['setup_dir'], self.setup['Options']['output_directory'])
         os.makedirs(output_directory, exist_ok=True)
         start_time = time.strftime('%Y-%m-%d_%H-%M-%S')
@@ -203,6 +231,7 @@ class SetupRun:
 
     # ---> config handeling
     def replace_configs(self) -> None:
+        """Replace every config entry with the correct config dictionary."""
         overarching_config = self._ensure_config_dict("OVERARCHING", self.setup['Options']['overarching_config'])
 
         for name, info in self.setup['Workers'].items():
@@ -227,6 +256,7 @@ class SetupRun:
         self.configs_are_dict = True
 
     def _ensure_config_dict(self, worker_name: str, worker_config: str | list[str] | dict) -> dict:
+        """Converts a config entry to a dictionary if it is not already."""
         if isinstance(worker_config, dict):
             return worker_config
         elif isinstance(worker_config, str):
@@ -234,6 +264,7 @@ class SetupRun:
         return self._config_files_to_dict(worker_name, worker_config)
 
     def _config_files_to_dict(self, worker_name: str, config_files: list[str]) -> dict:
+        """Converts a list of config file paths to a dictionary."""
         config = {}
         for file in config_files:
             config_from_file = self._load_config_from_file(worker_name, file)
@@ -246,6 +277,7 @@ class SetupRun:
         return config
 
     def _load_config_from_file(self, worker_name: str, file: str) -> dict:
+        """Loads a config file and returns its content as a dictionary."""
         file = os.path.join(self.setup['Options']['setup_dir'], file)
         if not os.path.isfile(file):
             raise SetupError(f"Config file {file} of worker {worker_name} does not exist.")
@@ -259,6 +291,7 @@ class SetupRun:
     # <--- config handeling
 
     def dump_setup(self) -> None:
+        """Dump the setup to a yaml file in the run directory."""
         if not self.configs_are_dict:
             self.replace_configs()
         with open(os.path.join(self.run_directory, 'setup.yaml'), 'w') as file:
@@ -266,6 +299,7 @@ class SetupRun:
 
     # ---> function handeling
     def add_callable_functions(self) -> None:
+        """Add the callable functions to the setup."""
         for name, info in self.setup['Workers'].items():
             file = info['file']
             function = info['function']
@@ -290,6 +324,7 @@ class SetupRun:
         self.functions_are_callable = True
 
     def _import_function_from_file(self, file: str, function_name: str) -> Callable:
+        """Import a function from a file and return it."""
         directory = os.path.dirname(file)
         module_name = os.path.basename(file).removesuffix('.py')
 
@@ -307,6 +342,7 @@ class SetupRun:
 
     # ---> buffer handeling
     def create_buffers(self) -> None:
+        """Create the mimo_buffer objects."""
         for name, info in self.setup['Buffers'].items():
             if not self._is_whole(info['slot_count']):
                 raise SetupError(f"Buffer {name} slot_count must be a positive integer.")
@@ -324,6 +360,7 @@ class SetupRun:
         self.buffer_objects_created = True
 
     def _interpret_dtype(self, buffer_name: str, dtype_setup: dict) -> np.dtype:
+        """Interpret thy dtype setup and return a numpy dtype."""
         try:
             return np.dtype([(name, dtype) for name, dtype in dtype_setup.items()])
         except (TypeError, ValueError):
@@ -333,6 +370,7 @@ class SetupRun:
 
     # ---> worker handeling
     def make_args(self) -> None:
+        """Generate the arguments for the workers. args = [sources, sinks, observes, config]"""
         if not self.buffer_objects_created:
             self.create_buffers()
         if not self.configs_are_dict:
@@ -350,6 +388,7 @@ class SetupRun:
     def _make_interface_list(
         self, worker_name: str, buffer_list: list[str], arg_index: int
     ) -> list[BufferReader | BufferWriter | BufferObserver]:
+        """Create a list of buffer interfaces for a worker."""
         interface_list = []
         for buffer_name in buffer_list:
             if buffer_name not in self.setup['Buffers']:
@@ -358,6 +397,7 @@ class SetupRun:
         return interface_list
 
     def create_workers(self) -> None:
+        """Create the mimo_worker objects."""
         if not self.functions_are_callable:
             self.add_callable_functions()
         if not self.args_made:
@@ -376,6 +416,7 @@ class SetupRun:
 
     @staticmethod
     def _is_whole(value: Any) -> bool:
+        """Check if a value is a positive integer."""
         return isinstance(value, int) and value > 0
 
 
@@ -389,6 +430,7 @@ class Control:
         self.total_processes = sum([info['number_of_processes'] for info in self.setup['Workers'].values()])
 
     def find_buffers_for_clean_shutdown(self) -> None:
+        """Find all buffers that do not have any sources or observes and add them to the shutdown list."""
         buffers = []
         for name, info in self.setup['Workers'].items():
             if len(info['sources']) == 0 and len(info['observes']) == 0:
@@ -396,16 +438,19 @@ class Control:
         self.buffers_for_shutdown = buffers
 
     def clean_shutdown(self) -> None:
+        """Shut down all buffers that do not have any sources or observes."""
         for name in self.buffers_for_shutdown:
             self.logger.info(f"Shutting down buffer {name}")
             self.setup['Buffers'][name]['buffer_obj'].send_flush_event()
 
     def hard_shutdown(self) -> None:
+        """Shut down all buffers."""
         for name, info in self.setup['Buffers'].items():
             self.logger.info(f"Shutting down buffer {name}")
             info['buffer_obj'].send_flush_event()
 
     def get_buffer_stats(self) -> dict:
+        """Get the statistics of all buffers."""
         stats = {}
         for name, info in self.setup['Buffers'].items():
             stats[name] = info['buffer_obj'].get_stats()
@@ -418,17 +463,20 @@ class Control:
         return stats
 
     def get_active_workers(self) -> dict:
+        """Get the number of active processes for each worker."""
         active = {}
         for name, info in self.setup['Workers'].items():
             active[name] = sum(info['worker_obj'].alive_processes())
         return active
 
     def kill_workers(self) -> None:
+        """Kill all workers."""
         for name, info in self.setup['Workers'].items():
             self.logger.info(f"Shutting down worker {name}")
             info['worker_obj'].shutdown()
 
     def start_workers(self) -> None:
+        """Initialize and start all workers."""
         for name, info in self.setup['Workers'].items():
             self.logger.info(f"Initalizing processes for worker {name}")
             info['worker_obj'].initialize_processes()
@@ -438,4 +486,5 @@ class Control:
             info['worker_obj'].start_processes()
             
     def get_time_active(self) -> float:
+        """Return the time the workers have been active."""
         return time.time() - self.start_time
