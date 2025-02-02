@@ -15,14 +15,5 @@ documentation for details.
    :maxdepth: 2
    :caption: Contents:
 
+   modules/mimo_buffer
 
-
-hey 
-
-
-.. automodule:: mimocorb2.mimo_buffer
-      :members:
-
-
-
-hello
