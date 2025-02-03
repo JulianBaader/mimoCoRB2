@@ -428,6 +428,7 @@ class Control:
         
         
         self.total_processes = sum([info['number_of_processes'] for info in self.setup['Workers'].values()])
+        self.last_event_counts = {name: 0 for name in self.setup['Buffers'].keys()}
 
     def find_buffers_for_clean_shutdown(self) -> None:
         """Find all buffers that do not have any sources or observes and add them to the shutdown list."""
@@ -452,8 +453,13 @@ class Control:
     def get_buffer_stats(self) -> dict:
         """Get the statistics of all buffers."""
         stats = {}
+        current_time = time.time()
         for name, info in self.setup['Buffers'].items():
             stats[name] = info['buffer_obj'].get_stats()
+            current_event_count = stats[name]['event_count']
+            stats[name]['rate'] = (current_event_count - self.last_event_counts[name]) / (current_time - self.last_stats_time)
+            self.last_event_counts[name] = current_event_count
+        self.last_stats_time = current_time
         return stats
 
     def get_active_workers(self) -> dict:
@@ -475,6 +481,7 @@ class Control:
             self.logger.info(f"Initalizing processes for worker {name}")
             info['worker_obj'].initialize_processes()
         self.start_time = time.time()
+        self.last_stats_time = self.start_time
         for name, info in self.setup['Workers'].items():
             self.logger.info(f"Starting processes for worker {name}")
             info['worker_obj'].start_processes()

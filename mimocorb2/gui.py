@@ -63,7 +63,7 @@ class BufferManagerApp(QtWidgets.QMainWindow):
         for i, buffer in enumerate(self.control.buffers_for_shutdown):
             buffer_stats = self.control.get_buffer_stats()[buffer]
             values = [
-                buffer_stats["event_count"],
+                buffer_stats["rate"],
                 buffer_stats["event_count"],
                 buffer_stats["event_count"]
             ]
@@ -214,8 +214,6 @@ class WorkerCanvas(PlotCanvas):
 class RateCanvas(PlotCanvas):
     def init_plot(self):
         self.rates = {key: [0] * NUMBER_OF_DATA_POINTS for key in self.buffers}
-        self.last_event_count = {key: 0 for key in self.buffers}
-        self.last_update_time = {key: time.time() for key in self.buffers}
         self.lines = {}
         for key in self.buffers:
             self.lines[key] = self.axes.plot()
@@ -233,46 +231,11 @@ class RateCanvas(PlotCanvas):
 
     def update_plot(self, buffer_stats, worker_stats):
         for key in self.buffers:
-            event_count = buffer_stats[key]["event_count"]
-            update_time = time.time()
-
-            rate = (event_count - self.last_event_count[key]) / (update_time - self.last_update_time[key])
-            self.rates[key].append(rate)
+            self.rates[key].append(buffer_stats[key]['rate'])
             self.rates[key].pop(0)
-
-            self.last_event_count[key] = event_count
-            self.last_update_time[key] = update_time
-
             self.lines[key].set_ydata(self.rates[key])
 
         # self.axes.relim()
         # self.axes.autoscale_view()
         # self.axes.set_ylim(bottom=0)
         self.draw()
-
-
-class BufferTable(QtWidgets.QTableWidget):
-    def __init__(self, parent, buffers):
-        super().__init__(parent)
-        self.buffers = buffers
-        self.setColumnCount(4)
-        self.setRowCount(len(buffers))
-        self.setHorizontalHeaderLabels(["Buffer", "EC -> Rate", "EC -> Dead Time", "Number of Events"])
-        self.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
-        for i, buffer in enumerate(buffers):
-            item = QtWidgets.QTableWidgetItem(buffer)
-            item.setFlags(QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled)
-            self.setItem(i, 0, item)
-
-    def update(self, buffer_stats):
-        for i, buffer in enumerate(self.buffers):
-            buffer_stats = buffer_stats[buffer]
-            values = [
-                buffer_stats["event_count"],
-                buffer_stats["deadtime"],
-                buffer_stats["event_count"]
-            ]
-            for j in range(3):
-                item = QtWidgets.QTableWidgetItem(str(values[j]))
-                item.setFlags(QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled)
-                self.setItem(i, j+1, item)
