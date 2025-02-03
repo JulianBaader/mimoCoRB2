@@ -11,7 +11,7 @@ WIDTH = 5
 HEIGHT = 4
 DPI = 100
 
-NUMBER_OF_DATA_POINTS = 10
+NUMBER_OF_DATA_POINTS = 50
 
 class BufferManagerApp(QtWidgets.QMainWindow):
     def __init__(self, control):
@@ -28,7 +28,6 @@ class BufferManagerApp(QtWidgets.QMainWindow):
         self.rate_canvas = RateCanvas(self.rate_tab, buffers, workers, title="Rate Information")
         self.process_canvas = WorkerCanvas(self.process_tab, buffers, workers, title="Process Information")
         self.buffer_canvas = BufferCanvas(self.buffer_tab, buffers, workers, title="Buffer Information")
-        self.buffer_table = BufferTable(self.findChild(QtWidgets.QTableWidget, "main_table"), self.control.buffers_for_shutdown)
 
         # Add timers for real-time updates
         self.timer = QtCore.QTimer()
@@ -47,6 +46,31 @@ class BufferManagerApp(QtWidgets.QMainWindow):
         # processes alive label
         self.processes_alive_label = self.findChild(QtWidgets.QLabel, "processes_alive")
         self.max_number_of_processes = self.control.total_processes
+        
+        
+        # table
+        self.main_table = self.findChild(QtWidgets.QTableWidget, "main_table")
+        self.main_table.setColumnCount(4)
+        self.main_table.setRowCount(len(self.control.buffers_for_shutdown))
+        self.main_table.setHorizontalHeaderLabels(["Buffer", "EC -> Rate", "EC -> Dead Time", "Number of Events"])
+        self.main_table.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
+        for i, buffer in enumerate(self.control.buffers_for_shutdown):
+            item = QtWidgets.QTableWidgetItem(buffer)
+            item.setFlags(QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled)
+            self.main_table.setItem(i, 0, item)
+        
+    def update_main_table(self):
+        for i, buffer in enumerate(self.control.buffers_for_shutdown):
+            buffer_stats = self.control.get_buffer_stats()[buffer]
+            values = [
+                buffer_stats["event_count"],
+                buffer_stats["event_count"],
+                buffer_stats["event_count"]
+            ]
+            for j in range(3):
+                item = QtWidgets.QTableWidgetItem(str(values[j]))
+                item.setFlags(QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled)
+                self.main_table.setItem(i, j+1, item)
             
     
     def update_processes_alive(self):
@@ -66,7 +90,7 @@ class BufferManagerApp(QtWidgets.QMainWindow):
         self.buffer_canvas.update_plot(buffer_stats, worker_stats)
         
         self.update_processes_alive()
-        self.buffer_table.update(buffer_stats)
+        self.update_main_table()
         self.update_time_active()
 
     def closeEvent(self, event):
