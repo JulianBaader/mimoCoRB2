@@ -66,12 +66,14 @@ class Importer(Template):
             self.read_all.send_flush_event()
             raise RuntimeError("ufunc not callable")
         self.logger.info("Importer started")
+        
+        time_last_event = time.time()
 
         generator = ufunc()
         while True:
             try:
                 data = next(generator)
-                t_data_ready = time.time()
+                time_data_ready = time.time()
                 timestamp = time.time_ns() * 1e-9  # in s as type float64
             except Exception:
                 self.fail("Generator failed")
@@ -87,9 +89,10 @@ class Importer(Template):
                 sink[DATA][:] = data
                 sink[METADATA]['counter'] = self.counter
                 sink[METADATA]['timestamp'] = timestamp
-                t_buffer_ready = time.time()
-                sink[METADATA]['deadtime'] = t_buffer_ready - t_data_ready
+                time_buffer_ready = time.time()
+                sink[METADATA]['deadtime'] = (time_buffer_ready - time_data_ready) / (time_buffer_ready - time_last_event)
             self.counter += 1
+            time_last_event = time.time()
         self.logger.info("Importer finished")
 
 
