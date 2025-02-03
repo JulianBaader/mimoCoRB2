@@ -112,6 +112,7 @@ class mimoFile:
 
 
 def export(*mimo_args):
+    """mimoCoRB Exporter: Export data to a mimo file"""
     exporter = Exporter(mimo_args)
 
     file = mimoFile.from_buffer_object(exporter.reader.buffer, exporter.config['run_directory'])
@@ -126,6 +127,7 @@ def export(*mimo_args):
 
 
 def simulate_importer(*mimo_args):
+    """mimoCoRB Importer: Import data from a mimo file with the timing of the original data"""
     raise NotImplementedError("This function is not yet correctly implemented")
     importer = Importer(mimo_args)
 
@@ -154,5 +156,6 @@ def simulate_importer(*mimo_args):
     importer(ufunc)
 
 def clocked_importer(*mimo_args):
+    """mimoCoRB Importer: Import data from a mimo file with a fixed (uniform/poisson) rate"""
     raise NotImplementedError("This function is not yet implemented")
     # TODO a function which just puts in the data and metadata from the file, with a uniform/poisson fixed rate

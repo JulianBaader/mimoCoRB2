@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 
 
 def drain(*mimo_args):
+    """mimoCoRB Exporter: drain data from a buffer"""
     exporter = Exporter(mimo_args)
     generator = exporter()
     while True:
@@ -17,6 +18,21 @@ def drain(*mimo_args):
 
 
 def histogram(*mimo_args):
+    """mimoCoRB Exporter: create histograms of data
+    
+    Configs
+    -------
+    run_directory : str
+        Directory to save the histograms
+    update_interval : int, optional (default=1)
+        Interval in seconds to update the histograms
+    bin_config : dict
+        channel: [start, stop, num_bins]
+    visualize : bool, optional (default=False)
+        Whether to visualize the histograms in real-time
+    plot_type : str, optional (default='bar')
+        Type of plot to use for the histograms. Options are 'line', 'bar', or 'step'.   
+    """
     exporter = Exporter(mimo_args)
 
     # Get info from the buffer

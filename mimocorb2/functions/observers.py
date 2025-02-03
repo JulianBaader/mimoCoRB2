@@ -5,6 +5,23 @@ import time
 
 
 def oscilloscope(*mimo_args):
+    """mimoCoRB Observer: Visualize oscilloscope data
+    
+    Configs
+    -------
+    update_interval : int, optional (default=1)
+        Interval in seconds to update the oscilloscope
+    ylim : tuple, optional
+        Y-axis limits, if None autoscale on every refresh
+    t_scaling : tuple, optional (default=(1, 0, 'Samples'))
+        Scaling of the time axis (scaling, offset, unit)
+    y_scaling : tuple, optional (default=(1, 0, 'Value'))
+        Scaling of the y axis (scaling, offset, unit)
+    channels : list, optional
+        List of channels to plot, if None plot all available channels
+    trigger_level : float, optional
+        Trigger level to be plotted as a dotted line
+    """
     # Get info from the buffer
     observer = Observer(mimo_args)
     data_example = observer.observer.data_example
