@@ -72,7 +72,7 @@ def histogram(*mimo_args):
     save_hists()
 
     if visualize:
-        p = multiprocessing.Process(target=sub_histogram, args=(files, bins, update_interval, name, plot_type))
+        p = multiprocessing.Process(target=sub_histogram, args=(files, bins, update_interval, name, plot_type), daemon=True)
         p.start()
 
     generator = exporter()
