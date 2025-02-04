@@ -54,7 +54,7 @@ Workers:
   filter:
     file: lifetime_filter.py
     function: calculate_decay_time
-    number_of_processes: 2
+    number_of_processes: 3
     sources: [InputBuffer]
     sinks: [AcceptedPulses, PulseParametersUp, PulseParametersDown]
     config: config.yaml
@@ -74,3 +74,6 @@ Workers:
   oscilloscope:
     function: observers.oscilloscope
     observes: [InputBuffer]
+  accepted_ocilloscope:
+    function: observers.oscilloscope
+    observes: [AcceptedPulses]
