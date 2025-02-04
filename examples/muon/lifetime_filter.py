@@ -143,9 +143,9 @@ def calculate_decay_time(*mimo_args):
             return None
 
         if signature_type == 0:
-            return [True, pulse_parameters, None]
+            return [input_data, pulse_parameters, None]
         elif signature_type == 1:
-            return [True, None, pulse_parameters]
+            return [input_data, None, pulse_parameters]
 
     processor(find_double_pulses)
 
