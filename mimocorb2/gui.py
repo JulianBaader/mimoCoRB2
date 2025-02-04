@@ -11,7 +11,7 @@ WIDTH = 5
 HEIGHT = 4
 DPI = 100
 
-NUMBER_OF_DATA_POINTS = 50
+NUMBER_OF_DATA_POINTS = 3600
 
 class BufferManagerApp(QtWidgets.QMainWindow):
     def __init__(self, control):
@@ -222,12 +222,16 @@ class RateCanvas(PlotCanvas):
             for key in self.buffers
         }
 
+        LINTHRESH = 60
+        MIN_RATE = 0.1
+        MAX_RATE = 2000
         self.axes.legend(loc="upper left")
-        self.axes.set_ylim(0.1, 2000)
+        self.axes.set_ylim(MIN_RATE, MAX_RATE)
         self.axes.set_yscale("log")
+        self.axes.set_xscale('symlog', linthresh=LINTHRESH)
+        self.axes.set_xlim(-NUMBER_OF_DATA_POINTS, 0)
         self.axes.set_ylabel("Rate (events/s)")
-        for label in self.axes.get_xticklabels():
-            label.set_horizontalalignment('right')
+        # self.axes.axvline(LINTHRESH, linestyle='dashed') TODO
 
     def update_plot(self, buffer_stats, worker_stats):
         for key in self.buffers:
