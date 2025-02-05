@@ -11,7 +11,6 @@ WIDTH = 5
 HEIGHT = 4
 DPI = 100
 
-NUMBER_OF_DATA_POINTS = 3600
 
 class BufferManagerApp(QtWidgets.QMainWindow):
     def __init__(self, control):
@@ -213,33 +212,22 @@ class WorkerCanvas(PlotCanvas):
 
 class RateCanvas(PlotCanvas):
     def init_plot(self):
-        self.rates = {key: [0] * NUMBER_OF_DATA_POINTS for key in self.buffers}
+        self.rates = {key: [0] for key in self.buffers}
+        self.times = [0]
         self.lines = {}
+        self.init_time = time.time()
         for key in self.buffers:
-            self.lines[key] = self.axes.plot()
-        self.lines = {
-            key: self.axes.plot(np.arange(-NUMBER_OF_DATA_POINTS, 0) + 1, self.rates[key], label=key)[0]
-            for key in self.buffers
-        }
+            self.lines[key] = self.axes.plot(self.times,self.rates[key], label=key)[0]
 
-        LINTHRESH = 60
-        MIN_RATE = 0.1
-        MAX_RATE = 2000
         self.axes.legend(loc="upper left")
-        self.axes.set_ylim(MIN_RATE, MAX_RATE)
         self.axes.set_yscale("log")
-        self.axes.set_xscale('symlog', linthresh=LINTHRESH)
-        self.axes.set_xlim(-NUMBER_OF_DATA_POINTS, 0)
         self.axes.set_ylabel("Rate (events/s)")
-        # self.axes.axvline(LINTHRESH, linestyle='dashed') TODO
-
+        self.axes.set_xlabel("Time (s)")
     def update_plot(self, buffer_stats, worker_stats):
+        self.times.append(time.time() - self.init_time)
         for key in self.buffers:
-            self.rates[key].append(buffer_stats[key]['rate'])
-            self.rates[key].pop(0)
-            self.lines[key].set_ydata(self.rates[key])
-
-        # self.axes.relim()
-        # self.axes.autoscale_view()
-        # self.axes.set_ylim(bottom=0)
+            self.rates[key].append(buffer_stats[key]["rate"])
+            self.lines[key].set_data(self.times, self.rates[key])
+        self.axes.relim()
+        self.axes.autoscale_view()
         self.draw()
