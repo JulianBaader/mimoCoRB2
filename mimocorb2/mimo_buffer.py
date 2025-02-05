@@ -43,6 +43,7 @@ from multiprocessing import shared_memory, Queue, Value
 import queue
 import ctypes
 import logging
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -152,15 +153,24 @@ class mimoBuffer:
         self.event_count = Value(ctypes.c_ulonglong, 0)
         self.overwrite_count = Value(ctypes.c_ulong, 0)
         self.flush_event_received = Value(ctypes.c_bool, False)
+        
+        self.last_stats_time = time.time()
+        self.last_event_count = 0
 
     def get_stats(self) -> dict:
-        return {
+        current_time = time.time()
+        current_event_count = self.event_count.value
+        stats = {
             "event_count": self.event_count.value,
             "overwrite_count": self.overwrite_count.value,
             "filled_slots": self.filled_slots.qsize() / self.slot_count,
             "empty_slots": self.empty_slots.qsize() / self.slot_count,
             "flush_event_received": self.flush_event_received.value,
+            "rate": (current_event_count - self.last_event_count) / (current_time - self.last_stats_time),
         }
+        self.last_stats_time = current_time
+        self.last_event_count = current_event_count
+        return stats
 
     def access_slot(self, token: int | None) -> list[np.ndarray, np.ndarray] | list[None, None]:
         if token is None:

@@ -428,7 +428,6 @@ class Control:
         
         
         self.total_processes = sum([info['number_of_processes'] for info in self.setup['Workers'].values()])
-        self.last_event_counts = {name: 0 for name in self.setup['Buffers'].keys()}
 
     def find_buffers_for_clean_shutdown(self) -> None:
         """Find all buffers that do not have any sources or observes and add them to the shutdown list."""
@@ -456,9 +455,6 @@ class Control:
         current_time = time.time()
         for name, info in self.setup['Buffers'].items():
             stats[name] = info['buffer_obj'].get_stats()
-            current_event_count = stats[name]['event_count']
-            stats[name]['rate'] = (current_event_count - self.last_event_counts[name]) / (current_time - self.last_stats_time)
-            self.last_event_counts[name] = current_event_count
         self.last_stats_time = current_time
         return stats
 
