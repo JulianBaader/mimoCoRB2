@@ -128,30 +128,36 @@ def export(*mimo_args):
 
 def simulate_importer(*mimo_args):
     """mimoCoRB Importer: Import data from a mimo file with the timing of the original data"""
-    raise NotImplementedError("This function is not yet correctly implemented")
+    # TODO Think about the fact, that the ordering of events is probably not correct
     importer = Importer(mimo_args)
+    filename = importer.config['filename']
 
-    file = mimoFile.from_file(importer.writer.buffer.name + '.mimo')
-
+    file = mimoFile.from_file(filename)
+    if file.data_dtype != importer.writer.buffer.data_example.dtype:
+        raise ValueError("Data type mismatch")
+    if file.data_length != importer.writer.buffer.data_example.size:
+        raise ValueError("Data length mismatch")
+    generator = file.read_data()
     def ufunc():
-        with file:
-            last_send_time = time.time_ns() * 1e-9
-            last_timestamp = 0
-            while True:
-                data, metadata = file.read_data()
-                if data is None:
-                    break
-                current_send_time = time.time_ns() * 1e-9
-                current_timestamp = metadata['timestamp']
-
-                time_since_last_send = current_send_time - last_send_time
-                time_since_last_data = current_timestamp - last_timestamp
-                if time_since_last_send < time_since_last_data:
-                    time.sleep(time_since_last_data - time_since_last_send)
-                yield data
-
-                last_send_time = current_send_time
-                last_timestamp = current_timestamp
+        data, metadata = next(generator)
+        last_event_time = metadata["timestamp"][0]
+        last_send_time = time.time()
+        yield data
+        while True:
+            data, metadata = next(generator)
+            if data is None or metadata is None:
+                yield None, None
+                break
+            event_time = metadata["timestamp"][0]
+            time_between_event = event_time - last_event_time
+            time_since_last_send = time.time() - last_send_time
+            if time_since_last_send < time_between_event:
+                print("Sleeping for", time_between_event - time_since_last_send)
+                time.sleep(time_between_event - time_since_last_send)
+            last_event_time = event_time
+            last_send_time = time.time()
+            yield data
+        
 
     importer(ufunc)
 
