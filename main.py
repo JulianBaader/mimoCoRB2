@@ -26,6 +26,10 @@ control.start_workers()
 
 
 app = QtWidgets.QApplication(sys.argv)
-window = BufferManagerApp(control)
+try:
+    window = BufferManagerApp(control)
+except Exception as e:
+    control.kill_workers()
+    raise e
 window.show()
 sys.exit(app.exec_())
