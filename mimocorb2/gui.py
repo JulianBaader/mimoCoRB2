@@ -51,7 +51,7 @@ class BufferManagerApp(QtWidgets.QMainWindow):
         self.main_table = self.findChild(QtWidgets.QTableWidget, "main_table")
         self.main_table.setColumnCount(4)
         self.main_table.setRowCount(len(self.control.buffers_for_shutdown))
-        self.main_table.setHorizontalHeaderLabels(["Buffer", "EC -> Rate", "EC -> Dead Time", "Number of Events"])
+        self.main_table.setHorizontalHeaderLabels(["Buffer", "Rate (Hz)", "Dead Time (%)", "Number of Events"])
         self.main_table.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
         for i, buffer in enumerate(self.control.buffers_for_shutdown):
             item = QtWidgets.QTableWidgetItem(buffer)
@@ -63,7 +63,7 @@ class BufferManagerApp(QtWidgets.QMainWindow):
             buffer_stats = self.control.get_buffer_stats()[buffer]
             values = [
                 buffer_stats["rate"],
-                buffer_stats["event_count"],
+                buffer_stats["average_deadtime"],
                 buffer_stats["event_count"]
             ]
             for j in range(3):

@@ -153,13 +153,16 @@ class mimoBuffer:
         self.event_count = Value(ctypes.c_ulonglong, 0)
         self.overwrite_count = Value(ctypes.c_ulong, 0)
         self.flush_event_received = Value(ctypes.c_bool, False)
+        self.total_deadtime = Value(ctypes.c_double, 0.0)
         
         self.last_stats_time = time.time()
         self.last_event_count = 0
+        self.last_deadtime = 0
 
     def get_stats(self) -> dict:
         current_time = time.time()
         current_event_count = self.event_count.value
+        current_deadtime = self.total_deadtime.value
         stats = {
             "event_count": self.event_count.value,
             "overwrite_count": self.overwrite_count.value,
@@ -167,9 +170,11 @@ class mimoBuffer:
             "empty_slots": self.empty_slots.qsize() / self.slot_count,
             "flush_event_received": self.flush_event_received.value,
             "rate": (current_event_count - self.last_event_count) / (current_time - self.last_stats_time),
+            "average_deadtime": _divide(current_deadtime - self.last_deadtime , current_event_count - self.last_event_count),
         }
         self.last_stats_time = current_time
         self.last_event_count = current_event_count
+        self.last_deadtime = current_deadtime
         return stats
 
     def access_slot(self, token: int | None) -> list[np.ndarray, np.ndarray] | list[None, None]:
@@ -223,6 +228,8 @@ class mimoBuffer:
         """Return a token to which data has been written."""
         with self.event_count.get_lock():
             self.event_count.value += 1
+        with self.total_deadtime.get_lock():
+            self.total_deadtime.value += self.buffer[token][: self.metadata_byte_size].view(self.metadata_dtype)["deadtime"] # TODO i think this is ugly
         self.filled_slots.put(token)
 
     def get_read_token(self) -> int | None:
@@ -325,3 +332,7 @@ class BufferObserver(Interface):
 
     def __exit__(self, exc_type, exc_value, traceback) -> None:
         self.buffer.return_observe_token(self.token)
+
+
+def _divide(a, b):
+    return a / b if b != 0 else 0
