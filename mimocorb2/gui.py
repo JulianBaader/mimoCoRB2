@@ -81,16 +81,19 @@ class BufferManagerApp(QtWidgets.QMainWindow):
         
 
     def update_plots(self):
-        buffer_stats = self.control.get_buffer_stats()
-        worker_stats = self.control.get_active_workers()
+        try:
+            buffer_stats = self.control.get_buffer_stats()
+            worker_stats = self.control.get_active_workers()
 
-        self.rate_canvas.update_plot(buffer_stats, worker_stats)
-        self.process_canvas.update_plot(buffer_stats, worker_stats)
-        self.buffer_canvas.update_plot(buffer_stats, worker_stats)
-        
-        self.update_processes_alive()
-        self.update_main_table()
-        self.update_time_active()
+            self.rate_canvas.update_plot(buffer_stats, worker_stats)
+            self.process_canvas.update_plot(buffer_stats, worker_stats)
+            self.buffer_canvas.update_plot(buffer_stats, worker_stats)
+            
+            self.update_processes_alive()
+            self.update_main_table()
+            self.update_time_active()
+        except Exception as e:
+            print(f"Error updating plots: {e}")
 
     def closeEvent(self, event):
         """Handle the window close event."""
