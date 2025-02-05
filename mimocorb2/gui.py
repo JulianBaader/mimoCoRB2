@@ -5,6 +5,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import time
 import os
+import logging
+
+
+
 
 
 WIDTH = 5
@@ -57,6 +61,17 @@ class BufferManagerApp(QtWidgets.QMainWindow):
             item = QtWidgets.QTableWidgetItem(buffer)
             item.setFlags(QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled)
             self.main_table.setItem(i, 0, item)
+            
+            
+        # logs for the buffer stats
+        formatter = logging.Formatter('%(asctime)s - %(message)s')
+        file_handler = logging.FileHandler(os.path.join(self.control.setup['Options']['run_directory'], "buffer_stats.log"))
+        file_handler.setFormatter(formatter)
+        self.buffer_stats_logger = logging.getLogger("buffer_stats")
+        self.buffer_stats_logger.addHandler(file_handler)
+        self.buffer_stats_logger.propagate = False
+        
+        self.buffer_stats_logger.setLevel(logging.INFO)
         
     def update_main_table(self):
         for i, buffer in enumerate(self.control.buffers_for_shutdown):
@@ -85,6 +100,8 @@ class BufferManagerApp(QtWidgets.QMainWindow):
             buffer_stats = self.control.get_buffer_stats()
             worker_stats = self.control.get_active_workers()
 
+            self.buffer_stats_logger.info(f'Buffer Stats: {buffer_stats}')
+            
             self.rate_canvas.update_plot(buffer_stats, worker_stats)
             self.process_canvas.update_plot(buffer_stats, worker_stats)
             self.buffer_canvas.update_plot(buffer_stats, worker_stats)
