@@ -69,15 +69,15 @@ def pha(*mimo_args):
             rel_height = rel_height,
             plateau_size = plateau_size,
         )
-        out = []
         for i in range(len(peaks)):
             for parameter in requested_parameters:
                 if parameter in ['position']:
                     data_example_out['position'] = peaks[i]
                 else:
                     data_example_out[parameter] = properties[parameter][i]
-            out.append(data_example_out.copy())
-        return out
+            return [data_example_out]
+    
+    processor(ufunc)
         
     
     
