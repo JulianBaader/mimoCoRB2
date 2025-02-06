@@ -26,7 +26,7 @@ def histogram(*mimo_args):
         Directory to save the histograms
     update_interval : int, optional (default=1)
         Interval in seconds to update the histograms
-    bin_config : dict
+    bins : dict
         channel: [start, stop, num_bins]
     visualize : bool, optional (default=False)
         Whether to visualize the histograms in real-time
@@ -102,6 +102,8 @@ def sub_histogram(files, bins, update_interval, name, plot_type):
     cols = int(np.ceil(np.sqrt(n_plots)))
     rows = int(np.ceil(n_plots / cols))
     axes = fig.subplots(rows, cols)
+    if n_plots == 1:
+        axes = np.array([axes])
     axes = axes.flatten()
 
     hist_artists = {}
