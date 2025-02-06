@@ -251,5 +251,7 @@ class Observer(Template):
                 if data is None:
                     break
                 yield data, metadata
+            if self.observer.buffer.flush_event_received.value:
+                break
         yield None, None
         self.logger.info("Observer finished")
