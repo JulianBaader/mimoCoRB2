@@ -5,6 +5,11 @@ Buffers:
     data_dtype:
       'IN1': 'int16'
       'IN2': 'int16'
+  pulse_parameters:
+    slot_count: 128
+    data_length: 1
+    data_dtype:
+      'peak_heights': 'int16'
 
 Workers:
   # rp_to_mimo:
@@ -19,9 +24,15 @@ Workers:
   osc:
     function: observers.oscilloscope
     observes: [oscilloscope]
-  write:
-    function: data.export
+  pha:
+    function: analyzers.pha
     sources: [oscilloscope]
+    sinks: [pulse_parameters]
+    config: pha_config.yaml
+  histogram:
+    function: exporters.histogram
+    sources: [pulse_parameters]
+    config: histogram_config.yaml
 
 Options:
   debug_workers: True
