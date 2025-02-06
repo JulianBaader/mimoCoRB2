@@ -1,0 +1,28 @@
+Buffers:
+  oscilloscope:
+    slot_count: 128
+    data_length: 1000
+    data_dtype:
+      'IN1': 'int16'
+      'IN2': 'int16'
+
+Workers:
+  # rp_to_mimo:
+  #   file: redpitaya-mimocorb.py
+  #   function: redpitaya_to_mimoCoRB
+  #   sinks: [oscilloscope]
+  #   config: config.yaml
+  from_file:
+    function: data.simulate_importer
+    sinks: [oscilloscope]
+    config: {filename: '/home/julian/git/mimoCoRB2/examples/redpitaya-spectroscopy/co60.mimo'}
+  osc:
+    function: observers.oscilloscope
+    observes: [oscilloscope]
+  write:
+    function: data.export
+    sources: [oscilloscope]
+
+Options:
+  debug_workers: True
+    
