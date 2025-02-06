@@ -129,6 +129,7 @@ def export(*mimo_args):
 def simulate_importer(*mimo_args):
     """mimoCoRB Importer: Import data from a mimo file with the timing of the original data"""
     # TODO Think about the fact, that the ordering of events is probably not correct
+    # TODO check if the sink is still alive
     importer = Importer(mimo_args)
     filename = importer.config['filename']
 
@@ -152,7 +153,6 @@ def simulate_importer(*mimo_args):
             time_between_event = event_time - last_event_time
             time_since_last_send = time.time() - last_send_time
             if time_since_last_send < time_between_event:
-                print("Sleeping for", time_between_event - time_since_last_send)
                 time.sleep(time_between_event - time_since_last_send)
             last_event_time = event_time
             last_send_time = time.time()
