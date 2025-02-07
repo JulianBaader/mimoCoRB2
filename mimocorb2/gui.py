@@ -15,6 +15,8 @@ WIDTH = 5
 HEIGHT = 4
 DPI = 100
 
+MIN_RATE = 0.1
+
 
 class BufferManagerApp(QtWidgets.QMainWindow):
     def __init__(self, control):
@@ -240,14 +242,19 @@ class RateCanvas(PlotCanvas):
             self.lines[key] = self.axes.plot(self.times,self.rates[key], label=key)[0]
 
         self.axes.legend(loc="upper left")
+        self.axes.set_ylim(bottom=MIN_RATE)
         self.axes.set_yscale("log")
         self.axes.set_ylabel("Rate (events/s)")
         self.axes.set_xlabel("Time (s)")
+        self.max_y = MIN_RATE
     def update_plot(self, buffer_stats, worker_stats):
         self.times.append(time.time() - self.init_time)
         for key in self.buffers:
             self.rates[key].append(buffer_stats[key]["rate"])
             self.lines[key].set_data(self.times, self.rates[key])
+            if self.rates[key][-1] > self.max_y:
+                self.max_y = self.rates[key][-1]
+                self.axes.set_ylim(top = self.max_y * 1.1)
         self.axes.relim()
         self.axes.autoscale_view()
         self.draw()
