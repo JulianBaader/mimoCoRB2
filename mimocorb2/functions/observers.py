@@ -46,7 +46,7 @@ def oscilloscope(*mimo_args):
     channels = requested_channels
 
     fig = plt.figure()
-    fig.canvas.manager.set_window_title('Oscilloscope')
+    fig.canvas.manager.set_window_title(f'Oscilloscope: {observer.config["name"]}')
     ax = fig.add_subplot(111)
 
     # set limits
