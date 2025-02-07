@@ -10,3 +10,7 @@ number_of_samples_before_trigger: 500   # int
 set_size: 100                           # int
 
 
+# configuration for simultation
+tau: 50
+energy_conversion: [3, 0]
+noise: 5

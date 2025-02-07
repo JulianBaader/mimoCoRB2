@@ -17,13 +17,15 @@ Workers:
   #   function: redpitaya_to_mimoCoRB
   #   sinks: [oscilloscope]
   #   config: config.yaml
-  from_file:
-    function: data.simulate_importer
+  from_simulation:
+    file: spectra/simulate_source.py
+    function: simulate_source
     sinks: [oscilloscope]
-    config: {filename: '/home/julian/git/mimoCoRB2/examples/redpitaya-spectroscopy/co60.mimo'}
+    config: config.yaml
   osc:
     function: observers.oscilloscope
     observes: [oscilloscope]
+    config: {"ylim": [-4096, 4096]}
   pha:
     function: analyzers.pha
     sources: [oscilloscope]
