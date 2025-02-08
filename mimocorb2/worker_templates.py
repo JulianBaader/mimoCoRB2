@@ -11,6 +11,7 @@ DATA = 1
 
 
 class Template:
+    """Base class for interactions between buffers."""
     def __init__(self, mimo_args: ArgsAlias) -> None:
         self.sources, self.sinks, self.observes, self.config = mimo_args
         self.name = self.config['name']
@@ -48,6 +49,21 @@ class Template:
 
 
 class Importer(Template):
+    """Importer class for importing data from an external generator.
+    
+    Examples
+    --------
+    >>> def worker(*mimo_args):
+    ...     importer = Importer(mimo_args)
+    ...     config = importer.config
+    ...     buffer_name = importer.writer.name
+    ...     data_example = importer.writer.data_example
+    ...     def ufunc():
+    ...         for i in range(config.get('n_iterations', 10)):
+    ...             yield np.random.rand(data_example.shape)
+    ...         yield None
+    ...     importer(ufunc)
+    """
     def __init__(self, mimo_args: ArgsAlias) -> None:
         super().__init__(mimo_args)
         self.counter = 0
@@ -97,6 +113,21 @@ class Importer(Template):
 
 
 class Exporter(Template):
+    """Exporter class for exporting.
+    
+    Examples
+    --------
+    >>> def worker(*mimo_args):
+    ...     exporter = Exporter(mimo_args)
+    ...     data_example = exporter.reader.data_example
+    ...     buffer_name = exporter.reader.name
+    ...     generator = exporter()
+    ...     while True:
+    ...         data, metadata = next(generator)
+    ...         if data is None:
+    ...             break
+    ...         print(data, metadata)
+    """
     def __init__(self, mimo_args: ArgsAlias) -> None:
         super().__init__(mimo_args)
 
@@ -122,12 +153,13 @@ class Exporter(Template):
 
 
 class Filter(Template):
-    """
+    """Filter class for filtering data from one buffer to other buffer(s).
+    
+    Analyze data using ufunc(data) and copy or discard data based on the result.
 
     ufunc(data) returns
     bool -> Copy data and metadata to all buffers or discard data
     list[bool] (mapping to sinks) -> copy data and metadata to the corresponding buffers or discard data
-
     """
 
     def __init__(self, mimo_args: ArgsAlias) -> None:
@@ -184,7 +216,7 @@ class Filter(Template):
 
 
 class Processor(Template):
-    """
+    """Processor class for processing data from one buffer to other buffer(s).
 
     ufunc(data) returns
     None -> Discard data
