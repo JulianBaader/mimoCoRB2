@@ -139,6 +139,7 @@ def simulate_importer(*mimo_args):
     if file.data_length != importer.writer.buffer.data_example.size:
         raise ValueError("Data length mismatch")
     generator = file.read_data()
+
     def ufunc():
         data, metadata = next(generator)
         last_event_time = metadata["timestamp"][0]
@@ -157,9 +158,9 @@ def simulate_importer(*mimo_args):
             last_event_time = event_time
             last_send_time = time.time()
             yield data
-        
 
     importer(ufunc)
+
 
 def clocked_importer(*mimo_args):
     """mimoCoRB Importer: Import data from a mimo file with a fixed (uniform/poisson) rate"""

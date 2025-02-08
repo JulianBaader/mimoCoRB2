@@ -324,30 +324,23 @@ def redpitaya_to_mimoCoRB(*mimoargs):
 
     rp.set_set_size(set_size)
 
+    rp.set_trigger_source("IN1")  # TODO
 
-
-    rp.set_trigger_source("IN1") # TODO
-    
     data_example = importer.writer.data_example
-    
-    
 
-    
     rp.set_total_number_of_samples(data_example.size)
-    
+
     gen = rp.acquire_single()
+
     def ufunc():
         while True:
             ch1, ch2 = next(gen)
             data_example["IN1"] = ch1
             data_example["IN2"] = ch2
             yield data_example.copy()
-        
 
     rp.reset_oscilloscope()
     rp.start_oscillocsope()
-    
-    
 
     importer(ufunc)
 

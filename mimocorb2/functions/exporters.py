@@ -19,7 +19,7 @@ def drain(*mimo_args):
 
 def histogram(*mimo_args):
     """mimoCoRB Exporter: create histograms of data
-    
+
     Configs
     -------
     run_directory : str
@@ -31,7 +31,7 @@ def histogram(*mimo_args):
     visualize : bool, optional (default=False)
         Whether to visualize the histograms in real-time
     plot_type : str, optional (default='bar')
-        Type of plot to use for the histograms. Options are 'line', 'bar', or 'step'.   
+        Type of plot to use for the histograms. Options are 'line', 'bar', or 'step'.
     """
     exporter = Exporter(mimo_args)
 
@@ -52,8 +52,7 @@ def histogram(*mimo_args):
         if rch not in available_channels:
             raise ValueError(f"Channel '{rch}' not found in the data")
     channels = requested_channels
-    
-    
+
     bins = {}
     hists = {}
     files = {}
@@ -72,7 +71,9 @@ def histogram(*mimo_args):
     save_hists()
 
     if visualize:
-        p = multiprocessing.Process(target=sub_histogram, args=(files, bins, update_interval, name, plot_type), daemon=True)
+        p = multiprocessing.Process(
+            target=sub_histogram, args=(files, bins, update_interval, name, plot_type), daemon=True
+        )
         p.start()
 
     generator = exporter()
@@ -107,15 +108,15 @@ def sub_histogram(files, bins, update_interval, name, plot_type):
     axes = axes.flatten()
 
     hist_artists = {}
-    
+
     for ch, ax in zip(channels, axes):
         data = np.load(files[ch])
         if plot_type == 'line':
-            hist_artists[ch], = ax.plot(bins[ch][:-1], data)
+            (hist_artists[ch],) = ax.plot(bins[ch][:-1], data)
         elif plot_type == 'bar':
             hist_artists[ch] = ax.bar(bins[ch][:-1], data, width=0.8 * np.diff(bins[ch]), align='edge')
         elif plot_type == 'step':
-            hist_artists[ch], = ax.step(bins[ch][:-1], data, where='mid')
+            (hist_artists[ch],) = ax.step(bins[ch][:-1], data, where='mid')
         else:
             raise ValueError("plot_type must be 'line', 'bar', or 'step'.")
 
@@ -123,7 +124,7 @@ def sub_histogram(files, bins, update_interval, name, plot_type):
         ax.set_xlabel('Value')
         ax.set_ylabel('Count')
         ax.set_xlim(bins[ch][0], bins[ch][-1])
-    
+
     fig.tight_layout()
     plt.ion()
     plt.show()
@@ -136,19 +137,19 @@ def sub_histogram(files, bins, update_interval, name, plot_type):
                     new_data = np.load(files[ch])
                 except (EOFError, ValueError):
                     continue
-                
+
                 if plot_type == 'line' or plot_type == 'step':
                     hist_artists[ch].set_ydata(new_data)
                 elif plot_type == 'bar':
                     for rect, height in zip(hist_artists[ch], new_data):
                         rect.set_height(height)
-                
+
                 axes[i].relim()
                 axes[i].autoscale_view()
-            
+
             fig.canvas.draw()
             last_update = time.time()
-        
+
         fig.canvas.flush_events()
         time.sleep(1 / 20)
     # TODO why dont i count frames?

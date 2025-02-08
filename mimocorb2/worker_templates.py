@@ -12,6 +12,7 @@ DATA = 1
 
 class Template:
     """Base class for interactions between buffers."""
+
     def __init__(self, mimo_args: ArgsAlias) -> None:
         self.sources, self.sinks, self.observes, self.config = mimo_args
         self.name = self.config['name']
@@ -19,7 +20,6 @@ class Template:
         self.run_directory = self.config['run_directory']
         self.logger = logging.getLogger(self.name)
         self.errors_directory = os.path.join(self.run_directory, 'errors')
-
 
     def fail(
         self,
@@ -50,7 +50,7 @@ class Template:
 
 class Importer(Template):
     """Importer class for importing data from an external generator.
-    
+
     Examples
     --------
     >>> def worker(*mimo_args):
@@ -64,6 +64,7 @@ class Importer(Template):
     ...         yield None
     ...     importer(ufunc)
     """
+
     def __init__(self, mimo_args: ArgsAlias) -> None:
         super().__init__(mimo_args)
         self.counter = 0
@@ -82,7 +83,7 @@ class Importer(Template):
             self.read_all.send_flush_event()
             raise RuntimeError("ufunc not callable")
         self.logger.info("Importer started")
-        
+
         time_last_event = time.time()
 
         generator = ufunc()
@@ -106,7 +107,9 @@ class Importer(Template):
                 sink[METADATA]['counter'] = self.counter
                 sink[METADATA]['timestamp'] = timestamp
                 time_buffer_ready = time.time()
-                sink[METADATA]['deadtime'] = (time_buffer_ready - time_data_ready) / (time_buffer_ready - time_last_event)
+                sink[METADATA]['deadtime'] = (time_buffer_ready - time_data_ready) / (
+                    time_buffer_ready - time_last_event
+                )
             self.counter += 1
             time_last_event = time.time()
         self.logger.info("Importer finished")
@@ -114,7 +117,7 @@ class Importer(Template):
 
 class Exporter(Template):
     """Exporter class for exporting.
-    
+
     Examples
     --------
     >>> def worker(*mimo_args):
@@ -128,6 +131,7 @@ class Exporter(Template):
     ...             break
     ...         print(data, metadata)
     """
+
     def __init__(self, mimo_args: ArgsAlias) -> None:
         super().__init__(mimo_args)
 
@@ -154,7 +158,7 @@ class Exporter(Template):
 
 class Filter(Template):
     """Filter class for filtering data from one buffer to other buffer(s).
-    
+
     Analyze data using ufunc(data) and copy or discard data based on the result.
 
     ufunc(data) returns

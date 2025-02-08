@@ -6,7 +6,7 @@ import time
 
 def oscilloscope(*mimo_args):
     """mimoCoRB Observer: Visualize oscilloscope data
-    
+
     Configs
     -------
     update_interval : int, optional (default=1)

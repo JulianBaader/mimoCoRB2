@@ -53,6 +53,7 @@ class mimoWorker:
     shutdown()
         Terminates all active worker processes.
     """
+
     def __init__(
         self, name: str, function: Callable, args: list[list, list, list, dict], number_of_processes: int
     ) -> None:

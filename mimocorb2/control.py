@@ -48,15 +48,16 @@ INTERFACE_TYPES = [BufferReader, BufferWriter, BufferObserver]
 
 class SetupError(Exception):
     """Exception raised for errors in the setup process."""
+
     pass
 
 
 class FileReader:
     """
     Reads and normalizes a provided YAML setup file defining buffers, workers and options.
-    
+
     The setup file must be constructed as follows (yaml syntax):
-    
+
     Buffers:
         buffer_name:
             slot_count: int
@@ -66,7 +67,7 @@ class FileReader:
                 ...
             overwrite: bool (optional, default: True)
         ...
-    
+
     Workers:
         worker_name:
             function: str
@@ -77,20 +78,21 @@ class FileReader:
             sources: list[str]
             observes: list[str]
         ...
-    
+
     Options:
         output_directory: str (optional, default: 'target')
         debug_workers: bool (optional, default: False)
         overarching_config: str | list[str] | dict (optional, default: [])
-    
-    
+
+
     Configs provided as strings or lists of strings are interpreted as paths to yaml files.
     Configs provided as a dictionary are used as is.
-    
+
     When file is not provided, the function is assumed to be a built-in function.
-    
+
     During normalisation each missing optional key is replaced with its default value.
     """
+
     def __init__(self, setup_file: str) -> None:
         self.setup_file = os.path.abspath(setup_file)
         self.setup_dir = os.path.dirname(self.setup_file)
@@ -163,13 +165,11 @@ class FileReader:
             normalized[parameter] = section_data.get(parameter, value)
         return normalized
 
-    def visualize_setup(
-        self, file, **digraph_kwargs
-    ) -> None:
+    def visualize_setup(self, file, **digraph_kwargs) -> None:
         """Creates a Graphviz visualization of the setup and saves it as an SVG file."""
-        normalized_setup = self()     
-        dot = Digraph(format = 'svg', **digraph_kwargs)
-        
+        normalized_setup = self()
+        dot = Digraph(format='svg', **digraph_kwargs)
+
         for buffer_name in normalized_setup['Buffers'].keys():
             dot.node('B' + buffer_name, label=buffer_name)
         for worker_name in normalized_setup['Workers'].keys():
@@ -425,8 +425,7 @@ class Control:
         self.setup = initialized_setup
         self.logger = logging.getLogger(__name__)
         self.find_buffers_for_clean_shutdown()
-        
-        
+
         self.total_processes = sum([info['number_of_processes'] for info in self.setup['Workers'].values()])
 
     def find_buffers_for_clean_shutdown(self) -> None:
@@ -481,7 +480,7 @@ class Control:
         for name, info in self.setup['Workers'].items():
             self.logger.info(f"Starting processes for worker {name}")
             info['worker_obj'].start_processes()
-            
+
     def get_time_active(self) -> float:
         """Return the time the workers have been active."""
         return time.time() - self.start_time

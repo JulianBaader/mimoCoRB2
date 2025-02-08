@@ -20,7 +20,7 @@ else:
 reader = ctrl.FileReader(setup_file)
 setup = ctrl.SetupRun(reader())
 setup_dict = setup()
-reader.visualize_setup(file = os.path.join(setup.run_directory, "dataFlow"))
+reader.visualize_setup(file=os.path.join(setup.run_directory, "dataFlow"))
 control = ctrl.Control(setup_dict)
 control.start_workers()
 

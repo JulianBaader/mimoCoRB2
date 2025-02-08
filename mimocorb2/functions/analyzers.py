@@ -5,13 +5,13 @@ import scipy.signal as signal
 def pha(*mimo_args):
     """Analyze an oscilloscope like buffer using scipy.signal.find_peaks.
     Only one channel can be analyzed at a time.
-    
+
     Parameters are used from the configuration file.
     """
     processor = Processor(mimo_args)
     if len(processor.writers) != 1:
         raise ValueError("mimocorb2.analyzers.pha only supports one sink.")
-    
+
     config = processor.config
     channel = config.get('channel')
     height = config.get('height', None)
@@ -22,19 +22,16 @@ def pha(*mimo_args):
     wlen = config.get('wlen', None)
     rel_height = config.get('rel_height', 0.5)
     plateau_size = config.get('plateau_size', None)
-    
-    
+
     example_data_in = processor.reader.data_example
     channels = example_data_in.dtype.names
     if channel not in channels:
         raise ValueError(f"Channel {channel} is not available in the source.")
-    
+
     data_example_out = processor.writers[0].data_example.copy()
     requested_parameters = data_example_out.dtype.names
     if data_example_out.size != 1:
         raise ValueError("mimocorb2.analyzers.pha only data_length = 1 in the sink.")
-        
-    
 
     for parameter in requested_parameters:
         if parameter in ['position']:
@@ -56,18 +53,18 @@ def pha(*mimo_args):
                 raise ValueError(f"Parameter {parameter} is only possible with plateau_size config")
         else:
             raise ValueError(f"Parameter {parameter} is not supported")
-    
+
     def ufunc(data):
         peaks, properties = signal.find_peaks(
-            x = data[channel],
-            height = height,
-            threshold = threshold,
-            distance = distance,
-            prominence = prominence,
-            width = width,
-            wlen = wlen,
-            rel_height = rel_height,
-            plateau_size = plateau_size,
+            x=data[channel],
+            height=height,
+            threshold=threshold,
+            distance=distance,
+            prominence=prominence,
+            width=width,
+            wlen=wlen,
+            rel_height=rel_height,
+            plateau_size=plateau_size,
         )
         for i in range(len(peaks)):
             for parameter in requested_parameters:
@@ -76,9 +73,5 @@ def pha(*mimo_args):
                 else:
                     data_example_out[parameter] = properties[parameter][i]
             return [data_example_out]
-    
+
     processor(ufunc)
-        
-    
-    
-    
