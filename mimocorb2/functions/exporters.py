@@ -1,6 +1,8 @@
 from mimocorb2.worker_templates import Exporter
 
 import numpy as np
+from numpy.lib import recfunctions as rfn
+import pandas as pd
 import multiprocessing
 import time
 import os
@@ -153,3 +155,53 @@ def sub_histogram(files, bins, update_interval, name, plot_type):
         fig.canvas.flush_events()
         time.sleep(1 / 20)
     # TODO why dont i count frames?
+
+
+
+def csv(*mimo_args):
+    """mimoCoRB Exporter: Save data to a csv file for pandas to read."""
+    exporter = Exporter(mimo_args)
+    data_example = exporter.reader.data_example
+    metadata_example = exporter.reader.metadata_example
+    
+    config = exporter.config
+    save_interval = config.get('save_interval', 1)
+    
+    if data_example.size != 1:
+        raise ValueError('csv exporter only supports data_length = 1')
+    
+    run_directory = exporter.config['run_directory']
+    name = exporter.reader.name
+    
+    header = []
+    for dtype_name in metadata_example.dtype.names:
+        header.append(dtype_name)
+
+    for dtype_name in data_example.dtype.names:
+        header.append(dtype_name)
+        
+    # create empty dataframe
+    df = pd.DataFrame(columns=header)
+    df.to_csv(os.path.join(run_directory, f"{name}.csv"), index=False)
+    count = 0
+
+    last_save = time.time()
+
+    while True:
+        data, metadata = next(exporter())
+        if data is None:
+            break
+        count += 1
+        line = np.append(
+            rfn.structured_to_unstructured(metadata),
+            rfn.structured_to_unstructured(data)
+        )
+        df.loc[count] = line
+        
+        if time.time() - last_save > save_interval:
+            df.to_csv(os.path.join(run_directory, f"{name}.csv"), index=False)
+            last_save = time.time()
+            df = pd.DataFrame(columns=header)
+            count = 0
+        
+        

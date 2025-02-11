@@ -63,11 +63,13 @@ Workers:
     function: data.export
     sources: [AcceptedPulses]
   histUp:
-    function: exporters.histogram
+    function: exporters.csv
+    #function:exporters.histogram
     sources: [PulseParametersUp]
     config: hist_config_up.yaml
   histDown:
-    function: exporters.histogram
+    function: exporters.csv
+    #function:exporters.histogram
     sources: [PulseParametersDown]
     config: hist_config_down.yaml
 
