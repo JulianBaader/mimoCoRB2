@@ -166,7 +166,7 @@ class mimoBuffer:
         stats = {
             "event_count": self.event_count.value,
             "overwrite_count": self.overwrite_count.value,
-            "filled_slots": self.filled_slots.qsize() / self.slot_count,
+            "filled_slots": (self.filled_slots.qsize() - 1) / self.slot_count,
             "empty_slots": self.empty_slots.qsize() / self.slot_count,
             "flush_event_received": self.flush_event_received.value,
             "rate": (current_event_count - self.last_event_count) / (current_time - self.last_stats_time),
