@@ -25,11 +25,16 @@ class BufferManagerApp(QtWidgets.QMainWindow):
 
         buffers = control.setup['Buffers'].keys()
         workers = control.setup['Workers'].keys()
+        
+        slot_counts = [control.setup['Buffers'][name]['buffer_obj'].slot_count for name in buffers]
+        other = {
+            'slot_counts': slot_counts,
+        }
 
         # Setup matplotlib canvases
-        self.rate_canvas = RateCanvas(self.rate_tab, buffers, workers, title="Rate Information")
-        self.process_canvas = WorkerCanvas(self.process_tab, buffers, workers, title="Process Information")
-        self.buffer_canvas = BufferCanvas(self.buffer_tab, buffers, workers, title="Buffer Information")
+        self.rate_canvas = RateCanvas(self.rate_tab, buffers, workers, other, title="Rate Information")
+        self.process_canvas = WorkerCanvas(self.process_tab, buffers, workers, other, title="Process Information")
+        self.buffer_canvas = BufferCanvas(self.buffer_tab, buffers, workers, other, title="Buffer Information")
 
         # Add timers for real-time updates
         self.timer = QtCore.QTimer()
@@ -141,7 +146,7 @@ class BufferManagerApp(QtWidgets.QMainWindow):
 
 
 class PlotCanvas(FigureCanvas):
-    def __init__(self, parent, buffers, workers, title=""):
+    def __init__(self, parent, buffers, workers, other, title=""):
         fig = Figure()
         self.axes = fig.add_subplot(111)
         super().__init__(fig)
@@ -160,6 +165,7 @@ class PlotCanvas(FigureCanvas):
 
         self.buffers = buffers
         self.workers = workers
+        self.other = other
 
         self.init_plot()
         fig.tight_layout()
@@ -167,18 +173,31 @@ class PlotCanvas(FigureCanvas):
 
 class BufferCanvas(PlotCanvas):
     def init_plot(self):
+        x = np.arange(len(self.buffers))
         colors = ["#E24A33", "#FBC15E", "#2CA02C", "#FFFFFF"]
         # colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
         # the ordering of the bars is important
-        self.bar_filled = self.axes.bar(self.buffers, 0, label="Filled", color=colors[0])
-        self.bar_working = self.axes.bar(self.buffers, 0, label="Working", color=colors[1])
-        self.bar_empty = self.axes.bar(self.buffers, 1, label="Empty", color=colors[2])
-        self.shutdown_overlay = self.axes.bar(self.buffers, 0, label="Shutdown", color=colors[3], alpha=0.3, hatch="//")
+        self.bar_filled = self.axes.bar(x, 0, label="Filled", color=colors[0])
+        self.bar_working = self.axes.bar(x, 0, label="Working", color=colors[1])
+        self.bar_empty = self.axes.bar(x, 1, label="Empty", color=colors[2])
+        self.shutdown_overlay = self.axes.bar(x, 0, label="Shutdown", color=colors[3], alpha=0.3, hatch="//")
 
         self.axes.set_ylim(0, 1)
         self.axes.legend(loc="upper right")
         self.axes.tick_params(axis="x", rotation=45)
         self.axes.set_ylabel("Ratio")
+        
+        self.axes.set_xticks(x)
+        self.axes.set_xticklabels(self.buffers)
+        
+        xlim = self.axes.get_xlim()
+        twiny = self.axes.twiny()
+        twiny.set_xticks(x)
+        twiny.set_xticklabels(self.other['slot_counts'])
+        twiny.set_xlim(xlim)
+        
+        
+        
 
     def update_plot(self, buffer_stats, worker_stats):
         filled = np.array([buffer_stats[key]["filled_slots"] for key in self.buffers])
