@@ -62,8 +62,8 @@ class mimoBuffer:
         Length of the structured data array in each slot.
     data_dtype : np.dtype
         Data type of the structured data array.
-    overwrite : bool, optional
-        If True, allows overwriting filled slots when the buffer is full, by default True.
+    # overwrite : bool, optional
+    #     If True, allows overwriting filled slots when the buffer is full, by default True.
 
     Attributes
     ----------
@@ -81,8 +81,8 @@ class mimoBuffer:
         Queue of filled slots available for reading or observing.
     event_count : multiprocessing.Value
         Total number of events (writes) that have occurred.
-    overwrite_count : multiprocessing.Value
-        Total number of slots overwritten.
+    # overwrite_count : multiprocessing.Value
+    #     Total number of slots overwritten.
     flush_event_received : multiprocessing.Value
         Indicates whether a flush event has been sent.
 
@@ -120,13 +120,13 @@ class mimoBuffer:
     metadata_byte_size = metadata_example.nbytes
 
     def __init__(
-        self, name: str, slot_count: int, data_length: int, data_dtype: np.dtype, overwrite: bool = True
+        self, name: str, slot_count: int, data_length: int, data_dtype: np.dtype#, overwrite: bool = True
     ) -> None:
         self.name = name
         self.slot_count = slot_count
         self.data_length = data_length
         self.data_dtype = data_dtype
-        self.overwrite = overwrite
+        # self.overwrite = overwrite
 
         self.data_example = np.zeros(shape=data_length, dtype=data_dtype)
         self.data_byte_size = self.data_example.nbytes
@@ -151,7 +151,7 @@ class mimoBuffer:
 
         # dynamic attributes
         self.event_count = Value(ctypes.c_ulonglong, 0)
-        self.overwrite_count = Value(ctypes.c_ulong, 0)
+        #self.overwrite_count = Value(ctypes.c_ulong, 0)
         self.flush_event_received = Value(ctypes.c_bool, False)
         self.total_deadtime = Value(ctypes.c_double, 0.0)
 
@@ -165,7 +165,7 @@ class mimoBuffer:
         current_deadtime = self.total_deadtime.value
         stats = {
             "event_count": self.event_count.value,
-            "overwrite_count": self.overwrite_count.value,
+            #"overwrite_count": self.overwrite_count.value,
             "filled_slots": (self.filled_slots.qsize() - 1) / self.slot_count,
             "empty_slots": self.empty_slots.qsize() / self.slot_count,
             "flush_event_received": self.flush_event_received.value,
@@ -199,32 +199,33 @@ class mimoBuffer:
 
         This method handels overwriting.
         """
+        return self.empty_slots.get()
 
-        # if overwriting is not allowed, wait for an empty slot (block=True) -> the exception will never be raised
-        # if overwriting is allowed, try to immideatly get a new slot (block=False)
-        try:
-            return self.empty_slots.get(block=(not self.overwrite))
-        except queue.Empty:
-            # getting here means overwrite is allowed and there is no empty slot available
-            # in this case, check if there is a filled slot available which can be overwritten
-            # waiting for a filled slot could lead to a deadlock
-            try:
-                token = self.filled_slots.get_nowait()
+        # # if overwriting is not allowed, wait for an empty slot (block=True) -> the exception will never be raised
+        # # if overwriting is allowed, try to immideatly get a new slot (block=False)
+        # try:
+        #     return self.empty_slots.get(block=(not self.overwrite))
+        # except queue.Empty:
+        #     # getting here means overwrite is allowed and there is no empty slot available
+        #     # in this case, check if there is a filled slot available which can be overwritten
+        #     # waiting for a filled slot could lead to a deadlock
+        #     try:
+        #         token = self.filled_slots.get_nowait()
 
-                # do not overwrite the flush event
-                if token is None:
-                    self.filled_slots.put(None)  # put the flush event back into the queue
-                    return self.empty_slots.get()  # wait for an empty slot
+        #         # do not overwrite the flush event
+        #         if token is None:
+        #             self.filled_slots.put(None)  # put the flush event back into the queue
+        #             return self.empty_slots.get()  # wait for an empty slot
 
-                # if the token is not None, it is a filled slot which can be overwritten
-                with self.overwrite_count.get_lock():
-                    self.overwrite_count.value += 1
-                return token
+        #         # if the token is not None, it is a filled slot which can be overwritten
+        #         with self.overwrite_count.get_lock():
+        #             self.overwrite_count.value += 1
+        #         return token
 
-            except queue.Empty:
-                # getting here means there is no empty slot and no filled slot available, meaning every slot is either being written to or read from
-                # to avoid a deadlock in this case, wait for an empty slot
-                return self.empty_slots.get()
+        #     except queue.Empty:
+        #         # getting here means there is no empty slot and no filled slot available, meaning every slot is either being written to or read from
+        #         # to avoid a deadlock in this case, wait for an empty slot
+        #         return self.empty_slots.get()
 
     def return_write_token(self, token: int) -> None:
         """Return a token to which data has been written."""

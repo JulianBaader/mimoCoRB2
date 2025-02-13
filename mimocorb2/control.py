@@ -11,7 +11,7 @@ import time
 from graphviz import Digraph
 from typing import Callable, Any
 
-STANDARD_OVERWRITE = True
+#STANDARD_OVERWRITE = True
 FUNCTIONS_FOLDER = os.path.join(os.path.dirname(__file__), 'functions')
 
 
@@ -19,7 +19,7 @@ BUFFERS = {
     'slot_count': None,
     'data_length': None,
     'data_dtype': None,
-    'overwrite': STANDARD_OVERWRITE,
+  #  'overwrite': STANDARD_OVERWRITE,
 }
 
 WORKERS = {
@@ -65,7 +65,7 @@ class FileReader:
             data_dtype:
                 name: dtype
                 ...
-            overwrite: bool (optional, default: True)
+            #overwrite: bool (optional, default: True)
         ...
 
     Workers:
@@ -349,13 +349,13 @@ class SetupRun:
             if not self._is_whole(info['data_length']):
                 raise SetupError(f"Buffer {name} data_length must be a positive integer.")
             info['data_dtype_obj'] = self._interpret_dtype(name, info['data_dtype'])
-            info['overwrite'] = bool(info['overwrite'])
+            #info['overwrite'] = bool(info['overwrite'])
             info['buffer_obj'] = mimoBuffer(
                 name=name,
                 slot_count=info['slot_count'],
                 data_length=info['data_length'],
                 data_dtype=info['data_dtype_obj'],
-                overwrite=info['overwrite'],
+                #overwrite=info['overwrite'],
             )
         self.buffer_objects_created = True
 
