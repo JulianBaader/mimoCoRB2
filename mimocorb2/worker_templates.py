@@ -307,10 +307,8 @@ class Monitor(Template):
             
         self.reader = self.sources[0]
         data_example_in = self.reader.data_example
-        if len(self.sinks) == 0:
-            self.__call__ = self._exporter
-        else:
-            self.writer = self.sinks[0]
+        self.writer = None
+        if len(self.sinks) != 0:
             self.writer = self.sinks[0]
             data_example_out = self.writer.data_example
             
@@ -318,7 +316,6 @@ class Monitor(Template):
                 self.fail("Monitor source and sink shapes do not match", force_shutdown=True)
             if data_example_in.dtype != data_example_out.dtype:
                 self.fail("Monitor source and sink dtypes do not match", force_shutdown=True)
-            self.__call__ = self._monitor
             
     def _monitor(self) -> Generator:
         assert self.writer is not None
@@ -347,5 +344,13 @@ class Monitor(Template):
                     break
                 yield data, metadata
         self.logger.info("Monitor finished")
+        
+    def __call__(self) -> Generator:
+        if self.writer is not None:
+            self.logger.info("Starting Monitor as Monitor")
+            return self._monitor()
+        else:
+            self.logger.info("Starting Monitor as Exporter")
+            return self._exporter()
         
     
