@@ -10,6 +10,9 @@ METADATA = 0
 DATA = 1
 
 
+# Note: anything that returns a generator must have the yield None, None at the very end, as any code following might not be executed
+
+
 class Template:
     """Base class for interactions between buffers."""
 
@@ -150,10 +153,10 @@ class Exporter(Template):
                 data = source[DATA]
                 metadata = source[METADATA]
                 if data is None:
-                    yield None, None
                     break
                 yield data, metadata
         self.logger.info("Exporter finished")
+        yield None, None
 
 
 class Filter(Template):
@@ -289,8 +292,8 @@ class Observer(Template):
                 yield data, metadata
             if self.observer.buffer.flush_event_received.value:
                 break
-        yield None, None
         self.logger.info("Observer finished")
+        yield None, None
 
 
 class Monitor(Template):
@@ -324,7 +327,6 @@ class Monitor(Template):
                 data = source[DATA]
                 metadata = source[METADATA]
                 if data is None:
-                    yield None, None
                     break
                 with self.writer as sink:
                     sink[DATA][:] = data
@@ -333,6 +335,7 @@ class Monitor(Template):
                 
         self.writer.buffer.send_flush_event()
         self.logger.info("Monitor finished")
+        yield None, None
         
     def _exporter(self) -> Generator:
         while True:
@@ -340,10 +343,10 @@ class Monitor(Template):
                 data = source[DATA]
                 metadata = source[METADATA]
                 if data is None:
-                    yield None, None
                     break
                 yield data, metadata
         self.logger.info("Monitor finished")
+        yield None, None
         
     def __call__(self) -> Generator:
         if self.writer is not None:
