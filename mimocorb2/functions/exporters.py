@@ -92,11 +92,6 @@ def histogram(*mimo_args):
             save_hists()
             last_save = time.time()
     save_hists()
-    try:
-        next(exporter())
-    except StopIteration:
-        print("Ja guuutt")
-
     if visualize:
         p.terminate()
 
