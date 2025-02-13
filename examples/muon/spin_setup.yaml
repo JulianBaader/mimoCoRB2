@@ -44,6 +44,8 @@ Buffers:
   AcceptedPulses: *osc_template
   PulseParametersUp: *param_template
   PulseParametersDown: *param_template
+  PulseParametersUp_Export: *param_template
+  PulseParametersDown_Export: *param_template
 
 Workers:
   input:
@@ -63,15 +65,24 @@ Workers:
     function: data.export
     sources: [AcceptedPulses]
   histUp:
-    function: exporters.csv
-    #function:exporters.histogram
+    function: exporters.histogram
     sources: [PulseParametersUp]
+    sinks: [PulseParametersUp_Export]
     config: hist_config_up.yaml
   histDown:
-    function: exporters.csv
-    #function:exporters.histogram
+    function: exporters.histogram
     sources: [PulseParametersDown]
+    sinks: [PulseParametersDown_Export]
     config: hist_config_down.yaml
+  saveUp:
+    function: exporters.csv
+    sources: [PulseParametersUp_Export]
+    config: hist_config_up.yaml
+  saveDown:
+    function: exporters.csv
+    sources: [PulseParametersDown_Export]
+    config: hist_config_down.yaml
+
 
   oscilloscope:
     function: observers.oscilloscope
