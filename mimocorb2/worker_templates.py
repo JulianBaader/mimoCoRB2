@@ -291,3 +291,61 @@ class Observer(Template):
                 break
         yield None, None
         self.logger.info("Observer finished")
+
+
+class Monitor(Template):
+    """Worker Class for Monitoring data transfered between two identical Buffers"""
+    def __init__(self, mimo_args: ArgsAlias) -> None:
+        super().__init__(mimo_args)
+
+        if len(self.sources) != 1:
+            self.fail("Monitor must have 1 source", force_shutdown=True)
+        if len(self.sinks) not in [0,1]:
+            self.fail("Monitor must have 0 or 1 sink", force_shutdown=True)
+        if len(self.observes) != 0:
+            self.fail("Monitor must have 0 observes", force_shutdown=True)
+            
+        self.reader = self.sources[0]
+        data_example_in = self.reader.data_example
+        if len(self.sinks) == 0:
+            self.__call__ = self._exporter
+        else:
+            self.writer = self.sinks[0]
+            self.writer = self.sinks[0]
+            data_example_out = self.writer.data_example
+            
+            if data_example_in.shape != data_example_out.shape:
+                self.fail("Monitor source and sink shapes do not match", force_shutdown=True)
+            if data_example_in.dtype != data_example_out.dtype:
+                self.fail("Monitor source and sink dtypes do not match", force_shutdown=True)
+            self.__call__ = self._monitor
+            
+    def _monitor(self) -> Generator:
+        assert self.writer is not None
+        while True:
+            with self.reader as source:
+                data = source[DATA]
+                metadata = source[METADATA]
+                if data is None:
+                    yield None, None
+                    break
+                with self.writer as sink:
+                    sink[DATA][:] = data
+                    sink[METADATA][:] = metadata
+                yield data, metadata
+                
+        self.writer.buffer.send_flush_event()
+        self.logger.info("Monitor finished")
+        
+    def _exporter(self) -> Generator:
+        while True:
+            with self.reader as source:
+                data = source[DATA]
+                metadata = source[METADATA]
+                if data is None:
+                    yield None, None
+                    break
+                yield data, metadata
+        self.logger.info("Monitor finished")
+        
+    
