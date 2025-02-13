@@ -40,6 +40,8 @@ def simulate_source(*mimo_args):
     pulse_template = np.exp(-np.float32(np.linspace(0.0, plen, plen, endpoint=False)) / tau)
     noise = pulse_height.mean() / 30.0
     tau_mu = 2197  # muon life time in ns
+    T_spin = 0.85 * tau_mu  # spin precession time
+    A_spin = 0.05  # (relative) amplitude of precession signal
 
     def ufunc():
         event_count = 0
@@ -74,7 +76,7 @@ def simulate_source(*mimo_args):
                 # add delayed pulse(s)
                 t_mu = -tau_mu * np.log(np.random.rand())  # muon life time
                 pos2 = int(t_mu / sample_time_ns) + pre_trigger_samples
-                if np.random.rand() > 0.5:  # upward decay electron
+                if np.random.rand() > 0.5 + 0.5 * A_spin * np.cos(2* np.pi * t_mu / T_spin):  # upward decay electron
                     for i_layer in range(0, min(nchan, 2)):
                         # random pulse height and position for 2nd pulse
                         ## pheight2 = np.random.rand()*maxheight
