@@ -259,6 +259,7 @@ class SetupRun:
                 'name': name,
                 'debug': self.setup['Options']['debug_workers'],
                 'run_directory': self.run_directory,
+                'setup_directory': self.setup['Options']['setup_dir'],
             }
             shared_keys = list(config.keys() & obligatory_config.keys())
             if shared_keys:

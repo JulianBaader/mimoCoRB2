@@ -36,8 +36,7 @@ def simulate_source(*mimo_args):
     slope = energy_conversion[0]
     offset = energy_conversion[1]
     noise = config.get("noise", 0)
-    print(config)
-    file = "/home/julian/git/mimoCoRB2/examples/redpitaya-spectroscopy/spectra/Co-60.html"  # TODO configurable
+    file = os.path.join(config['setup_directory'], config.get("file", "spectra/Co-60.html"))
     average_rate = config.get("average_rate", 100)
 
     number_of_samples = importer.writer.data_example.size
