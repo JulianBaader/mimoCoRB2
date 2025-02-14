@@ -38,6 +38,7 @@ OPTIONS = {
     'overarching_config': [],
     # 'setup_dir': None,  # added in FileReader
     # 'run_directory': None,  # added in SetupRun
+    # 'root_buffers': None,  # added in FileReader
 }
 
 # TODO This has to be made much more clear, i had a headache fixing this
@@ -111,6 +112,7 @@ class FileReader:
 
         norm_options = self.normalize_section('Options', options, OPTIONS)
         norm_options['setup_dir'] = self.setup_dir
+        norm_options['root_buffers'] = self.find_root_buffers(norm_workers)
 
         return {
             'Buffers': norm_buffers,
@@ -171,7 +173,10 @@ class FileReader:
         dot = Digraph(format='svg', **digraph_kwargs)
 
         for buffer_name in normalized_setup['Buffers'].keys():
-            dot.node('B' + buffer_name, label=buffer_name)
+            if buffer_name in normalized_setup['Options']['root_buffers']:
+                dot.node('B' + buffer_name, label=buffer_name, color='blue')
+            else:
+                dot.node('B' + buffer_name, label=buffer_name)
         for worker_name in normalized_setup['Workers'].keys():
             dot.node('F' + worker_name, shape='box', label=worker_name)
 
@@ -193,6 +198,14 @@ class FileReader:
                     raise SetupError(f"Worker {worker_name} references unknown observe {observe}")
 
         dot.render(file, cleanup=True)
+        
+    def find_root_buffers(self, norm_workers: dict) -> None:
+        """Find all buffers that do not have any sources or observes."""
+        buffers = []
+        for name, info in norm_workers.items():
+            if len(info['sources']) == 0 and len(info['observes']) == 0:
+                buffers.extend(info['sinks'])
+        return buffers
 
 
 class SetupRun:
@@ -424,21 +437,13 @@ class Control:
     def __init__(self, initialized_setup: dict) -> None:
         self.setup = initialized_setup
         self.logger = logging.getLogger(__name__)
-        self.find_buffers_for_clean_shutdown()
+        self.buffers_for_shutdown = self.setup['Options']['root_buffers']
 
         self.total_processes = sum([info['number_of_processes'] for info in self.setup['Workers'].values()])
 
-    def find_buffers_for_clean_shutdown(self) -> None:
-        """Find all buffers that do not have any sources or observes and add them to the shutdown list."""
-        buffers = []
-        for name, info in self.setup['Workers'].items():
-            if len(info['sources']) == 0 and len(info['observes']) == 0:
-                buffers.extend(info['sinks'])
-        self.buffers_for_shutdown = buffers
-
     def clean_shutdown(self) -> None:
         """Shut down all buffers that do not have any sources or observes."""
-        for name in self.buffers_for_shutdown:
+        for name in self.setup['Options']['root_buffers']:
             self.logger.info(f"Shutting down buffer {name}")
             self.setup['Buffers'][name]['buffer_obj'].send_flush_event()
 
