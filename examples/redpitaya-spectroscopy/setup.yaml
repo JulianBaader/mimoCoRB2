@@ -10,6 +10,11 @@ Buffers:
     data_length: 1
     data_dtype:
       'peak_heights': 'int16'
+  pulse_parameters_export:
+    slot_count: 128
+    data_length: 1
+    data_dtype: 
+      'peak_heights': 'int16'
 
 Workers:
   # rp_to_mimo:
@@ -34,7 +39,11 @@ Workers:
   histogram:
     function: exporters.histogram
     sources: [pulse_parameters]
+    sinks: [pulse_parameters_export]
     config: histogram_config.yaml
+  pulse_parameters_export:
+    function: exporters.csv
+    sources: [pulse_parameters_export]
 
 Options:
   debug_workers: True
