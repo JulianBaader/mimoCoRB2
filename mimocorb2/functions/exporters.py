@@ -10,7 +10,14 @@ import matplotlib.pyplot as plt
 
 
 def drain(*mimo_args):
-    """mimoCoRB Exporter: drain data from a buffer"""
+    """mimoCoRB Exporter: drain data from a buffer
+    
+    Buffers
+    -------
+    1 source
+    0 sink
+    0 observe
+    """
     exporter = Exporter(mimo_args)
     generator = exporter()
     while True:
@@ -20,12 +27,19 @@ def drain(*mimo_args):
 
 
 def histogram(*mimo_args):
-    """mimoCoRB Exporter: create histograms of data
+    """mimoCoRB Monitor: Create Histograms of data and optionally visualize them.
+    
+    Histograms are saved in the run_directory under the name of the source buffer and the channel.
+    
+    
+    Buffers
+    -------
+    1 source with data_length = 1
+    0 or 1 sink depending on whether the data should be through-passed
+    0 observe
 
     Configs
     -------
-    run_directory : str
-        Directory to save the histograms
     update_interval : int, optional (default=1)
         Interval in seconds to update the histograms
     bins : dict
@@ -58,6 +72,7 @@ def histogram(*mimo_args):
     bins = {}
     hists = {}
     files = {}
+    # TODO i think this should be removed
     if len(channels) > 1:
         run_directory = os.path.join(run_directory, name)
         os.makedirs(run_directory, exist_ok=True)
@@ -159,7 +174,21 @@ def sub_histogram(files, bins, update_interval, name, plot_type):
 
 
 def csv(*mimo_args):
-    """mimoCoRB Exporter: Save data to a csv file for pandas to read."""
+    """mimoCoRB Exporter: Save data to a csv file for pandas to read.
+    
+    File is saved in the run_directory under the name of the source buffer.
+    
+    Buffers
+    -------
+    1 source with data_length = 1
+    0 sink
+    0 observe
+    
+    Configs
+    -------
+    save_interval : int, optional (default=1)
+        Interval in seconds to save the csv file.
+    """
     exporter = Exporter(mimo_args)
     data_example = exporter.reader.data_example
     metadata_example = exporter.reader.metadata_example
