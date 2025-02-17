@@ -221,10 +221,10 @@ def csv(*mimo_args):
         )
         df.loc[count] = line
         if time.time() - last_save > save_interval:
-            df.to_csv(os.path.join(run_directory, f"{name}.csv"), index=False)
+            df.to_csv(os.path.join(run_directory, f"{name}.csv"), index=False, mode='a', header=False)
             last_save = time.time()
             df = pd.DataFrame(columns=header)
-            count = 0
+            count = 0 
         
-    df.to_csv(os.path.join(run_directory, f"{name}.csv"), index=False)
+    df.to_csv(os.path.join(run_directory, f"{name}.csv"), index=False, mode='a', header=False)
         
