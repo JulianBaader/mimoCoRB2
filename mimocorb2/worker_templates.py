@@ -147,10 +147,14 @@ class Importer(Template):
 class Exporter(Template):
     """Worker class for exporting data and metadata.
     
+    If provided with an identical sink events will be copied to allow further analysis.
+    
     Attributes
     ----------
     reader : BufferReader
         BufferReader object for reading data from the buffer
+    writers : BufferWriter
+        BufferWriter object for writing data to the buffer after exporting
 
     Examples
     --------
@@ -174,14 +178,24 @@ class Exporter(Template):
 
         if len(self.sources) != 1:
             self.fail("Exporter must have 1 source", force_shutdown=True)
-        if len(self.sinks) != 0:
-            self.fail("Exporter must have 0 sinks", force_shutdown=True)
         if len(self.observes) != 0:
             self.fail("Exporter must have 0 observes", force_shutdown=True)
 
         self.reader = self.sources[0]
+        data_in = self.reader.data_example
         
-    def __iter__(self) -> Generator:
+        if len(self.sinks) == 0:
+            self.writers = None
+        else:
+            self.writers = self.sinks
+            for writer in self.writers:
+                data_example = writer.data_example
+                if data_example.shape != data_in.shape:
+                    self.fail("Exporter source and sink shapes do not match", force_shutdown=True)
+                if data_example.dtype != data_in.dtype:
+                    self.fail("Exporter source and sink dtypes do not match", force_shutdown=True)
+        
+    def _iter_without_sinks(self) -> Generator:
         """Yields data and metadata from the buffer until the buffer is shutdown."""
         while True:
             with self.reader as source:
@@ -191,6 +205,44 @@ class Exporter(Template):
                     self.logger.info("Exporter finished")
                     break  # Stop the generator
                 yield data, metadata
+                
+    def _iter_with_sinks(self) -> Generator:
+        """Yields data and metadata from the buffer until the buffer is shutdown."""
+        assert self.writers is not None
+        while True:
+            with self.reader as source:
+                data = source[DATA]
+                metadata = source[METADATA]
+                if data is None:
+                    for writer in self.writers:
+                        writer.send_flush_event()
+                    self.logger.info("Exporter finished")
+                    break  # Stop the generator
+                for writer in self.writers:
+                    with writer as sink:
+                        sink[DATA][:] = data
+                        sink[METADATA][:] = metadata
+                yield data, metadata
+                
+    def __iter__(self) -> Generator:
+        """Start the exporter and yield data and metadata.
+        
+        Yields data and metadata from the buffer until the buffer is shutdown.
+        
+        Yields
+        ------
+        data : np.ndarray, None
+            Data from the buffer
+        metadata : np.ndarray, None
+            Metadata from the buffer
+        """
+        if self.writers is None:
+            self.logger.info("Starting Exporter without sinks")
+            return self._iter_without_sinks()
+        else:
+            self.logger.info("Starting Exporter with sinks")
+            return self._iter_with_sinks()
+                    
 
 
 class Filter(Template):
@@ -428,88 +480,3 @@ class Observer(Template):
                 break
         self.logger.info("Observer finished")
         yield None, None
-
-
-class Monitor(Template):
-    """Worker Class for Monitoring data transfered between two identical Buffers.
-    
-    If no sink is provided, the Monitor will act as an Exporter.
-    
-    Attributes
-    ----------
-    reader : BufferReader
-        BufferReader object for reading data from the buffer
-    writer : BufferWriter
-        BufferWriter object for writing data to the buffer
-    """
-    def __init__(self, mimo_args: ArgsAlias) -> None:
-        """Checks the setup."""
-        super().__init__(mimo_args)
-
-        if len(self.sources) != 1:
-            self.fail("Monitor must have 1 source", force_shutdown=True)
-        if len(self.sinks) not in [0,1]:
-            self.fail("Monitor must have 0 or 1 sink", force_shutdown=True)
-        if len(self.observes) != 0:
-            self.fail("Monitor must have 0 observes", force_shutdown=True)
-            
-        self.reader = self.sources[0]
-        data_example_in = self.reader.data_example
-        self.writer = None
-        if len(self.sinks) != 0:
-            self.writer = self.sinks[0]
-            data_example_out = self.writer.data_example
-            
-            if data_example_in.shape != data_example_out.shape:
-                self.fail("Monitor source and sink shapes do not match", force_shutdown=True)
-            if data_example_in.dtype != data_example_out.dtype:
-                self.fail("Monitor source and sink dtypes do not match", force_shutdown=True)
-            
-    def _monitor(self) -> Generator:
-        assert self.writer is not None
-        while True:
-            with self.reader as source:
-                data = source[DATA]
-                metadata = source[METADATA]
-                if data is None:
-                    break
-                with self.writer as sink:
-                    sink[DATA][:] = data
-                    sink[METADATA][:] = metadata
-                yield data, metadata
-                
-        self.writer.buffer.send_flush_event()
-        self.logger.info("Monitor finished")
-        yield None, None
-        
-    def _exporter(self) -> Generator:
-        while True:
-            with self.reader as source:
-                data = source[DATA]
-                metadata = source[METADATA]
-                if data is None:
-                    break
-                yield data, metadata
-        self.logger.info("Monitor finished")
-        yield None, None
-        
-    def __call__(self) -> Generator:
-        """Start the monitor and yield data and metadata.
-        
-        Yields data and metadata from the buffer until the buffer is shutdown.
-        
-        Yields
-        ------
-        data : np.ndarray, None
-            Data from the buffer
-        metadata : np.ndarray, None
-            Metadata from the buffer
-        """
-        if self.writer is not None:
-            self.logger.info("Starting Monitor as Monitor")
-            return self._monitor()
-        else:
-            self.logger.info("Starting Monitor as Exporter")
-            return self._exporter()
-        
-    

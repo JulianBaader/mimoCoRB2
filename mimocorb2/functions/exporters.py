@@ -1,4 +1,4 @@
-from mimocorb2.worker_templates import Exporter, Monitor
+from mimocorb2.worker_templates import Exporter
 
 import numpy as np
 from numpy.lib import recfunctions as rfn
@@ -46,7 +46,7 @@ def histogram(*mimo_args):
     plot_type : str, optional (default='bar')
         Type of plot to use for the histograms. Options are 'line', 'bar', or 'step'.
     """
-    exporter = Monitor(mimo_args)
+    exporter = Exporter(mimo_args)
 
     # Get info from the buffer
     name = exporter.reader.name
@@ -90,13 +90,9 @@ def histogram(*mimo_args):
         )
         p.start()
 
-    generator = exporter()
     last_save = time.time()
 
-    while True:
-        data, metadata = next(generator)
-        if data is None:
-            break
+    for data, metadata in exporter:
         for ch in channels:
             hists[ch] += np.histogram(data[ch], bins=bins[ch])[0]
 
