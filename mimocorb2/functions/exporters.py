@@ -19,11 +19,8 @@ def drain(*mimo_args):
     0 observe
     """
     exporter = Exporter(mimo_args)
-    generator = exporter()
-    while True:
-        data, metadata = next(generator)
-        if data is None:
-            break
+    for data, metadata in exporter:
+        pass
 
 
 def histogram(*mimo_args):
@@ -215,21 +212,19 @@ def csv(*mimo_args):
     count = 0
 
     last_save = time.time()
-
-    while True:
-        data, metadata = next(exporter())
-        if data is None:
-            break
+    count = 0
+    for data, metadata in exporter:
         count += 1
         line = np.append(
             rfn.structured_to_unstructured(metadata),
             rfn.structured_to_unstructured(data)
         )
         df.loc[count] = line
-        
         if time.time() - last_save > save_interval:
             df.to_csv(os.path.join(run_directory, f"{name}.csv"), index=False)
             last_save = time.time()
             df = pd.DataFrame(columns=header)
             count = 0
+        
+    df.to_csv(os.path.join(run_directory, f"{name}.csv"), index=False)
         

@@ -51,9 +51,5 @@ def calculate_pulse_heights(*mimo_args):
 
 def print_pulse_heights(*mimo_args):
     exporter = Exporter(mimo_args)
-    gen = exporter()
-    while True:
-        data, metadata = next(gen)
-        if data is None:
-            break
-        # print(f"Pulse height: {data['pulse_height']}")
+    for data, metadata in exporter:
+        pass

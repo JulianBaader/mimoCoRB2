@@ -158,11 +158,7 @@ class Exporter(Template):
     ...     exporter = Exporter(mimo_args)
     ...     data_example = exporter.reader.data_example
     ...     buffer_name = exporter.reader.name
-    ...     generator = exporter()
-    ...     while True:
-    ...         data, metadata = next(generator)
-    ...         if data is None:
-    ...             break
+    ...     for data, metadata in exporter:
     ...         print(data, metadata)
     """
 
@@ -184,27 +180,17 @@ class Exporter(Template):
             self.fail("Exporter must have 0 observes", force_shutdown=True)
 
         self.reader = self.sources[0]
-
-    def __call__(self) -> Generator:
-        """Start the generator and yield data and metadata.
         
-        Yields data and metadata from the buffer until the buffer is shutdown.
-        
-        Yields
-        ------
-        data : np.ndarray, None
-            Data from the buffer
-        metadata : np.ndarray, None
-            Metadata from the buffer"""
+    def __iter__(self) -> Generator:
+        """Yields data and metadata from the buffer until the buffer is shutdown."""
         while True:
             with self.reader as source:
                 data = source[DATA]
                 metadata = source[METADATA]
                 if data is None:
-                    break
+                    self.logger.info("Exporter finished")
+                    break  # Stop the generator
                 yield data, metadata
-        self.logger.info("Exporter finished")
-        yield None, None
 
 
 class Filter(Template):

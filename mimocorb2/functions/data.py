@@ -116,13 +116,9 @@ def export(*mimo_args):
     exporter = Exporter(mimo_args)
 
     file = mimoFile.from_buffer_object(exporter.reader.buffer, exporter.config['run_directory'])
-    generator = exporter()
 
     with file:
-        while True:
-            data, metadata = next(generator)
-            if data is None:
-                break
+        for data, metadata in exporter:
             file.write_data(data, metadata)
 
 
