@@ -76,7 +76,7 @@ def simulate_source(*mimo_args):
                 # add delayed pulse(s)
                 t_mu = -tau_mu * np.log(np.random.rand())  # muon life time
                 pos2 = int(t_mu / sample_time_ns) + pre_trigger_samples
-                if np.random.rand() > 0.5 + 0.5 * A_spin * np.cos(2* np.pi * t_mu / T_spin):  # upward decay electron
+                if np.random.rand() > 0.5 + 0.5 * A_spin * np.cos(2 * np.pi * t_mu / T_spin):  # upward decay electron
                     for i_layer in range(0, min(nchan, 2)):
                         # random pulse height and position for 2nd pulse
                         ## pheight2 = np.random.rand()*maxheight

@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 
 def drain(*mimo_args):
     """mimoCoRB Exporter: drain data from a buffer
-    
+
     Buffers
     -------
     1 source
@@ -25,10 +25,10 @@ def drain(*mimo_args):
 
 def histogram(*mimo_args):
     """mimoCoRB Monitor: Create Histograms of data and optionally visualize them.
-    
+
     Histograms are saved in the run_directory under the name of the source buffer and the channel.
-    
-    
+
+
     Buffers
     -------
     1 source with data_length = 1
@@ -165,18 +165,17 @@ def sub_histogram(files, bins, update_interval, name, plot_type):
     # TODO why dont i count frames?
 
 
-
 def csv(*mimo_args):
     """mimoCoRB Exporter: Save data to a csv file for pandas to read.
-    
+
     File is saved in the run_directory under the name of the source buffer.
-    
+
     Buffers
     -------
     1 source with data_length = 1
     0 sink
     0 observe
-    
+
     Configs
     -------
     save_interval : int, optional (default=1)
@@ -185,23 +184,23 @@ def csv(*mimo_args):
     exporter = Exporter(mimo_args)
     data_example = exporter.reader.data_example
     metadata_example = exporter.reader.metadata_example
-    
+
     config = exporter.config
     save_interval = config.get('save_interval', 1)
-    
+
     if data_example.size != 1:
         raise ValueError('csv exporter only supports data_length = 1')
-    
+
     run_directory = exporter.config['run_directory']
     name = exporter.reader.name
-    
+
     header = []
     for dtype_name in metadata_example.dtype.names:
         header.append(dtype_name)
 
     for dtype_name in data_example.dtype.names:
         header.append(dtype_name)
-        
+
     # create empty dataframe
     df = pd.DataFrame(columns=header)
     df.to_csv(os.path.join(run_directory, f"{name}.csv"), index=False)
@@ -211,16 +210,12 @@ def csv(*mimo_args):
     count = 0
     for data, metadata in exporter:
         count += 1
-        line = np.append(
-            rfn.structured_to_unstructured(metadata),
-            rfn.structured_to_unstructured(data)
-        )
+        line = np.append(rfn.structured_to_unstructured(metadata), rfn.structured_to_unstructured(data))
         df.loc[count] = line
         if time.time() - last_save > save_interval:
             df.to_csv(os.path.join(run_directory, f"{name}.csv"), index=False, mode='a', header=False)
             last_save = time.time()
             df = pd.DataFrame(columns=header)
-            count = 0 
-        
+            count = 0
+
     df.to_csv(os.path.join(run_directory, f"{name}.csv"), index=False, mode='a', header=False)
-        

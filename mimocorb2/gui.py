@@ -25,7 +25,7 @@ class BufferManagerApp(QtWidgets.QMainWindow):
 
         buffers = control.setup['Buffers'].keys()
         workers = control.setup['Workers'].keys()
-        
+
         slot_counts = [control.setup['Buffers'][name]['buffer_obj'].slot_count for name in buffers]
         other = {
             'slot_counts': slot_counts,
@@ -144,17 +144,16 @@ class BufferManagerApp(QtWidgets.QMainWindow):
 
     def action_exit(self):
         self.close()
-        
+
     def action_pause(self):
         self.control.pause_roots()
         self.pauseButton.setText("Resume Roots")
         self.pauseButton.clicked.connect(self.action_resume)
-        
+
     def action_resume(self):
         self.control.resume_roots()
         self.pauseButton.setText("Pause Roots")
         self.pauseButton.clicked.connect(self.action_pause)
-        
 
 
 class PlotCanvas(FigureCanvas):
@@ -198,18 +197,15 @@ class BufferCanvas(PlotCanvas):
         self.axes.legend(loc="upper right")
         self.axes.tick_params(axis="x", rotation=45)
         self.axes.set_ylabel("Ratio")
-        
+
         self.axes.set_xticks(x)
         self.axes.set_xticklabels(self.buffers)
-        
+
         xlim = self.axes.get_xlim()
         twiny = self.axes.twiny()
         twiny.set_xticks(x)
         twiny.set_xticklabels(self.other['slot_counts'])
         twiny.set_xlim(xlim)
-        
-        
-        
 
     def update_plot(self, buffer_stats, worker_stats):
         filled = np.array([buffer_stats[key]["filled_slots"] for key in self.buffers])

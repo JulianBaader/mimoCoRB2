@@ -61,7 +61,7 @@ class Importer(Template):
         Counter for the number of events imported
     writer : BufferWriter
         BufferWriter object for writing data to the buffer
-        
+
     Examples
     --------
     >>> def worker(*mimo_args):
@@ -74,12 +74,12 @@ class Importer(Template):
     ...            data = np.random.normal(size=data_example.shape)
     ...            yield data
     ...        yield None
-    ...     importer(ufunc)    
+    ...     importer(ufunc)
     """
 
     def __init__(self, mimo_args: ArgsAlias) -> None:
         """Checks the setup.
-        
+
         Parameters
         ----------
         mimo_args : ArgsAlias
@@ -99,14 +99,14 @@ class Importer(Template):
 
     def __call__(self, ufunc: Callable) -> None:
         """Start the generator and write data to the buffer.
-        
+
         ufunc must yield data of the same format as the Importer.writer.data_example and yield None at the end.
         Metadata (counter, timestamp, deadtime) is automatically added to the buffer.
-        
+
         Parameters
         ----------
         ufunc : Callable
-            Generator function that yields data and ends with None    
+            Generator function that yields data and ends with None
         """
         if not callable(ufunc):
             self.read_all.send_flush_event()
@@ -146,9 +146,9 @@ class Importer(Template):
 
 class Exporter(Template):
     """Worker class for exporting data and metadata.
-    
+
     If provided with an identical sink events will be copied to allow further analysis.
-    
+
     Attributes
     ----------
     reader : BufferReader
@@ -168,7 +168,7 @@ class Exporter(Template):
 
     def __init__(self, mimo_args: ArgsAlias) -> None:
         """Checks the setup.
-        
+
         Parameters
         ----------
         mimo_args : ArgsAlias
@@ -183,7 +183,7 @@ class Exporter(Template):
 
         self.reader = self.sources[0]
         data_in = self.reader.data_example
-        
+
         if len(self.sinks) == 0:
             self.writers = None
         else:
@@ -194,7 +194,7 @@ class Exporter(Template):
                     self.fail("Exporter source and sink shapes do not match", force_shutdown=True)
                 if data_example.dtype != data_in.dtype:
                     self.fail("Exporter source and sink dtypes do not match", force_shutdown=True)
-        
+
     def _iter_without_sinks(self) -> Generator:
         """Yields data and metadata from the buffer until the buffer is shutdown."""
         while True:
@@ -205,7 +205,7 @@ class Exporter(Template):
                     self.logger.info("Exporter finished")
                     break  # Stop the generator
                 yield data, metadata
-                
+
     def _iter_with_sinks(self) -> Generator:
         """Yields data and metadata from the buffer until the buffer is shutdown."""
         assert self.writers is not None
@@ -223,12 +223,12 @@ class Exporter(Template):
                         sink[DATA][:] = data
                         sink[METADATA][:] = metadata
                 yield data, metadata
-                
+
     def __iter__(self) -> Generator:
         """Start the exporter and yield data and metadata.
-        
+
         Yields data and metadata from the buffer until the buffer is shutdown.
-        
+
         Yields
         ------
         data : np.ndarray, None
@@ -242,21 +242,20 @@ class Exporter(Template):
         else:
             self.logger.info("Starting Exporter with sinks")
             return self._iter_with_sinks()
-                    
 
 
 class Filter(Template):
     """Worker class for filtering data from one buffer to other buffer(s).
 
     Analyze data using ufunc(data) and copy or discard data based on the result.
-    
+
     Attributes
     ----------
     reader : BufferReader
         BufferReader object for reading data from the buffer
     writers : list[BufferWriter]
         List of BufferWriter objects for writing data to the buffers
-        
+
     Examples
     --------
     >>> def worker(*mimo_args):
@@ -272,7 +271,7 @@ class Filter(Template):
 
     def __init__(self, mimo_args: ArgsAlias) -> None:
         """Checks the setup.
-        
+
         Check that the number of sources, sinks, and observes are correct.
         Check that the source and sink shapes and dtypes match.
         """
@@ -298,7 +297,7 @@ class Filter(Template):
 
     def __call__(self, ufunc) -> None:
         """Start the filter and copy or discard data based on the result of ufunc(data).
-        
+
         Parameters
         ----------
         ufunc : Callable
@@ -351,7 +350,7 @@ class Processor(Template):
         BufferReader object for reading data from the buffer
     writers : list[BufferWriter]
         List of BufferWriter objects for writing data to the buffers
-        
+
     Examples
     --------
     >>> def worker(*mimo_args):
@@ -363,7 +362,7 @@ class Processor(Template):
 
     def __init__(self, mimo_args: ArgsAlias) -> None:
         """Checks the setup.
-        
+
         Parameters
         ----------
         mimo_args : ArgsAlias
@@ -383,7 +382,7 @@ class Processor(Template):
 
     def __call__(self, ufunc: Callable) -> None:
         """Start the processor and process data using ufunc(data).
-        
+
         Parameters
         ----------
         ufunc : Callable
@@ -392,7 +391,7 @@ class Processor(Template):
             Otherwise the function must return a list of results, one for each sink.
             If the result is not None it will be written to the corresponding sink.
         """
-            
+
         if not callable(ufunc):
             self.read_all.send_flush_event()
             raise RuntimeError("ufunc not callable")
@@ -421,12 +420,12 @@ class Processor(Template):
 
 class Observer(Template):
     """Worker class for observing data from a buffer.
-    
+
     Attributes
     ----------
     observer : BufferObserver
         BufferObserver object for observing data from the buffer
-        
+
     Examples
     --------
     >>> def worker(*mimo_args):
@@ -439,9 +438,10 @@ class Observer(Template):
     ...         print(data, metadata)
     ...         time.sleep(1)
     """
+
     def __init__(self, mimo_args: ArgsAlias) -> None:
         """Checks the setup.
-        
+
         Parameters
         ----------
         mimo_args : ArgsAlias
@@ -459,9 +459,9 @@ class Observer(Template):
 
     def __call__(self) -> Generator:
         """Start the observer and yield data and metadata.
-        
+
         Yields data and metadata from the buffer until the buffer is shutdown.
-        
+
         Yields
         ------
         data : np.ndarray, None

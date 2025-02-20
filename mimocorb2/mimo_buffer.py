@@ -40,7 +40,6 @@ Creating and using a buffer for multiprocessing data handling:
 
 import numpy as np
 from multiprocessing import shared_memory, Queue, Value
-import queue
 import ctypes
 import logging
 import time
@@ -130,7 +129,11 @@ class mimoBuffer:
     metadata_byte_size = metadata_example.nbytes
 
     def __init__(
-        self, name: str, slot_count: int, data_length: int, data_dtype: np.dtype#, overwrite: bool = True
+        self,
+        name: str,
+        slot_count: int,
+        data_length: int,
+        data_dtype: np.dtype,  # , overwrite: bool = True
     ) -> None:
         self.name = name
         self.slot_count = slot_count
@@ -150,8 +153,10 @@ class mimoBuffer:
             dtype=np.uint8,
             buffer=self.shared_memory_buffer.buf,
         )
-        
-        self.shared_memory_trash = shared_memory.SharedMemory(create=True, size=self.slot_byte_size) # for draining data whilst in paused mode
+
+        self.shared_memory_trash = shared_memory.SharedMemory(
+            create=True, size=self.slot_byte_size
+        )  # for draining data whilst in paused mode
         self.trash = np.ndarray(
             shape=(1, self.slot_byte_size),
             dtype=np.uint8,
@@ -168,17 +173,15 @@ class mimoBuffer:
 
         # dynamic attributes
         self.event_count = Value(ctypes.c_ulonglong, 0)
-        #self.overwrite_count = Value(ctypes.c_ulong, 0)
+        # self.overwrite_count = Value(ctypes.c_ulong, 0)
         self.flush_event_received = Value(ctypes.c_bool, False)
         self.total_deadtime = Value(ctypes.c_double, 0.0)
         self.paused_count = Value(ctypes.c_ulonglong, 0)
         self.paused = Value(ctypes.c_bool, False)
-        
 
         self.last_stats_time = time.time()
         self.last_event_count = 0
         self.last_deadtime = 0
-        
 
     def get_stats(self) -> dict:
         current_time = time.time()
@@ -186,7 +189,7 @@ class mimoBuffer:
         current_deadtime = self.total_deadtime.value
         stats = {
             "event_count": self.event_count.value,
-            #"overwrite_count": self.overwrite_count.value,
+            # "overwrite_count": self.overwrite_count.value,
             "filled_slots": (self.filled_slots.qsize() - 1) / self.slot_count,
             "empty_slots": self.empty_slots.qsize() / self.slot_count,
             "flush_event_received": self.flush_event_received.value,
@@ -209,21 +212,21 @@ class mimoBuffer:
         metadata = slot[: self.metadata_byte_size].view(self.metadata_dtype)
         data = slot[self.metadata_byte_size :].view(self.data_dtype)
         return [metadata, data]
-    
+
     def access_slot_to_read(self, token: int | None) -> list[np.ndarray, np.ndarray] | list[None, None]:
         """Access a slot to read from.
-        
+
         Parameters
         ----------
         token : int | None
             The token of the slot to access.
             None for shutdown
-            
+
         Returns
         -------
         list[np.ndarray, np.ndarray] | list[None, None]
             The metadata and data arrays of the slot.
-        
+
         """
         if token is None:
             return [None, None]
@@ -231,16 +234,16 @@ class mimoBuffer:
         metadata = slot[: self.metadata_byte_size].view(self.metadata_dtype)
         data = slot[self.metadata_byte_size :].view(self.data_dtype)
         return [metadata, data]
-    
+
     def access_slot_to_write(self, token: int | None) -> list[np.ndarray, np.ndarray]:
         """Access a slot to write to.
-        
+
         Parameters
         ----------
         token : int | None
             The token of the slot to access.
             None for trash
-            
+
         Returns
         -------
         list[np.ndarray, np.ndarray]
@@ -287,7 +290,7 @@ class mimoBuffer:
             self.total_deadtime.value += self.buffer[token][: self.metadata_byte_size].view(self.metadata_dtype)[
                 "deadtime"
             ]  # TODO i think this is ugly
-        
+
         self.filled_slots.put(token)
 
     def get_read_token(self) -> int | None:
@@ -308,10 +311,10 @@ class mimoBuffer:
     def return_observe_token(self, token: int | None) -> None:
         """Return a observe token to the ring buffer"""
         self.filled_slots.put(token)
-        
+
     def pause(self) -> None:
         self.paused.value = True
-    
+
     def resume(self) -> None:
         self.paused.value = False
 
