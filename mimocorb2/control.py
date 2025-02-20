@@ -490,3 +490,13 @@ class Control:
     def get_time_active(self) -> float:
         """Return the time the workers have been active."""
         return time.time() - self.start_time
+    
+    def pause_roots(self) -> None:
+        """Pause all root buffers."""
+        for name in self.buffers_for_shutdown:
+            self.setup['Buffers'][name]['buffer_obj'].pause()
+    
+    def resume_roots(self) -> None:
+        """Resume all root buffers."""
+        for name in self.buffers_for_shutdown:
+            self.setup['Buffers'][name]['buffer_obj'].resume()

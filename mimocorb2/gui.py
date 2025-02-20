@@ -46,6 +46,7 @@ class BufferManagerApp(QtWidgets.QMainWindow):
         self.shutdownAllBuffers.clicked.connect(self.action_shutdownAllBuffers)
         self.killWorkers.clicked.connect(self.action_killWorkers)
         self.exitButton.clicked.connect(self.action_exit)
+        self.pauseButton.clicked.connect(self.action_pause)
 
         # main tab
         # time active label
@@ -143,6 +144,17 @@ class BufferManagerApp(QtWidgets.QMainWindow):
 
     def action_exit(self):
         self.close()
+        
+    def action_pause(self):
+        self.control.pause_roots()
+        self.pauseButton.setText("Resume Roots")
+        self.pauseButton.clicked.connect(self.action_resume)
+        
+    def action_resume(self):
+        self.control.resume_roots()
+        self.pauseButton.setText("Pause Roots")
+        self.pauseButton.clicked.connect(self.action_pause)
+        
 
 
 class PlotCanvas(FigureCanvas):

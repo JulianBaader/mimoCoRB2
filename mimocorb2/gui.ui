@@ -84,6 +84,13 @@
       <item>
        <layout class="QHBoxLayout" name="buttonLayout">
         <item>
+         <widget class="QPushButton" name="pauseButton">
+          <property name="text">
+           <string>Pause Roots</string>
+          </property>
+         </widget>
+        </item>
+        <item>
          <widget class="QPushButton" name="shutdownRootBuffer">
           <property name="text">
            <string>Shutdown Root Buffer</string>

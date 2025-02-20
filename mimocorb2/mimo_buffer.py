@@ -62,8 +62,6 @@ class mimoBuffer:
         Length of the structured data array in each slot.
     data_dtype : np.dtype
         Data type of the structured data array.
-    # overwrite : bool, optional
-    #     If True, allows overwriting filled slots when the buffer is full, by default True.
 
     Attributes
     ----------
@@ -81,8 +79,12 @@ class mimoBuffer:
         Queue of filled slots available for reading or observing.
     event_count : multiprocessing.Value
         Total number of events (writes) that have occurred.
-    # overwrite_count : multiprocessing.Value
-    #     Total number of slots overwritten.
+    total_deadtime : multiprocessing.Value
+        Total deadtime of all events.
+    paused : multiprocessing.Value
+        Indicates whether the buffer is paused.
+    paused_count : multiprocessing.Value
+        Number of events discarded whilst being paused.
     flush_event_received : multiprocessing.Value
         Indicates whether a flush event has been sent.
 
@@ -90,8 +92,16 @@ class mimoBuffer:
     -------
     get_stats()
         Retrieve statistics about the buffer's usage.
-    access_slot(token)
-        Access the data and metadata of a specific slot.
+    access_slot_to_observe(token)
+        Access a slot to observe data from.
+    access_slot_to_read(token)
+        Access a slot to read data from.
+    access_slot_to_write(token)
+        Access a slot to write data to.
+    pause()
+        Pause the buffer.
+    resume()
+        Resume the buffer.
     send_flush_event()
         Send a flush event to notify consumers.
     get_write_token()
@@ -140,6 +150,13 @@ class mimoBuffer:
             dtype=np.uint8,
             buffer=self.shared_memory_buffer.buf,
         )
+        
+        self.shared_memory_trash = shared_memory.SharedMemory(create=True, size=self.slot_byte_size) # for draining data whilst in paused mode
+        self.trash = np.ndarray(
+            shape=(1, self.slot_byte_size),
+            dtype=np.uint8,
+            buffer=self.shared_memory_trash.buf,
+        )
 
         # initialize the queues
         self.empty_slots = Queue(self.slot_count)
@@ -154,10 +171,14 @@ class mimoBuffer:
         #self.overwrite_count = Value(ctypes.c_ulong, 0)
         self.flush_event_received = Value(ctypes.c_bool, False)
         self.total_deadtime = Value(ctypes.c_double, 0.0)
+        self.paused_count = Value(ctypes.c_ulonglong, 0)
+        self.paused = Value(ctypes.c_bool, False)
+        
 
         self.last_stats_time = time.time()
         self.last_event_count = 0
         self.last_deadtime = 0
+        
 
     def get_stats(self) -> dict:
         current_time = time.time()
@@ -173,16 +194,62 @@ class mimoBuffer:
             "average_deadtime": _divide(
                 current_deadtime - self.last_deadtime, current_event_count - self.last_event_count
             ),
+            "paused_count": self.paused_count.value,
+            "paused": self.paused.value,
         }
         self.last_stats_time = current_time
         self.last_event_count = current_event_count
         self.last_deadtime = current_deadtime
         return stats
 
-    def access_slot(self, token: int | None) -> list[np.ndarray, np.ndarray] | list[None, None]:
+    def access_slot_to_observe(self, token: int | None) -> list[np.ndarray, np.ndarray] | list[None, None]:
         if token is None:
             return [None, None]
         slot = self.buffer[token]
+        metadata = slot[: self.metadata_byte_size].view(self.metadata_dtype)
+        data = slot[self.metadata_byte_size :].view(self.data_dtype)
+        return [metadata, data]
+    
+    def access_slot_to_read(self, token: int | None) -> list[np.ndarray, np.ndarray] | list[None, None]:
+        """Access a slot to read from.
+        
+        Parameters
+        ----------
+        token : int | None
+            The token of the slot to access.
+            None for shutdown
+            
+        Returns
+        -------
+        list[np.ndarray, np.ndarray] | list[None, None]
+            The metadata and data arrays of the slot.
+        
+        """
+        if token is None:
+            return [None, None]
+        slot = self.buffer[token]
+        metadata = slot[: self.metadata_byte_size].view(self.metadata_dtype)
+        data = slot[self.metadata_byte_size :].view(self.data_dtype)
+        return [metadata, data]
+    
+    def access_slot_to_write(self, token: int | None) -> list[np.ndarray, np.ndarray]:
+        """Access a slot to write to.
+        
+        Parameters
+        ----------
+        token : int | None
+            The token of the slot to access.
+            None for trash
+            
+        Returns
+        -------
+        list[np.ndarray, np.ndarray]
+            The metadata and data arrays of the slot.
+        """
+        if token is None:
+            slot = self.trash[0]
+        else:
+            slot = self.buffer[token]
         metadata = slot[: self.metadata_byte_size].view(self.metadata_dtype)
         data = slot[self.metadata_byte_size :].view(self.data_dtype)
         return [metadata, data]
@@ -194,47 +261,33 @@ class mimoBuffer:
                 self.flush_event_received.value = True
                 self.filled_slots.put(None)
 
-    def get_write_token(self) -> int:
+    def get_write_token(self) -> int | None:
         """Get a token to write data to the buffer.
 
-        This method handels overwriting.
+        Returns
+        -------
+        int | None
+            The token of the slot to write to.
+            None if the buffer is paused.
         """
+        if self.paused.value:
+            return None
         return self.empty_slots.get()
 
-        # # if overwriting is not allowed, wait for an empty slot (block=True) -> the exception will never be raised
-        # # if overwriting is allowed, try to immideatly get a new slot (block=False)
-        # try:
-        #     return self.empty_slots.get(block=(not self.overwrite))
-        # except queue.Empty:
-        #     # getting here means overwrite is allowed and there is no empty slot available
-        #     # in this case, check if there is a filled slot available which can be overwritten
-        #     # waiting for a filled slot could lead to a deadlock
-        #     try:
-        #         token = self.filled_slots.get_nowait()
-
-        #         # do not overwrite the flush event
-        #         if token is None:
-        #             self.filled_slots.put(None)  # put the flush event back into the queue
-        #             return self.empty_slots.get()  # wait for an empty slot
-
-        #         # if the token is not None, it is a filled slot which can be overwritten
-        #         with self.overwrite_count.get_lock():
-        #             self.overwrite_count.value += 1
-        #         return token
-
-        #     except queue.Empty:
-        #         # getting here means there is no empty slot and no filled slot available, meaning every slot is either being written to or read from
-        #         # to avoid a deadlock in this case, wait for an empty slot
-        #         return self.empty_slots.get()
-
-    def return_write_token(self, token: int) -> None:
+    def return_write_token(self, token: int | None) -> None:
         """Return a token to which data has been written."""
+        if token is None:
+            with self.paused_count.get_lock():
+                self.paused_count.value += 1
+            return None
+
         with self.event_count.get_lock():
             self.event_count.value += 1
         with self.total_deadtime.get_lock():
             self.total_deadtime.value += self.buffer[token][: self.metadata_byte_size].view(self.metadata_dtype)[
                 "deadtime"
             ]  # TODO i think this is ugly
+        
         self.filled_slots.put(token)
 
     def get_read_token(self) -> int | None:
@@ -255,10 +308,18 @@ class mimoBuffer:
     def return_observe_token(self, token: int | None) -> None:
         """Return a observe token to the ring buffer"""
         self.filled_slots.put(token)
+        
+    def pause(self) -> None:
+        self.paused.value = True
+    
+    def resume(self) -> None:
+        self.paused.value = False
 
     def __del__(self) -> None:
         self.shared_memory_buffer.close()
         self.shared_memory_buffer.unlink()
+        self.shared_memory_trash.close()
+        self.shared_memory_trash.unlink()
         logger.info(f"Buffer {self.name} is shut down.")
 
 
@@ -288,7 +349,7 @@ class BufferReader(Interface):
 
     def __enter__(self) -> list[np.ndarray, np.ndarray] | list[None, None]:
         self.token = self.buffer.get_read_token()
-        return self.buffer.access_slot(self.token)
+        return self.buffer.access_slot_to_read(self.token)
 
     def __exit__(self, exc_type, exc_value, traceback) -> None:
         self.buffer.return_read_token(self.token)
@@ -310,7 +371,7 @@ class BufferWriter(Interface):
 
     def __enter__(self) -> list[np.ndarray, np.ndarray]:
         self.token = self.buffer.get_write_token()
-        return self.buffer.access_slot(self.token)
+        return self.buffer.access_slot_to_write(self.token)
 
     def __exit__(self, exc_type, exc_value, traceback) -> None:
         self.buffer.return_write_token(self.token)
@@ -333,7 +394,7 @@ class BufferObserver(Interface):
 
     def __enter__(self) -> list[np.ndarray, np.ndarray] | list[None, None]:
         self.token = self.buffer.get_observe_token()
-        return self.buffer.access_slot(self.token)
+        return self.buffer.access_slot_to_observe(self.token)
 
     def __exit__(self, exc_type, exc_value, traceback) -> None:
         self.buffer.return_observe_token(self.token)
