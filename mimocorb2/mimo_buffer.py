@@ -222,7 +222,7 @@ class mimoBuffer:
         metadata = slot[: self.metadata_byte_size].view(self.metadata_dtype)
         data = slot[self.metadata_byte_size :].view(self.data_dtype)
         
-        return [metadata, data]
+        return [data, metadata]
     
     def read(self) -> list[int, np.ndarray, np.ndarray] | list[None, None, None]:
         """Read data from the buffer.

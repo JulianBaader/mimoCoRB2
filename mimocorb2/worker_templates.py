@@ -7,8 +7,8 @@ from mimocorb2.mimo_buffer import BufferReader, BufferWriter, BufferObserver
 
 ArgsAlias: TypeAlias = list[list[BufferReader], list[BufferWriter], list[BufferObserver], dict]
 
-METADATA = 0
-DATA = 1
+DATA = 0
+METADATA = 1
 
 
 # Note: anything that returns a generator must have the yield None, None at the very end, as any code following might not be executed
