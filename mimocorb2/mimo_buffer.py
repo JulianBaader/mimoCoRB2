@@ -133,13 +133,12 @@ class mimoBuffer:
         name: str,
         slot_count: int,
         data_length: int,
-        data_dtype: np.dtype,  # , overwrite: bool = True
+        data_dtype: np.dtype,
     ) -> None:
         self.name = name
         self.slot_count = slot_count
         self.data_length = data_length
         self.data_dtype = data_dtype
-        # self.overwrite = overwrite
 
         self.data_example = np.zeros(shape=data_length, dtype=data_dtype)
         self.data_byte_size = self.data_example.nbytes
@@ -173,7 +172,6 @@ class mimoBuffer:
 
         # dynamic attributes
         self.event_count = Value(ctypes.c_ulonglong, 0)
-        # self.overwrite_count = Value(ctypes.c_ulong, 0)
         self.flush_event_received = Value(ctypes.c_bool, False)
         self.total_deadtime = Value(ctypes.c_double, 0.0)
         self.paused_count = Value(ctypes.c_ulonglong, 0)
