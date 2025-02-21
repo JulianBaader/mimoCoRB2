@@ -72,6 +72,8 @@ class mimoBuffer:
         Total byte size of a single slot (data + metadata).
     buffer : np.ndarray
         Shared memory buffer managed as a 2D array.
+    trash : np.ndarray
+        Shared memory trash slot for draining data whilst paused.
     empty_slots : multiprocessing.Queue
         Queue of empty slots available for writing.
     filled_slots : multiprocessing.Queue
@@ -91,30 +93,24 @@ class mimoBuffer:
     -------
     get_stats()
         Retrieve statistics about the buffer's usage.
-    access_slot_to_observe(token)
-        Access a slot to observe data from.
-    access_slot_to_read(token)
-        Access a slot to read data from.
-    access_slot_to_write(token)
-        Access a slot to write data to.
+    read()
+        Read data from the buffer.
+    return_read_token(token)
+        Return a token after reading data from it.
+    write()
+        Write data to the buffer.
+    return_write_token(token)
+        Return a token to which data has been written.
+    observe()
+        Observe data from the buffer.
+    return_observe_token(token)
+        Return a token after observing data from it.
     pause()
         Pause the buffer.
     resume()
         Resume the buffer.
     send_flush_event()
         Send a flush event to notify consumers.
-    get_write_token()
-        Get a token for writing data to a slot.
-    return_write_token(token)
-        Return a token after writing data to it.
-    get_read_token()
-        Get a token for reading data from a slot.
-    return_read_token(token)
-        Return a token after reading data from it.
-    get_observe_token()
-        Get a token for observing data from a slot.
-    return_observe_token(token)
-        Return a token after observing data from it.
     """
 
     metadata_dtype = np.dtype(
@@ -202,7 +198,7 @@ class mimoBuffer:
         self.last_deadtime = current_deadtime
         return stats
     
-    def access_slot(self, slot_number: int | None) -> list[np.ndarray, np.ndarray]:
+    def _access_slot(self, slot_number: int | None) -> list[np.ndarray, np.ndarray]:
         """Access a slot by its slot number.
         
         Get a slot from the buffer by its slot number and return the metadata and data arrays.
@@ -242,7 +238,7 @@ class mimoBuffer:
         token = self.filled_slots.get()
         if token is None:
             return [None, None, None]
-        metadata, data = self.access_slot(token)
+        metadata, data = self._access_slot(token)
         return [token, metadata, data]
     
     def return_read_token(self, token: int | None) -> None:
@@ -266,7 +262,7 @@ class mimoBuffer:
             token = None
         else:
             token = self.empty_slots.get()
-        metadata, data = self.access_slot(token)
+        metadata, data = self._access_slot(token)
         return [token, metadata, data]
     
     def return_write_token(self, token: int | None) -> None:
@@ -299,7 +295,7 @@ class mimoBuffer:
         token = self.filled_slots.get()
         if token is None:
             return [None, None, None]
-        metadata, data = self.access_slot(token)
+        metadata, data = self._access_slot(token)
         return [token, metadata, data]
     
     def return_observe_token(self, token: int | None) -> None:
