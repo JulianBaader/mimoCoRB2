@@ -264,6 +264,8 @@ class RateCanvas(PlotCanvas):
         self.axes.set_yscale("log")
         self.axes.set_ylabel("Rate (events/s)")
         self.axes.set_xlabel("Time (s)")
+        self.axes.grid(True, which='major', alpha=0.9)
+        self.axes.grid(True, which='minor', alpha=0.5)
         self.max_y = MIN_RATE
 
     def update_plot(self, buffer_stats, worker_stats):
