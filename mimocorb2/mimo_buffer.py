@@ -189,7 +189,6 @@ class mimoBuffer:
         current_deadtime = self.total_deadtime.value
         stats = {
             "event_count": self.event_count.value,
-            # "overwrite_count": self.overwrite_count.value,
             "filled_slots": (self.filled_slots.qsize() - 1) / self.slot_count,
             "empty_slots": self.empty_slots.qsize() / self.slot_count,
             "flush_event_received": self.flush_event_received.value,
@@ -204,79 +203,74 @@ class mimoBuffer:
         self.last_event_count = current_event_count
         self.last_deadtime = current_deadtime
         return stats
-
-    def access_slot_to_observe(self, token: int | None) -> list[np.ndarray, np.ndarray] | list[None, None]:
-        if token is None:
-            return [None, None]
-        slot = self.buffer[token]
-        metadata = slot[: self.metadata_byte_size].view(self.metadata_dtype)
-        data = slot[self.metadata_byte_size :].view(self.data_dtype)
-        return [metadata, data]
-
-    def access_slot_to_read(self, token: int | None) -> list[np.ndarray, np.ndarray] | list[None, None]:
-        """Access a slot to read from.
-
+    
+    def access_slot(self, slot_number: int | None) -> list[np.ndarray, np.ndarray]:
+        """Access a slot by its slot number.
+        
+        Get a slot from the buffer by its slot number and return the metadata and data arrays.
+        When slot_number is None, returns the trash slot.
+        
         Parameters
         ----------
-        token : int | None
-            The token of the slot to access.
-            None for shutdown
-
-        Returns
-        -------
-        list[np.ndarray, np.ndarray] | list[None, None]
-            The metadata and data arrays of the slot.
-
-        """
-        if token is None:
-            return [None, None]
-        slot = self.buffer[token]
-        metadata = slot[: self.metadata_byte_size].view(self.metadata_dtype)
-        data = slot[self.metadata_byte_size :].view(self.data_dtype)
-        return [metadata, data]
-
-    def access_slot_to_write(self, token: int | None) -> list[np.ndarray, np.ndarray]:
-        """Access a slot to write to.
-
-        Parameters
-        ----------
-        token : int | None
-            The token of the slot to access.
-            None for trash
-
+        slot_number : int | None
+            The slot number to access.
+        
         Returns
         -------
         list[np.ndarray, np.ndarray]
             The metadata and data arrays of the slot.
         """
-        if token is None:
+        if slot_number is None:
             slot = self.trash[0]
         else:
-            slot = self.buffer[token]
+            slot = self.buffer[slot_number]
+        
         metadata = slot[: self.metadata_byte_size].view(self.metadata_dtype)
         data = slot[self.metadata_byte_size :].view(self.data_dtype)
+        
         return [metadata, data]
-
-    def send_flush_event(self) -> None:
-        """Send a flush event to the buffer."""
-        with self.flush_event_received.get_lock():
-            if not self.flush_event_received.value:
-                self.flush_event_received.value = True
-                self.filled_slots.put(None)
-
-    def get_write_token(self) -> int | None:
-        """Get a token to write data to the buffer.
-
+    
+    def read(self) -> list[int, np.ndarray, np.ndarray] | list[None, None, None]:
+        """Read data from the buffer.
+        
+        After reading is finished the token needs to be returned by calling return_read_token.
+        When the buffer is shut down, returns [None, None, None].
+        
         Returns
         -------
-        int | None
-            The token of the slot to write to.
-            None if the buffer is paused.
+        list[int, np.ndarray, np.ndarray] | list[None, None, None]
+            The token, metadata and data arrays of the slot.
+        """
+        token = self.filled_slots.get()
+        if token is None:
+            return [None, None, None]
+        metadata, data = self.access_slot(token)
+        return [token, metadata, data]
+    
+    def return_read_token(self, token: int | None) -> None:
+        """Return a token after reading data from it."""
+        if token is not None:
+            self.empty_slots.put(token)
+        else:
+            self.filled_slots.put(None)
+    
+    def write(self) -> list[int, np.ndarray, np.ndarray]:
+        """Write data to the buffer.
+        
+        After writing is finished the token needs to be returned by calling return_write_token.
+        
+        Returns
+        -------
+        list[int, np.ndarray, np.ndarray]
+            The token, metadata and data arrays of the slot.
         """
         if self.paused.value:
-            return None
-        return self.empty_slots.get()
-
+            token = None
+        else:
+            token = self.empty_slots.get()
+        metadata, data = self.access_slot(token)
+        return [token, metadata, data]
+    
     def return_write_token(self, token: int | None) -> None:
         """Return a token to which data has been written."""
         if token is None:
@@ -292,25 +286,34 @@ class mimoBuffer:
             ]  # TODO i think this is ugly
 
         self.filled_slots.put(token)
-
-    def get_read_token(self) -> int | None:
-        """Get a token to read data from the buffer."""
-        return self.filled_slots.get()
-
-    def return_read_token(self, token: int | None) -> None:
-        """Return a read token to the ring buffer"""
-        if token is not None:
-            self.empty_slots.put(token)
-        else:
-            self.filled_slots.put(None)
-
-    def get_observe_token(self) -> int | None:
-        """Get a token to observe data from the buffer."""
-        return self.filled_slots.get()
-
+    
+    def observe(self) -> list[int, np.ndarray, np.ndarray] | list[None, None, None]:
+        """Observe data from the buffer.
+        
+        After observing is finished the token needs to be returned by calling return_observe_token.
+        When the buffer is shut down, returns [None, None, None].
+        
+        Returns
+        -------
+        list[int, np.ndarray, np.ndarray] | list[None, None, None]
+            The token, metadata and data arrays of the slot.
+        """
+        token = self.filled_slots.get()
+        if token is None:
+            return [None, None, None]
+        metadata, data = self.access_slot(token)
+        return [token, metadata, data]
+    
     def return_observe_token(self, token: int | None) -> None:
-        """Return a observe token to the ring buffer"""
+        """Return a token after observing data from it."""
         self.filled_slots.put(token)
+
+    def send_flush_event(self) -> None:
+        """Send a flush event to the buffer."""
+        with self.flush_event_received.get_lock():
+            if not self.flush_event_received.value:
+                self.flush_event_received.value = True
+                self.filled_slots.put(None)    
 
     def pause(self) -> None:
         self.paused.value = True
@@ -351,8 +354,8 @@ class BufferReader(Interface):
     """
 
     def __enter__(self) -> list[np.ndarray, np.ndarray] | list[None, None]:
-        self.token = self.buffer.get_read_token()
-        return self.buffer.access_slot_to_read(self.token)
+        self.token, metadata, data = self.buffer.read()
+        return [metadata, data]
 
     def __exit__(self, exc_type, exc_value, traceback) -> None:
         self.buffer.return_read_token(self.token)
@@ -373,8 +376,8 @@ class BufferWriter(Interface):
     """
 
     def __enter__(self) -> list[np.ndarray, np.ndarray]:
-        self.token = self.buffer.get_write_token()
-        return self.buffer.access_slot_to_write(self.token)
+        self.token, metadata, data = self.buffer.write()
+        return [metadata, data]
 
     def __exit__(self, exc_type, exc_value, traceback) -> None:
         self.buffer.return_write_token(self.token)
@@ -396,8 +399,8 @@ class BufferObserver(Interface):
     """
 
     def __enter__(self) -> list[np.ndarray, np.ndarray] | list[None, None]:
-        self.token = self.buffer.get_observe_token()
-        return self.buffer.access_slot_to_observe(self.token)
+        self.token, metadata, data = self.buffer.observe()
+        return [metadata, data]
 
     def __exit__(self, exc_type, exc_value, traceback) -> None:
         self.buffer.return_observe_token(self.token)
