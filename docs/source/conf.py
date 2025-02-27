@@ -20,10 +20,25 @@ author = 'Julian Baader'
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
+    'sphinx.ext.autodoc',
+    'sphinx.ext.viewcode',
+    'sphinx.ext.napoleon',
+    'sphinx_autodoc_typehints',
     'sphinx.ext.duration',
     'sphinx.ext.doctest',
-    'sphinx.ext.autodoc',
 ]
+
+# sphinx-autodoc-typehints settings
+always_use_bars_union = True
+typehints_defaults = 'braces'
+
+napoleon_use_rtype = True
+typehints_use_rtype = True
+typehints_document_rtype = True
+
+#typehints_use_signature = True
+#typehints_use_signature_return = True
+
 
 templates_path = ['_templates']
 exclude_patterns = []

@@ -12,8 +12,10 @@ documentation for details.
 
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+   :maxdepth: 1
 
-   modules/mimo_buffer
+   getting_started/index
+   user_guide/index
+   developer_guide/index
+   api_reference/index
 
