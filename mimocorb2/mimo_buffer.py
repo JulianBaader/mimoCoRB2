@@ -222,7 +222,7 @@ class mimoBuffer:
         metadata = slot[: self.metadata_byte_size].view(self.metadata_dtype)
         data = slot[self.metadata_byte_size :].view(self.data_dtype)
         
-        return [data, metadata]
+        return [metadata, data]
     
     def read(self) -> list[int, np.ndarray, np.ndarray] | list[None, None, None]:
         """Read data from the buffer.
@@ -327,12 +327,13 @@ class Interface:
     def __init__(self, buffer: mimoBuffer) -> None:
         self.buffer = buffer
 
-        self.shutdown_readers = self.buffer.send_flush_event
+        self.shutdown_buffer = self.buffer.send_flush_event
         self.get_stats = self.buffer.get_stats
         self.name = self.buffer.name
         self.slot_count = self.buffer.slot_count
         self.data_example = self.buffer.data_example
         self.metadata_example = self.buffer.metadata_example
+        self.is_shutdown = self.buffer.flush_event_received
 
 
 class BufferReader(Interface):

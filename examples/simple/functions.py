@@ -11,8 +11,8 @@ METADATA = 1
 # TODO importer etc need more information, for example the shape of the buffer
 
 
-def simulate_osc(*mimo_args):
-    importer = Importer(mimo_args)
+def simulate_osc(buffer_io):
+    importer = Importer(buffer_io)
     rng = np.random.default_rng(seed=abs(hash(mp.current_process().name)))
 
     def ufunc():
@@ -25,8 +25,8 @@ def simulate_osc(*mimo_args):
     importer(ufunc)
 
 
-def filter_data(*mimo_args):
-    filter = Filter(mimo_args)
+def filter_data(buffer_io):
+    filter = Filter(buffer_io)
 
     def ufunc(data):
         # print("hey")
@@ -38,9 +38,9 @@ def filter_data(*mimo_args):
     filter(ufunc)
 
 
-def calculate_pulse_heights(*mimo_args):
-    processor = Processor(mimo_args)
-    example = processor.sinks[0].buffer.data_example
+def calculate_pulse_heights(buffer_io):
+    processor = Processor(buffer_io)
+    example = processor.data_example
 
     def ufunc(data):
         example['pulse_height'] = np.max(data['ch1'])
@@ -49,7 +49,7 @@ def calculate_pulse_heights(*mimo_args):
     processor(ufunc)
 
 
-def print_pulse_heights(*mimo_args):
-    exporter = Exporter(mimo_args)
+def print_pulse_heights(buffer_io):
+    exporter = Exporter(buffer_io)
     for data, metadata in exporter:
         pass

@@ -1,9 +1,9 @@
 from mimocorb2.worker_templates import Filter
 
 
-def copy(*mimo_args):
+def copy(buffer_io):
     """mimoCoRB Filter: Copy data from one buffer into (multiple) other buffer(s)."""
-    processor = Filter(mimo_args)
+    processor = Filter(buffer_io)
 
     def ufunc(data):
         return True

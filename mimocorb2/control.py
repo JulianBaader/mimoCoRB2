@@ -1,5 +1,5 @@
 from mimocorb2.mimo_buffer import mimoBuffer, BufferReader, BufferWriter, BufferObserver
-from mimocorb2.mimo_worker import mimoWorker
+from mimocorb2.mimo_worker import mimoWorker, BufferIO
 
 import os
 import yaml
@@ -391,7 +391,8 @@ class SetupRun:
             for i in range(3):  # sources, sinks, observes
                 args[i] = self._make_interface_list(name, info[BUFFER_TYPES[i]], i)
             args[3] = info['config']
-            info['args'] = args
+            bufferIO = BufferIO(*args)
+            info['bufferIO'] = bufferIO
         self.args_made = True
 
     def _make_interface_list(
@@ -418,7 +419,7 @@ class SetupRun:
             info['worker_obj'] = mimoWorker(
                 name=name,
                 function=info['callable_function'],
-                args=info['args'],
+                buffer_io=info['bufferIO'],
                 number_of_processes=info['number_of_processes'],
             )
         self.workers_created = True

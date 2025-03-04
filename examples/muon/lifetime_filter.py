@@ -25,7 +25,7 @@ import sys
 from filters import *
 
 
-def calculate_decay_time(*mimo_args):
+def calculate_decay_time(buffer_io):
     """Calculate decay time as time between double pulses
 
     Input:
@@ -43,7 +43,7 @@ def calculate_decay_time(*mimo_args):
 
     """
 
-    processor = Processor(mimo_args)
+    processor = Processor(buffer_io)
     config = processor.config
 
     # Load configuration
@@ -60,7 +60,7 @@ def calculate_decay_time(*mimo_args):
     # Load reference pulse
     reference_pulse = None if "reference_pulse_file" not in config else np.fromfile(config["reference_pulse_file"])
 
-    pulse_par_dtype = processor.writers[1].data_example.dtype
+    pulse_par_dtype = processor.data_examples_out[1].dtype
 
     def find_double_pulses(input_data):
         """filter data, function to be called by instance of class mimoCoRB.rbTransfer

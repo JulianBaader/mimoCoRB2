@@ -3,3 +3,4 @@
 *.mimo
 docs/build/
 !docs/build/latex/mimocorb2.pdf
+todo

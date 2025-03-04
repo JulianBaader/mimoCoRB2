@@ -1,14 +1,15 @@
 from mimocorb2.worker_templates import Processor
+from mimocorb2.mimo_worker import BufferIO
 import scipy.signal as signal
 
 
-def pha(*mimo_args):
+def pha(buffer_io: BufferIO):
     """Analyze an oscilloscope like buffer using scipy.signal.find_peaks.
     Only one channel can be analyzed at a time.
 
     Parameters are used from the configuration file.
     """
-    processor = Processor(mimo_args)
+    processor = Processor(buffer_io)
     if len(processor.writers) != 1:
         raise ValueError("mimocorb2.analyzers.pha only supports one sink.")
 
@@ -23,12 +24,12 @@ def pha(*mimo_args):
     rel_height = config.get('rel_height', 0.5)
     plateau_size = config.get('plateau_size', None)
 
-    example_data_in = processor.reader.data_example
+    example_data_in = processor.data_example
     channels = example_data_in.dtype.names
     if channel not in channels:
         raise ValueError(f"Channel {channel} is not available in the source.")
 
-    data_example_out = processor.writers[0].data_example.copy()
+    data_example_out = processor.io.write[0].data_example.copy()
     requested_parameters = data_example_out.dtype.names
     if data_example_out.size != 1:
         raise ValueError("mimocorb2.analyzers.pha only data_length = 1 in the sink.")

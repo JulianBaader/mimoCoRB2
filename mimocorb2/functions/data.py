@@ -111,28 +111,28 @@ class mimoFile:
         self.close()
 
 
-def export(*mimo_args):
+def export(buffer_io):
     """mimoCoRB Exporter: Export data to a mimo file"""
-    exporter = Exporter(mimo_args)
+    exporter = Exporter(buffer_io)
 
-    file = mimoFile.from_buffer_object(exporter.reader.buffer, exporter.config['run_directory'])
+    file = mimoFile.from_buffer_object(exporter.io.read[0].buffer, exporter.config['run_directory'])
 
     with file:
         for data, metadata in exporter:
             file.write_data(data, metadata)
 
 
-def simulate_importer(*mimo_args):
+def simulate_importer(buffer_io):
     """mimoCoRB Importer: Import data from a mimo file with the timing of the original data"""
     # TODO Think about the fact, that the ordering of events is probably not correct
     # TODO check if the sink is still alive
-    importer = Importer(mimo_args)
+    importer = Importer(buffer_io)
     filename = importer.config['filename']
 
     file = mimoFile.from_file(filename)
-    if file.data_dtype != importer.writer.buffer.data_example.dtype:
+    if file.data_dtype != importer.data_example.dtype:
         raise ValueError("Data type mismatch")
-    if file.data_length != importer.writer.buffer.data_example.size:
+    if file.data_length != importer.data_example.size:
         raise ValueError("Data length mismatch")
     generator = file.read_data()
 
@@ -158,7 +158,7 @@ def simulate_importer(*mimo_args):
     importer(ufunc)
 
 
-def clocked_importer(*mimo_args):
+def clocked_importer(buffer_io):
     """mimoCoRB Importer: Import data from a mimo file with a fixed (uniform/poisson) rate"""
     raise NotImplementedError("This function is not yet implemented")
     # TODO a function which just puts in the data and metadata from the file, with a uniform/poisson fixed rate

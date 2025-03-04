@@ -9,7 +9,7 @@ import os
 import matplotlib.pyplot as plt
 
 
-def drain(*mimo_args):
+def drain(buffer_io):
     """mimoCoRB Exporter: drain data from a buffer
 
     Buffers
@@ -18,12 +18,12 @@ def drain(*mimo_args):
     0 sink
     0 observe
     """
-    exporter = Exporter(mimo_args)
+    exporter = Exporter(buffer_io)
     for data, metadata in exporter:
         pass
 
 
-def histogram(*mimo_args):
+def histogram(buffer_io):
     """mimoCoRB Monitor: Create Histograms of data and optionally visualize them.
 
     Histograms are saved in the run_directory under the name of the source buffer and the channel.
@@ -46,11 +46,11 @@ def histogram(*mimo_args):
     plot_type : str, optional (default='bar')
         Type of plot to use for the histograms. Options are 'line', 'bar', or 'step'.
     """
-    exporter = Exporter(mimo_args)
+    exporter = Exporter(buffer_io)
 
     # Get info from the buffer
-    name = exporter.reader.name
-    data_example = exporter.reader.data_example
+    name = exporter.name
+    data_example = exporter.data_example
     available_channels = data_example.dtype.names
 
     if data_example.size != 1:
@@ -165,7 +165,7 @@ def sub_histogram(files, bins, update_interval, name, plot_type):
     # TODO why dont i count frames?
 
 
-def csv(*mimo_args):
+def csv(buffer_io):
     """mimoCoRB Exporter: Save data to a csv file for pandas to read.
 
     File is saved in the run_directory under the name of the source buffer.
@@ -181,9 +181,9 @@ def csv(*mimo_args):
     save_interval : int, optional (default=1)
         Interval in seconds to save the csv file.
     """
-    exporter = Exporter(mimo_args)
-    data_example = exporter.reader.data_example
-    metadata_example = exporter.reader.metadata_example
+    exporter = Exporter(buffer_io)
+    data_example = exporter.data_example
+    metadata_example = exporter.metadata_example
 
     config = exporter.config
     save_interval = config.get('save_interval', 1)
@@ -192,7 +192,7 @@ def csv(*mimo_args):
         raise ValueError('csv exporter only supports data_length = 1')
 
     run_directory = exporter.config['run_directory']
-    name = exporter.reader.name
+    name = exporter.name
 
     header = []
     for dtype_name in metadata_example.dtype.names:

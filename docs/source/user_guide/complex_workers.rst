@@ -1,12 +1,8 @@
 Complex Workers
 ===============
-In case the simple workers are not enough, you can create highly customized workers by using the context managers.
+In case the simple workers are not enough, you can create highly customized workers by interacting with the BufferIO object passed to the worker directly.
 
-Buffer Reader
--------------
+BufferIO
+--------
 
-.. autoclass:: mimocorb2.mimo_buffer.BufferReader
-
-.. autoclass:: mimocorb2.mimo_buffer.BufferWriter
-
-.. autoclass:: mimocorb2.mimo_buffer.BufferObserver
+.. autoclass:: mimocorb2.mimo_worker.BufferIO

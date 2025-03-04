@@ -283,8 +283,8 @@ class rpControll:
         self.start_oscillocsope()
 
 
-def redpitaya_to_mimoCoRB(*mimoargs):
-    importer = Importer(mimoargs)
+def redpitaya_to_mimoCoRB(buffer_io):
+    importer = Importer(buffer_io)
 
     # read the configuration
     """
@@ -326,7 +326,7 @@ def redpitaya_to_mimoCoRB(*mimoargs):
 
     rp.set_trigger_source("IN1")  # TODO
 
-    data_example = importer.writer.data_example
+    data_example = importer.data_example
 
     rp.set_total_number_of_samples(data_example.size)
 

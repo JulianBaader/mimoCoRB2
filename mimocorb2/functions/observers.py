@@ -4,7 +4,7 @@ import numpy as np
 import time
 
 
-def oscilloscope(*mimo_args):
+def oscilloscope(buffer_io):
     """mimoCoRB Observer: Visualize oscilloscope data
 
     Configs
@@ -23,8 +23,8 @@ def oscilloscope(*mimo_args):
         Trigger level to be plotted as a dotted line
     """
     # Get info from the buffer
-    observer = Observer(mimo_args)
-    data_example = observer.observer.data_example
+    observer = Observer(buffer_io)
+    data_example = observer.data_example
     number_of_samples = data_example.size
     available_channels = data_example.dtype.names
 

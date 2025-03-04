@@ -1,12 +1,55 @@
 import multiprocessing
 import logging
 from typing import Callable
+from mimocorb2.mimo_buffer import BufferReader, BufferWriter, BufferObserver
 
 SOURCES = 0
 SINKS = 1
 OBSERVES = 2
 CONFIG = 3
 
+
+class BufferIO:
+    """Collection of buffers for input/output operations.
+    
+    Object which is passed to each worker process to provide access to the buffers.
+    
+    Attributes
+    ----------
+    sources : list[BufferReader]
+    sinks : list[BufferWriter]
+    observes : list[BufferObserver]
+    config : dict
+    logger : logging.Logger
+    
+    Methods
+    -------
+    shutdown_sinks()
+        Shutdown all sink buffers.
+    __getitem__(key)
+        Get the value of a key from the configuration dictionary.
+    
+    Examples
+    --------
+    >>> with io.write[0] as (metadata, data):
+    """
+    def __init__(self, sources: list[BufferReader], sinks: list[BufferWriter], observes: list[BufferObserver], config: dict) -> None:
+        self.read = sources
+        self.write = sinks
+        self.observe = observes
+        self.config = config
+        self.logger = logging.getLogger(name=config['name'])
+        
+    def shutdown_sinks(self) -> None:
+        for writer in self.write:
+            writer.shutdown_buffer()
+
+            
+    def __getitem__(self, key):
+        return self.config[key]
+    
+    
+        
 
 class mimoWorker:
     """
@@ -55,11 +98,11 @@ class mimoWorker:
     """
 
     def __init__(
-        self, name: str, function: Callable, args: list[list, list, list, dict], number_of_processes: int
+        self, name: str, function: Callable, buffer_io: BufferIO, number_of_processes: int
     ) -> None:
         self.name = name
         self.function = function
-        self.args = args
+        self.buffer_io = buffer_io
         self.number_of_processes = number_of_processes
 
         self.logger = logging.getLogger(name=name)
@@ -70,7 +113,7 @@ class mimoWorker:
         if len(self.processes) > 0:
             raise RuntimeError("Processes already initialized")
         for i in range(self.number_of_processes):
-            process = multiprocessing.Process(target=self.function, args=self.args, name=f'{self.name}_{i}')
+            process = multiprocessing.Process(target=self.function, args=[self.buffer_io], name=f'{self.name}_{i}')
             self.processes.append(process)
 
     def start_processes(self) -> None:
