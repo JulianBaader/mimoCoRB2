@@ -24,7 +24,7 @@ def oscilloscope(buffer_io):
     """
     # Get info from the buffer
     observer = Observer(buffer_io)
-    data_example = observer.data_example
+    data_example = observer.data_observe_example
     number_of_samples = data_example.size
     available_channels = data_example.dtype.names
 

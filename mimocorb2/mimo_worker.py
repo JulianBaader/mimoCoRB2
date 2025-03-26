@@ -113,7 +113,7 @@ class mimoWorker:
         if len(self.processes) > 0:
             raise RuntimeError("Processes already initialized")
         for i in range(self.number_of_processes):
-            process = multiprocessing.Process(target=self.function, args=[self.buffer_io], name=f'{self.name}_{i}')
+            process = multiprocessing.Process(target=self.function, args=(self.buffer_io,), name=f'{self.name}_{i}')
             self.processes.append(process)
 
     def start_processes(self) -> None:

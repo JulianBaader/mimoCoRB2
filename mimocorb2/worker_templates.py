@@ -14,7 +14,38 @@ METADATA = 1
 
 # TODO failing
 
-class Importer:
+class Base:
+    def __init__(self, io : BufferIO):
+        self.io = io
+        # copy attributes from io
+        self.read = io.read
+        self.write = io.write
+        self.observe = io.observe
+        self.config = io.config
+        self.logger = io.logger
+        
+        # copy methods from io
+        self.shutdown_sinks = io.shutdown_sinks
+        self.__getitem__ = io.__getitem__
+        
+        # set up data and metadata examples
+        def set_examples(attr_name, sources):
+            data_examples = [source.data_example for source in sources]
+            metadata_examples = [source.metadata_example for source in sources]
+            setattr(self, f"data_{attr_name}_examples", data_examples)
+            setattr(self, f"metadata_{attr_name}_examples", metadata_examples)
+            if len(sources) == 1:
+                setattr(self, f"data_{attr_name}_example", data_examples[0])
+                setattr(self, f"metadata_{attr_name}_example", metadata_examples[0])
+
+        # Apply to read, write, observe
+        set_examples("in", self.read)
+        set_examples("out", self.write)
+        set_examples("observe", self.observe)
+        
+        
+
+class Importer(Base):
     """Worker class for importing data from an external generator.
 
     Attributes
@@ -40,20 +71,15 @@ class Importer:
 
     def __init__(self, io: BufferIO) -> None:
         """Checks the setup."""
+        super().__init__(io)
         self.counter = 0
-        self.io = io
 
-        if len(self.io.read) != 0:
+        if len(self.read) != 0:
             self.fail("Importer must have 0 sources", force_shutdown=True)
-        if len(self.io.write) != 1:
+        if len(self.write) != 1:
             self.fail("Importer must have 1 sink", force_shutdown=True)
-        if len(self.io.observe) != 0:
+        if len(self.observe) != 0:
             self.fail("Importer must have 0 observes", force_shutdown=True)
-            
-        self.data_example = self.io.write[0].data_example
-        self.metadata_example = self.io.write[0].metadata_example
-        self.name = self.io['name']
-        self.config = self.io.config # TODO this should be for every worker class?!?
 
 
     def __call__(self, ufunc: Callable) -> None:
@@ -68,9 +94,9 @@ class Importer:
             Generator function that yields data and ends with None
         """
         if not callable(ufunc):
-            self.io.shutdown_sinks()
+            self.shutdown_sinks()
             raise RuntimeError("ufunc not callable")
-        self.io.logger.info("Importer started")
+        self.logger.info("Importer started")
 
         time_last_event = time.time()
 
@@ -86,12 +112,11 @@ class Importer:
                 generator = ufunc()
                 continue
             if data is None:
-                self.io.shutdown_sinks()
+                self.shutdown_sinks()
                 break
-            if self.io.write[0].is_shutdown.value:
+            if self.write[0].is_shutdown.value:
                 break
-            # TODO test if sink is still active
-            with self.io.write[0] as (metadata_buffer, data_buffer):
+            with self.write[0] as (metadata_buffer, data_buffer):
                 data_buffer[:] = data
                 metadata_buffer['counter'] = self.counter
                 metadata_buffer['timestamp'] = timestamp
@@ -101,10 +126,10 @@ class Importer:
                 )
             self.counter += 1
             time_last_event = time.time()
-        self.io.logger.info("Importer finished")
+        self.logger.info("Importer finished")
 
 
-class Exporter:
+class Exporter(Base):
     """Worker class for exporting data and metadata.
 
     If provided with an identical sink events will be copied to allow further analysis.
@@ -126,45 +151,39 @@ class Exporter:
 
     def __init__(self, io: BufferIO) -> None:
         """Checks the setup."""
-
-        self.io = io
-        if len(self.io.read) != 1:
+        super().__init__(io)
+        if len(self.read) != 1:
             self.fail("Exporter must have 1 source", force_shutdown=True)
-        if len(self.io.observe) != 0:
+        if len(self.observe) != 0:
             self.fail("Exporter must have 0 observes", force_shutdown=True)
 
 
-        self.data_example = self.io.read[0].data_example
-        self.metadata_example = self.io.read[0].metadata_example
-        self.name = self.io['name']
-        self.config = self.io.config # TODO this should be for every worker class?!?
 
-        if len(self.io.write) != 0:
-            for writer in self.io.write:
-                data_example_out = writer.data_example
-                if data_example_out.shape != self.data_example.shape:
+        if len(self.write) != 0:
+            for do, mo in zip(self.data_out_examples, self.metadata_out_examples):
+                if do.shape != self.data_in_example.shape:
                     self.fail("Exporter source and sink shapes do not match", force_shutdown=True)
-                if data_example_out.dtype != self.data_example.dtype:
+                if do.dtype != self.data_in_example.dtype:
                     self.fail("Exporter source and sink dtypes do not match", force_shutdown=True)
 
     def _iter_without_sinks(self) -> Generator:
         """Yields data and metadata from the buffer until the buffer is shutdown."""
         while True:
-            with self.io.read[0] as (metadata, data):
+            with self.read[0] as (metadata, data):
                 if data is None:
-                    self.io.logger.info("Exporter finished")
+                    self.logger.info("Exporter finished")
                     break  # Stop the generator
                 yield data, metadata
 
     def _iter_with_sinks(self) -> Generator:
         """Yields data and metadata from the buffer until the buffer is shutdown."""
         while True:
-            with self.io.read[0] as (metadata, data):
+            with self.read[0] as (metadata, data):
                 if data is None:
-                    self.io.shutdown_sinks()
-                    self.io.logger.info("Exporter finished")
+                    self.shutdown_sinks()
+                    self.logger.info("Exporter finished")
                     break  # Stop the generator
-                for writer in self.io.write:
+                for writer in self.write:
                     with writer as (metadata_buffer, data_buffer):
                         data_buffer[:] = data
                         metadata_buffer[:] = metadata
@@ -182,13 +201,13 @@ class Exporter:
         metadata : np.ndarray, None
             Metadata from the buffer
         """
-        if len(self.io.write) == 0:
+        if len(self.write) == 0:
             return self._iter_without_sinks()
         else:
             return self._iter_with_sinks()
 
 
-class Filter:
+class Filter(Base):
     """Worker class for filtering data from one buffer to other buffer(s).
 
     Analyze data using ufunc(data) and copy or discard data based on the result.
@@ -218,25 +237,20 @@ class Filter:
         Check that the number of sources, sinks, and observes are correct.
         Check that the source and sink shapes and dtypes match.
         """
-        self.io = io
-        if len(self.io.read) != 1:
+        super().__init__(io)
+        if len(self.read) != 1:
             self.fail("Filter must have 1 source", force_shutdown=True)
-        if len(self.io.write) == 0:
+        if len(self.write) == 0:
             self.fail("Filter must have at least 1 sink", force_shutdown=True)
-        if len(self.io.observe) != 0:
+        if len(self.observe) != 0:
             self.fail("Filter must have 0 observes", force_shutdown=True)
+        
+        for do, mo in zip(self.data_out_examples, self.metadata_out_examples):
+            if do.shape != self.data_in_example.shape:
+                self.fail("Exporter source and sink shapes do not match", force_shutdown=True)
+            if do.dtype != self.data_in_example.dtype:
+                self.fail("Exporter source and sink dtypes do not match", force_shutdown=True)
 
-        data_in = self.io.read[0].data_example
-        for writer in self.io.write:
-            data_out = writer.data_example
-            if data_in.shape != data_out.shape:
-                self.fail("Filter source and sink shapes do not match", force_shutdown=True)
-            if data_in.dtype != data_out.dtype:
-                self.fail("Filter source and sink dtypes do not match", force_shutdown=True)
-
-        self.data_example = data_in
-        self.metadata_example = self.io.read[0].metadata_example
-        self.config = self.io.config # TODO this should be for every worker class?!?
     def __call__(self, ufunc) -> None:
         """Start the filter and copy or discard data based on the result of ufunc(data).
 
@@ -253,12 +267,12 @@ class Filter:
                     False: dont copy data to the corresponding sink
         """
         if not callable(ufunc):
-            self.io.shutdown_sinks()
+            self.shutdown_sinks()
             raise RuntimeError("ufunc not callable")
         self.true_map = [True] * len(self.sinks)
-        self.io.logger.info("Filter started")
+        self.logger.info("Filter started")
         while True:
-            with self.io.read[0] as (metadata, data):
+            with self.read[0] as (metadata, data):
                 if data is None:
                     break
                 try:
@@ -276,11 +290,11 @@ class Filter:
                             data_buffer[:] = data
                             metadata_buffer[:] = metadata
 
-        self.io.shutdown_sinks()
-        self.io.logger.info("Filter finished")
+        self.shutdown_sinks()
+        self.logger.info("Filter finished")
 
 
-class Processor:
+class Processor(Base):
     """Worker class for processing data from one buffer to other buffer(s).
 
     Attributes
@@ -307,20 +321,13 @@ class Processor:
         mimo_args : ArgsAlias
             List of sources, sinks, observes, and config dictionary
         """
-        self.io = io
-        if len(self.io.read) != 1:
+        super().__init__(io)
+        if len(self.read) != 1:
             self.fail("Processor must have 1 source", force_shutdown=True)
-        if len(self.io.write) == 0:
+        if len(self.write) == 0:
             self.fail("Processor must have at least 1 sink", force_shutdown=True)
-        if len(self.io.observe) != 0:
+        if len(self.observe) != 0:
             self.fail("Processor must have 0 observes", force_shutdown=True)
-            
-        self.config = self.io.config # TODO this should be for every worker class?!?
-        self.data_example_in = self.io.read[0].data_example
-        self.metadata_example_in = self.io.read[0].metadata_example
-        
-        self.data_examples_out = [writer.data_example for writer in self.io.write]
-        self.metadata_examples_out = [writer.metadata_example for writer in self.io.write]
             
 
     def __call__(self, ufunc: Callable) -> None:
@@ -336,11 +343,11 @@ class Processor:
         """
 
         if not callable(ufunc):
-            self.io.shutdown_sinks()
+            self.shutdown_sinks()
             raise RuntimeError("ufunc not callable")
-        self.io.logger.info("Processor started")
+        self.logger.info("Processor started")
         while True:
-            with self.io.read[0] as (metadata, data):
+            with self.read[0] as (metadata, data):
                 if data is None:
                     break
                 try:
@@ -351,14 +358,14 @@ class Processor:
                     continue
                 for i, result in enumerate(results):
                     if result is not None:
-                        with self.io.write[i] as (metadata_buffer, data_buffer):
+                        with self.write[i] as (metadata_buffer, data_buffer):
                             data_buffer[:] = result
                             metadata_buffer[:] = metadata
-        self.io.shutdown_sinks()
-        self.io.logger.info("Processor finished")
+        self.shutdown_sinks()
+        self.logger.info("Processor finished")
 
 
-class Observer:
+class Observer(Base):
     """Worker class for observing data from a buffer.
 
     Attributes
@@ -387,18 +394,13 @@ class Observer:
         mimo_args : ArgsAlias
             List of sources, sinks, observes, and config dictionary
         """
-        self.io = io
-        if len(self.io.read) != 0:
+        super().__init__(io)
+        if len(self.read) != 0:
             self.fail("Observer must have 0 source", force_shutdown=True)
-        if len(self.io.write) != 0:
+        if len(self.write) != 0:
             self.fail("Observer must have 0 sinks", force_shutdown=True)
-        if len(self.io.observe) != 1:
+        if len(self.observe) != 1:
             self.fail("Observer must have 1 observes", force_shutdown=True)
-            
-        self.data_example = self.io.observe[0].data_example
-        self.metadata_example = self.io.observe[0].metadata_example
-        self.name = self.io['name']
-        self.config = self.io.config # TODO this should be for every worker class?!?
 
     def __call__(self) -> Generator:
         """Start the observer and yield data and metadata.
@@ -413,12 +415,12 @@ class Observer:
             Metadata from the buffer
         """
         while True:
-            with self.io.observe[0] as (metadata, data):
+            with self.observe[0] as (metadata, data):
                 if data is None:
                     break
-                if self.io.observe[0].is_shutdown.value:
+                if self.observe[0].is_shutdown.value:
                     break
                 yield data, metadata
             # TODO check if buffer is alive
-        self.io.logger.info("Observer finished")
+        self.logger.info("Observer finished")
         yield None, None

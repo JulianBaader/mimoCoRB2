@@ -24,8 +24,8 @@ def convert_html_to_numpy(file: str) -> list[np.ndarray]:
         raise RuntimeError("Failed to extract clean spectrum from the html file.")
 
 
-def simulate_source(*mimo_args):
-    importer = Importer(mimo_args)
+def simulate_source(buffer_io):
+    importer = Importer(buffer_io)
     config = importer.config
 
     M = config.get("M", 1)
@@ -39,7 +39,7 @@ def simulate_source(*mimo_args):
     file = os.path.join(config['setup_directory'], config.get("file", "spectra/Co-60.html"))
     average_rate = config.get("average_rate", 100)
 
-    number_of_samples = importer.writer.data_example.size
+    number_of_samples = importer.data_out_example.size
 
     t = np.arange(0, number_of_samples)
     # generate pulse form

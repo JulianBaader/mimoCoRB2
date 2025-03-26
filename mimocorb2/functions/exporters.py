@@ -49,8 +49,8 @@ def histogram(buffer_io):
     exporter = Exporter(buffer_io)
 
     # Get info from the buffer
-    name = exporter.name
-    data_example = exporter.data_example
+    name = exporter.config['name']
+    data_example = exporter.data_in_example
     available_channels = data_example.dtype.names
 
     if data_example.size != 1:
@@ -182,8 +182,8 @@ def csv(buffer_io):
         Interval in seconds to save the csv file.
     """
     exporter = Exporter(buffer_io)
-    data_example = exporter.data_example
-    metadata_example = exporter.metadata_example
+    data_example = exporter.data_in_example
+    metadata_example = exporter.metadata_in_example
 
     config = exporter.config
     save_interval = config.get('save_interval', 1)
@@ -192,7 +192,7 @@ def csv(buffer_io):
         raise ValueError('csv exporter only supports data_length = 1')
 
     run_directory = exporter.config['run_directory']
-    name = exporter.name
+    name = exporter.config['name']
 
     header = []
     for dtype_name in metadata_example.dtype.names:

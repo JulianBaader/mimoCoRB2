@@ -60,7 +60,7 @@ def calculate_decay_time(buffer_io):
     # Load reference pulse
     reference_pulse = None if "reference_pulse_file" not in config else np.fromfile(config["reference_pulse_file"])
 
-    pulse_par_dtype = processor.data_examples_out[1].dtype
+    pulse_par_dtype = processor.data_out_examples[1].dtype
 
     def find_double_pulses(input_data):
         """filter data, function to be called by instance of class mimoCoRB.rbTransfer

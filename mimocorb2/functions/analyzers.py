@@ -10,7 +10,7 @@ def pha(buffer_io: BufferIO):
     Parameters are used from the configuration file.
     """
     processor = Processor(buffer_io)
-    if len(processor.writers) != 1:
+    if len(processor.data_out_examples) != 1:
         raise ValueError("mimocorb2.analyzers.pha only supports one sink.")
 
     config = processor.config
@@ -24,7 +24,7 @@ def pha(buffer_io: BufferIO):
     rel_height = config.get('rel_height', 0.5)
     plateau_size = config.get('plateau_size', None)
 
-    example_data_in = processor.data_example
+    example_data_in = processor.data_in_example
     channels = example_data_in.dtype.names
     if channel not in channels:
         raise ValueError(f"Channel {channel} is not available in the source.")
