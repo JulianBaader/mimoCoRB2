@@ -8,9 +8,5 @@ This user guide provides an in-depth description of mimoCoRB2 features required 
 .. toctree::
     :maxdepth: 1
 
-    buffers
-    workers
     setup
-    configs
     simple_workers
-    complex_workers
