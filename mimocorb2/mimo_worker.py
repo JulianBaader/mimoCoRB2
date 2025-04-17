@@ -156,10 +156,10 @@ class mimoWorker:
             name = name,
             function = cls._import_function(file, function_name),
             buffer_io = BufferIO(
-                sources = [buffers[name] for name in setup.get('sources', [])],
-                sinks = [buffers[name] for name in setup.get('sinks', [])],
-                observes = [buffers[name] for name in setup.get('observes', [])],
-                config = setup.get('config', {}),
+                sources = [BufferReader(buffers[name]) for name in setup.get('sources', [])],
+                sinks = [BufferWriter(buffers[name]) for name in setup.get('sinks', [])],
+                observes = [BufferObserver(buffers[name]) for name in setup.get('observes', [])],
+                config = Config.from_setup(setup.get('config', {}), path=path),
             ),
             number_of_processes = setup.get('number_of_processes', 1),
         )
