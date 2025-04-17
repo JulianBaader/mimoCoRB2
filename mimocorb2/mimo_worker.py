@@ -43,6 +43,14 @@ class BufferIO:
     def shutdown_sinks(self) -> None:
         for writer in self.write:
             writer.shutdown_buffer()
+            
+    def __str__(self):
+        """String representation of the BufferIO object."""
+        read = [buffer.name for buffer in self.read]
+        write = [buffer.name for buffer in self.write]
+        observe = [buffer.name for buffer in self.observe]
+        config = self.config
+        return f"BufferIO(sources={read}, sinks={write}, observes={observe}, config={config})"
 
             
     def __getitem__(self, key):
@@ -131,3 +139,9 @@ class mimoWorker:
             if p.is_alive():
                 self.logger.info(f"Killing process {p.name}")
                 p.terminate()
+                
+    def __str__(self):
+        """String representation of the mimoWorker object."""
+        return f"mimoWorker(name={self.name}, function={self.function.__name__}, buffer_io={str(self.buffer_io)}, number_of_processes={self.number_of_processes})"
+    
+
