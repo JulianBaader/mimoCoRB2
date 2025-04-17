@@ -1,14 +1,11 @@
 import multiprocessing
 import logging
 from typing import Callable
+import os
+import sys
 from mimocorb2.mimo_buffer import BufferReader, BufferWriter, BufferObserver
 
-SOURCES = 0
-SINKS = 1
-OBSERVES = 2
-CONFIG = 3
-
-
+FUNCTIONS_FOLDER = os.path.join(os.path.dirname(__file__), 'functions')
 class BufferIO:
     """Collection of buffers for input/output operations.
     
@@ -145,3 +142,41 @@ class mimoWorker:
         return f"mimoWorker(name={self.name}, function={self.function.__name__}, buffer_io={str(self.buffer_io)}, number_of_processes={self.number_of_processes})"
     
 
+    @classmethod
+    def from_setup(cls, name: str, setup: dict, path: str, buffers: dict):
+        """Initiate the Worker from a setup dict"""
+        function_name = setup['function'].split('.')[-1]
+        file = setup.get('file')
+        if not file:
+            file = os.path.join(FUNCTIONS_FOLDER, setup['function'].split('.')[0] + '.py')
+        else:
+            file = os.path.join(path, file)
+        
+        return cls(
+            name = name,
+            function = cls._import_function(file, function_name),
+            buffer_io = BufferIO(
+                sources = [buffers[name] for name in setup.get('sources', [])],
+                sinks = [buffers[name] for name in setup.get('sinks', [])],
+                observes = [buffers[name] for name in setup.get('observes', [])],
+                config = setup.get('config', {}),
+            ),
+            number_of_processes = setup.get('number_of_processes', 1),
+        )
+        
+    @staticmethod        
+    def _import_function(file: str, function_name: str) -> Callable:
+        """Import a function from a file and return it."""
+        directory = os.path.dirname(file)
+        module_name = os.path.basename(file).removesuffix('.py')
+
+        if directory not in sys.path:
+            sys.path.append(directory)
+            module = __import__(module_name, globals(), locals(), fromlist=[function_name])
+            sys.path.remove(directory)
+        else:
+            module = __import__(module_name, globals(), locals(), fromlist=[function_name])
+        if function_name not in vars(module):
+            raise ImportError(f"Function {function_name} not found in module {file}")
+        return vars(module)[function_name]
+            
