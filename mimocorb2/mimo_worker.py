@@ -3,6 +3,7 @@ import logging
 from typing import Callable
 import os
 import sys
+import yaml
 from mimocorb2.mimo_buffer import BufferReader, BufferWriter, BufferObserver
 
 FUNCTIONS_FOLDER = os.path.join(os.path.dirname(__file__), 'functions')
@@ -179,4 +180,27 @@ class mimoWorker:
         if function_name not in vars(module):
             raise ImportError(f"Function {function_name} not found in module {file}")
         return vars(module)[function_name]
-            
+
+class Config(dict):
+    def __init__(self, config_dict):
+        super().__init__(config_dict)
+    
+    @classmethod
+    def from_setup(cls, setup, path):
+        if isinstance(setup, str):
+            with open(os.path.join(path, setup), 'r') as file:
+                config = yaml.safe_load(file)
+        elif isinstance(setup, dict):
+            config = setup
+        elif isinstance(setup, list):
+            config = {}
+            for item in setup:
+                if isinstance(item, str):
+                    with open(os.path.join(path, item), 'r') as file:
+                        config.update(yaml.safe_load(file))
+                elif isinstance(item, dict):
+                    config.update(item)
+        else:
+            raise TypeError("setup must be a string, dict, or list of strings/dicts")
+        
+        return cls(config)
