@@ -314,6 +314,17 @@ class mimoBuffer:
 
     def resume(self) -> None:
         self.paused.value = False
+        
+    @classmethod
+    def from_setup(cls, name: str, setup: dict) -> "mimoBuffer":
+        """Initiate the Buffer from a setup dict"""
+        buffer = cls(
+            name=name,
+            slot_count=setup["slot_count"],
+            data_length=setup["data_length"],
+            data_dtype=np.dtype([(field_name, dtype) for field_name, dtype in setup["data_dtype"].items()]),
+        )
+        return buffer
 
     def __del__(self) -> None:
         self.shared_memory_buffer.close()
