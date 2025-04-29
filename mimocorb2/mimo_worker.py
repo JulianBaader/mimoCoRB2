@@ -7,6 +7,30 @@ import yaml
 from mimocorb2.mimo_buffer import BufferReader, BufferWriter, BufferObserver
 
 FUNCTIONS_FOLDER = os.path.join(os.path.dirname(__file__), 'functions')
+
+class Config(dict):
+    def __init__(self, config_dict):
+        super().__init__(config_dict)
+    
+    @classmethod
+    def from_setup(cls, setup: str | dict | list, setup_dir: str):
+        if isinstance(setup, str):
+            with open(os.path.join(setup_dir, setup), 'r') as file:
+                config = yaml.safe_load(file)
+        elif isinstance(setup, dict):
+            config = setup
+        elif isinstance(setup, list):
+            config = {}
+            for item in setup:
+                if isinstance(item, str):
+                    with open(os.path.join(setup_dir, item), 'r') as file:
+                        config.update(yaml.safe_load(file))
+                elif isinstance(item, dict):
+                    config.update(item)
+        else:
+            raise TypeError("setup must be a string, dict, or list of strings/dicts")
+        
+        return cls(config)
 class BufferIO:
     """Collection of buffers for input/output operations.
     
@@ -17,7 +41,7 @@ class BufferIO:
     sources : list[BufferReader]
     sinks : list[BufferWriter]
     observes : list[BufferObserver]
-    config : dict
+    config : Config
     logger : logging.Logger
     
     Methods
@@ -31,12 +55,26 @@ class BufferIO:
     --------
     >>> with io.write[0] as (metadata, data):
     """
-    def __init__(self, sources: list[BufferReader], sinks: list[BufferWriter], observes: list[BufferObserver], config: dict) -> None:
+    def __init__(
+        self,
+        name: str,
+        sources: list[BufferReader],
+        sinks: list[BufferWriter],
+        observes: list[BufferObserver],
+        config: Config,
+        setup_directory: str,
+        run_directory: str,
+    ) -> None:
+        
+        self.name = name
         self.read = sources
         self.write = sinks
         self.observe = observes
         self.config = config
-        self.logger = logging.getLogger(name=config['name'])
+        self.logger = logging.getLogger(name=self.name)
+        self.setup_directory = setup_directory
+        self.run_directory = run_directory
+        
         
     def shutdown_sinks(self) -> None:
         for writer in self.write:
@@ -53,6 +91,24 @@ class BufferIO:
             
     def __getitem__(self, key):
         return self.config[key]
+    
+    @classmethod
+    def from_setup(cls, name, setup: dict, setup_dir: str, run_dir: str, buffers: dict):
+        """Initiate the BufferIO from a setup dictionary."""
+        sources = [BufferReader(buffers[name]) for name in setup.get('sources', [])]
+        sinks = [BufferWriter(buffers[name]) for name in setup.get('sinks', [])]
+        observes = [BufferObserver(buffers[name]) for name in setup.get('observes', [])]
+        config = Config.from_setup(setup.get('config', {}), setup_dir)
+        
+        return cls(
+            name=name,
+            sources=sources,
+            sinks=sinks,
+            observes=observes,
+            config=config,
+            setup_directory=setup_dir,
+            run_directory=run_dir,
+        )
     
     
         
@@ -144,23 +200,24 @@ class mimoWorker:
     
 
     @classmethod
-    def from_setup(cls, name: str, setup: dict, path: str, buffers: dict):
-        """Initiate the Worker from a setup dict"""
+    def from_setup(cls, name: str, setup: dict, setup_dir: str, run_dir, buffers: dict):
+        """Initiate the Worker from a setup dictionary."""
         function_name = setup['function'].split('.')[-1]
         file = setup.get('file')
         if not file:
             file = os.path.join(FUNCTIONS_FOLDER, setup['function'].split('.')[0] + '.py')
         else:
-            file = os.path.join(path, file)
+            file = os.path.join(setup_dir, file)
         
         return cls(
             name = name,
             function = cls._import_function(file, function_name),
-            buffer_io = BufferIO(
-                sources = [BufferReader(buffers[name]) for name in setup.get('sources', [])],
-                sinks = [BufferWriter(buffers[name]) for name in setup.get('sinks', [])],
-                observes = [BufferObserver(buffers[name]) for name in setup.get('observes', [])],
-                config = Config.from_setup(setup.get('config', {}), path=path),
+            buffer_io = BufferIO.from_setup(
+                name=name,
+                setup=setup,
+                setup_dir=setup_dir,
+                run_dir=run_dir,
+                buffers=buffers,
             ),
             number_of_processes = setup.get('number_of_processes', 1),
         )
@@ -181,26 +238,3 @@ class mimoWorker:
             raise ImportError(f"Function {function_name} not found in module {file}")
         return vars(module)[function_name]
 
-class Config(dict):
-    def __init__(self, config_dict):
-        super().__init__(config_dict)
-    
-    @classmethod
-    def from_setup(cls, setup, path):
-        if isinstance(setup, str):
-            with open(os.path.join(path, setup), 'r') as file:
-                config = yaml.safe_load(file)
-        elif isinstance(setup, dict):
-            config = setup
-        elif isinstance(setup, list):
-            config = {}
-            for item in setup:
-                if isinstance(item, str):
-                    with open(os.path.join(path, item), 'r') as file:
-                        config.update(yaml.safe_load(file))
-                elif isinstance(item, dict):
-                    config.update(item)
-        else:
-            raise TypeError("setup must be a string, dict, or list of strings/dicts")
-        
-        return cls(config)
