@@ -386,13 +386,16 @@ class SetupRun:
             self.replace_configs()
 
         for name, info in self.setup['Workers'].items():
-            # args = [sources, sinks, observes, config]
-            args = [[], [], [], None]
-            for i in range(3):  # sources, sinks, observes
-                args[i] = self._make_interface_list(name, info[BUFFER_TYPES[i]], i)
-            args[3] = info['config']
-            bufferIO = BufferIO(*args)
-            info['bufferIO'] = bufferIO
+            info['bufferIO'] = BufferIO(
+                name = name,
+                sources = self._make_interface_list(name, info['sources'], 0),
+                sinks = self._make_interface_list(name, info['sinks'], 1),
+                observes = self._make_interface_list(name, info['observes'], 2),
+                config = info['config'],
+                setup_directory = self.setup['Options']['setup_dir'],
+                run_directory = self.setup['Options']['run_directory'],
+            )
+            
         self.args_made = True
 
     def _make_interface_list(
