@@ -115,7 +115,7 @@ def export(buffer_io):
     """mimoCoRB Exporter: Export data to a mimo file"""
     exporter = Exporter(buffer_io)
 
-    file = mimoFile.from_buffer_object(exporter.io.read[0].buffer, exporter.config['run_directory'])
+    file = mimoFile.from_buffer_object(exporter.io.read[0].buffer, exporter.run_directory)
 
     with file:
         for data, metadata in exporter:

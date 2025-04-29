@@ -251,17 +251,6 @@ class SetupRun:
             if shared_keys:
                 self.logger.debug(f"Worker {name} overwrites keys {shared_keys} of the overarching config.")
             config.update(worker_config)
-
-            obligatory_config = {
-                'name': name,
-                'debug': self.setup['Options']['debug_workers'],
-                'run_directory': self.run_directory,
-                'setup_directory': self.setup['Options']['setup_dir'],
-            }
-            shared_keys = list(config.keys() & obligatory_config.keys())
-            if shared_keys:
-                self.logger.debug(f"Worker {name} overwrites keys {shared_keys} of the obligatory config.")
-            config.update(obligatory_config)
             info['config'] = config.copy()
 
         self.configs_are_dict = True

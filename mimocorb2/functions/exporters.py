@@ -49,13 +49,13 @@ def histogram(buffer_io):
     exporter = Exporter(buffer_io)
 
     # Get info from the buffer
-    name = exporter.config['name']
+    name = exporter.name
     data_example = exporter.data_in_example
     available_channels = data_example.dtype.names
 
     if data_example.size != 1:
         raise ValueError('histogram exporter only supports data_length = 1')
-    run_directory = exporter.config['run_directory']
+    run_directory = exporter.run_directory
     update_interval = exporter.config.get('update_interval', 1)
     plot_type = exporter.config.get('plot_type', 'bar')
     bin_config = exporter.config['bins']
@@ -191,8 +191,8 @@ def csv(buffer_io):
     if data_example.size != 1:
         raise ValueError('csv exporter only supports data_length = 1')
 
-    run_directory = exporter.config['run_directory']
-    name = exporter.config['name']
+    run_directory = exporter.run_directory
+    name = exporter.name
 
     header = []
     for dtype_name in metadata_example.dtype.names:

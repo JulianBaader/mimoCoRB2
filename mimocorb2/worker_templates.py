@@ -23,6 +23,9 @@ class Base:
         self.observe = io.observe
         self.config = io.config
         self.logger = io.logger
+        self.name = io.name
+        self.run_directory = io.run_directory
+        self.setup_directory = io.setup_directory
         
         # copy methods from io
         self.shutdown_sinks = io.shutdown_sinks

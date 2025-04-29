@@ -36,7 +36,7 @@ def simulate_source(buffer_io):
     slope = energy_conversion[0]
     offset = energy_conversion[1]
     noise = config.get("noise", 0)
-    file = os.path.join(config['setup_directory'], config.get("file", "spectra/Co-60.html"))
+    file = os.path.join(importer.setup_directory, config.get("file", "spectra/Co-60.html"))
     average_rate = config.get("average_rate", 100)
 
     number_of_samples = importer.data_out_example.size
