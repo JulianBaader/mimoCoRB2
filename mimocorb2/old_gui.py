@@ -26,7 +26,7 @@ class BufferManagerApp(QtWidgets.QMainWindow):
         buffers = control.setup['Buffers'].keys()
         workers = control.setup['Workers'].keys()
 
-        slot_counts = [b.slot_count for b in control.buffers.values()]
+        slot_counts = [control.setup['Buffers'][name]['buffer_obj'].slot_count for name in buffers]
         other = {
             'slot_counts': slot_counts,
         }
@@ -53,15 +53,15 @@ class BufferManagerApp(QtWidgets.QMainWindow):
         self.time_active_label = self.findChild(QtWidgets.QLabel, "time_active")
         # processes alive label
         self.processes_alive_label = self.findChild(QtWidgets.QLabel, "processes_alive")
-        self.max_number_of_processes = sum([w.number_of_processes for w in self.control.workers.values()])
+        self.max_number_of_processes = self.control.total_processes
 
         # table
         self.main_table = self.findChild(QtWidgets.QTableWidget, "main_table")
         self.main_table.setColumnCount(4)
-        self.main_table.setRowCount(len(self.control.roots))
+        self.main_table.setRowCount(len(self.control.buffers_for_shutdown))
         self.main_table.setHorizontalHeaderLabels(["Buffer", "Rate (Hz)", "Dead Time (%)", "Number of Events"])
         self.main_table.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
-        for i, buffer in enumerate(self.control.roots):
+        for i, buffer in enumerate(self.control.buffers_for_shutdown):
             item = QtWidgets.QTableWidgetItem(buffer)
             item.setFlags(QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled)
             self.main_table.setItem(i, 0, item)
@@ -69,7 +69,7 @@ class BufferManagerApp(QtWidgets.QMainWindow):
         # logs for the buffer stats
         formatter = logging.Formatter('%(asctime)s - %(message)s')
         file_handler = logging.FileHandler(
-            os.path.join(self.control.run_directory, "buffer_stats.log")
+            os.path.join(self.control.setup['Options']['run_directory'], "buffer_stats.log")
         )
         file_handler.setFormatter(formatter)
         self.buffer_stats_logger = logging.getLogger("buffer_stats")
@@ -79,7 +79,7 @@ class BufferManagerApp(QtWidgets.QMainWindow):
         self.buffer_stats_logger.setLevel(logging.INFO)
 
     def update_main_table(self, buffer_stats, worker_stats):
-        for i, buffer in enumerate(self.control.roots):
+        for i, buffer in enumerate(self.control.buffers_for_shutdown):
             stat = buffer_stats[buffer]
             values = [stat["rate"], stat["average_deadtime"], stat["event_count"]]
             for j in range(3):
@@ -106,7 +106,7 @@ class BufferManagerApp(QtWidgets.QMainWindow):
             self.buffer_canvas.update_plot(buffer_stats, worker_stats)
 
             self.update_processes_alive()
-            self.update_main_table(buffer_stats, worker_stats) # TODO die machts irgendwie arg langsam
+            self.update_main_table(buffer_stats, worker_stats)
             self.update_time_active()
         except Exception as e:
             print(f"Error updating plots: {e}")
@@ -134,10 +134,10 @@ class BufferManagerApp(QtWidgets.QMainWindow):
             event.accept()
 
     def action_shutdownRootBuffer(self):
-        self.control.shutdown_roots()
+        self.control.clean_shutdown()
 
     def action_shutdownAllBuffers(self):
-        self.control.shutdown_buffers()
+        self.control.hard_shutdown()
 
     def action_killWorkers(self):
         self.control.kill_workers()

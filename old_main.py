@@ -17,9 +17,11 @@ if len(sys.argv) != 2:
     print(f"Using {setup_file}")
 else:
     setup_file = sys.argv[1]
-
-
-control = ctrl.Control(setup_file)
+reader = ctrl.FileReader(setup_file)
+setup = ctrl.SetupRun(reader())
+setup_dict = setup()
+reader.visualize_setup(file=os.path.join(setup.run_directory, "dataFlow"))
+control = ctrl.Control(setup_dict)
 control.start_workers()
 
 
