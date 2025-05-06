@@ -49,68 +49,87 @@ logger = logging.getLogger(__name__)
 
 class mimoBuffer:
     """
-    A multiprocessing-safe ring buffer with shared memory for data and metadata.
-
-    Parameters
-    ----------
-    name : str
-        Unique name for the buffer.
-    slot_count : int
-        Number of slots in the buffer.
-    data_length : int
-        Length of the structured data array in each slot.
-    data_dtype : np.dtype
-        Data type of the structured data array.
-
+    mimoBuffer is a class that implements a shared memory buffer for managing data slots with metadata. 
+    It provides mechanisms for reading, writing, observing, and managing the state of the buffer, 
+    including pausing, resuming, and sending flush events.
     Attributes
-    ----------
     metadata_dtype : np.dtype
-        Data type for the metadata array.
+        Data type for the metadata associated with each slot.
     metadata_length : int
         Length of the metadata array.
+    metadata_example : np.ndarray
+        Example metadata array with the specified data type.
+    metadata_byte_size : int
+        Size in bytes of the metadata example.
+    name : str
+        The name of the buffer.
+    slot_count : int
+        The number of slots in the buffer.
+    data_length : int
+        The length of the data in each slot.
+    data_dtype : np.dtype
+        The data type of the elements in the buffer.
+    data_example : np.ndarray
+        An example array with the specified data length and type.
+    data_byte_size : int
+        The size in bytes of the data example.
     slot_byte_size : int
-        Total byte size of a single slot (data + metadata).
+        The size in bytes of a single slot, including metadata.
+    shared_memory_buffer : shared_memory.SharedMemory
+        Shared memory buffer for storing data.
     buffer : np.ndarray
-        Shared memory buffer managed as a 2D array.
+        Numpy array representing the shared memory buffer.
+    shared_memory_trash : shared_memory.SharedMemory
+        Shared memory buffer for draining data in paused mode.
     trash : np.ndarray
-        Shared memory trash slot for draining data whilst paused.
-    empty_slots : multiprocessing.Queue
-        Queue of empty slots available for writing.
-    filled_slots : multiprocessing.Queue
-        Queue of filled slots available for reading or observing.
-    event_count : multiprocessing.Value
-        Total number of events (writes) that have occurred.
-    total_deadtime : multiprocessing.Value
-        Total deadtime of all events.
-    paused : multiprocessing.Value
-        Indicates whether the buffer is paused.
-    paused_count : multiprocessing.Value
-        Number of events discarded whilst being paused.
-    flush_event_received : multiprocessing.Value
-        Indicates whether a flush event has been sent.
-
+        Numpy array representing the shared memory trash buffer.
+    empty_slots : Queue
+        Queue to manage empty slots in the buffer.
+    filled_slots : Queue
+        Queue to manage filled slots in the buffer.
+    event_count : Value
+        Counter for the number of events processed.
+    flush_event_received : Value
+        Flag indicating if a flush event has been received.
+    total_deadtime : Value
+        Total dead time in seconds.
+    paused_count : Value
+        Counter for the number of times the buffer was paused.
+    paused : Value
+        Flag indicating if the buffer is currently paused.
+    last_stats_time : float
+        Timestamp of the last statistics update.
+    last_event_count : int
+        Event count at the last statistics update.
+    last_deadtime : float
+        Dead time at the last statistics update.
     Methods
-    -------
-    get_stats()
-        Retrieve statistics about the buffer's usage.
-    read()
-        Read data from the buffer.
-    return_read_token(token)
+    __init__(name: str, slot_count: int, data_length: int, data_dtype: np.dtype) -> None
+        Initialize a MimoBuffer instance with the specified parameters.
+    get_stats() -> dict
+    _access_slot(slot_number: int | None) -> list[np.ndarray, np.ndarray]
+        Access a slot by its slot number and return the metadata and data arrays.
+    read() -> list[int, np.ndarray, np.ndarray] | list[None, None, None]
+        Read data from the buffer and return the token, metadata, and data arrays.
+    return_read_token(token: int | None) -> None
         Return a token after reading data from it.
-    write()
-        Write data to the buffer.
-    return_write_token(token)
+    write() -> list[int, np.ndarray, np.ndarray]
+        Write data to the buffer and return the token, metadata, and data arrays.
+    return_write_token(token: int | None) -> None
         Return a token to which data has been written.
-    observe()
-        Observe data from the buffer.
-    return_observe_token(token)
+    observe() -> list[int, np.ndarray, np.ndarray] | list[None, None, None]
+        Observe data from the buffer and return the token, metadata, and data arrays.
+    return_observe_token(token: int | None) -> None
         Return a token after observing data from it.
-    pause()
-        Pause the buffer.
-    resume()
-        Resume the buffer.
-    send_flush_event()
-        Send a flush event to notify consumers.
+    send_flush_event() -> None
+        Send a flush event to the buffer.
+    pause() -> None
+        Pause the buffer, meaning data written to it will be discarded.
+    resume() -> None
+        Resume the buffer, meaning data written to it will be accepted again.
+    from_setup(name: str, setup: dict) -> "mimoBuffer"
+    __del__() -> None
+        Destructor method to clean up shared memory resources and log buffer shutdown.
     """
 
     metadata_dtype = np.dtype(
@@ -131,6 +150,37 @@ class mimoBuffer:
         data_length: int,
         data_dtype: np.dtype,
     ) -> None:
+        """
+        Initialize a MimoBuffer instance.
+        Args:
+            name (str): The name of the buffer.
+            slot_count (int): The number of slots in the buffer.
+            data_length (int): The length of the data in each slot.
+            data_dtype (np.dtype): The data type of the elements in the buffer.
+        Attributes:
+            name (str): The name of the buffer.
+            slot_count (int): The number of slots in the buffer.
+            data_length (int): The length of the data in each slot.
+            data_dtype (np.dtype): The data type of the elements in the buffer.
+            data_example (np.ndarray): An example array with the specified data length and type.
+            data_byte_size (int): The size in bytes of the data example.
+            slot_byte_size (int): The size in bytes of a single slot, including metadata.
+            shared_memory_buffer (shared_memory.SharedMemory): Shared memory buffer for storing data.
+            buffer (np.ndarray): Numpy array representing the shared memory buffer.
+            shared_memory_trash (shared_memory.SharedMemory): Shared memory buffer for draining data in paused mode.
+            trash (np.ndarray): Numpy array representing the shared memory trash buffer.
+            empty_slots (Queue): Queue to manage empty slots in the buffer.
+            filled_slots (Queue): Queue to manage filled slots in the buffer.
+            event_count (Value): Counter for the number of events processed.
+            flush_event_received (Value): Flag indicating if a flush event has been received.
+            total_deadtime (Value): Total dead time in seconds.
+            paused_count (Value): Counter for the number of times the buffer was paused.
+            paused (Value): Flag indicating if the buffer is currently paused.
+            last_stats_time (float): Timestamp of the last statistics update.
+            last_event_count (int): Event count at the last statistics update.
+            last_deadtime (float): Dead time at the last statistics update.
+        """
+        
         self.name = name
         self.slot_count = slot_count
         self.data_length = data_length
@@ -178,6 +228,20 @@ class mimoBuffer:
         self.last_deadtime = 0
 
     def get_stats(self) -> dict:
+        """
+        Retrieve statistics about the current state of the buffer.
+        Returns:
+            dict: A dictionary containing the following statistics:
+                - event_count (int): The total number of events processed.
+                - filled_slots (float): The ratio of filled slots to total slots in the buffer.
+                - empty_slots (float): The ratio of empty slots to total slots in the buffer.
+                - flush_event_received (bool): Indicates whether a flush event has been received.
+                - rate (float): The rate of events processed per second since the last stats retrieval.
+                - average_deadtime (float): The average deadtime per event since the last stats retrieval.
+                - paused_count (int): The total number of times the buffer has been paused.
+                - paused (bool): Indicates whether the buffer is currently paused.
+        """
+        
         current_time = time.time()
         current_event_count = self.event_count.value
         current_deadtime = self.total_deadtime.value
@@ -310,13 +374,29 @@ class mimoBuffer:
                 self.filled_slots.put(None)    
 
     def pause(self) -> None:
+        """Pause the buffer, meaning data written to it will be discarded."""        
         self.paused.value = True
 
     def resume(self) -> None:
+        """Resume the buffer, meaning data written to it will be accepted again."""
         self.paused.value = False
         
     @classmethod
     def from_setup(cls, name: str, setup: dict) -> "mimoBuffer":
+        """
+        Create an instance of mimoBuffer from a setup dictionary.
+
+        Args:
+            name (str): The name of the buffer.
+            setup (dict): A dictionary containing the buffer configuration. 
+                Expected keys are:
+                    - "slot_count" (int): The number of slots in the buffer.
+                    - "data_length" (int): The length of the data in each slot.
+                    - "data_dtype" (dict): A dictionary mapping field names to their data types.
+
+        Returns:
+            mimoBuffer: An instance of mimoBuffer initialized with the provided setup.
+        """
         """Initiate the Buffer from a setup dict"""
         buffer = cls(
             name=name,
@@ -327,6 +407,17 @@ class mimoBuffer:
         return buffer
 
     def __del__(self) -> None:
+        """
+        Destructor method for the buffer class.
+        This method is automatically called when the buffer object is about to be destroyed.
+        It ensures that the shared memory resources associated with the buffer are properly
+        closed and unlinked to prevent resource leaks. Additionally, it logs a message
+        indicating that the buffer has been shut down.
+        Actions performed:
+        - Closes and unlinks the shared memory buffer.
+        - Closes and unlinks the shared memory trash.
+        - Logs the shutdown of the buffer with its name.
+        """
         self.shared_memory_buffer.close()
         self.shared_memory_buffer.unlink()
         self.shared_memory_trash.close()
@@ -335,9 +426,30 @@ class mimoBuffer:
 
 
 class Interface:
+    """
+    Base class for interacting with a mimoBuffer.
+
+    Attributes
+    ----------
+    buffer : mimoBuffer
+        The buffer instance being managed.
+    shutdown_buffer : callable
+        A function to send a flush event to the buffer.
+    get_stats : callable
+        A function to retrieve buffer statistics.
+    name : str
+        The name of the buffer.
+    slot_count : int
+        The number of slots in the buffer.
+    data_example : np.ndarray
+        Example of the data structure in the buffer.
+    metadata_example : np.ndarray
+        Example of the metadata structure in the buffer.
+    is_shutdown : multiprocessing.Value
+        Indicates whether the buffer has been shut down.
+    """
     def __init__(self, buffer: mimoBuffer) -> None:
         self.buffer = buffer
-
         self.shutdown_buffer = self.buffer.send_flush_event
         self.get_stats = self.buffer.get_stats
         self.name = self.buffer.name
@@ -360,10 +472,22 @@ class BufferReader(Interface):
     """
 
     def __enter__(self) -> list[np.ndarray, np.ndarray] | list[None, None]:
+        """
+        Acquire reading token and retrieve metadata and data from the buffer.
+
+        Returns
+        -------
+        list[np.ndarray, np.ndarray] or [None, None]
+            Metadata and data arrays from the read slot.
+            Returns [None, None] if the buffer has been shut down.
+        """
         self.token, metadata, data = self.buffer.read()
         return [metadata, data]
 
     def __exit__(self, exc_type, exc_value, traceback) -> None:
+        """
+        Release the read token, returning the slot to the buffer.
+        """
         self.buffer.return_read_token(self.token)
 
 
@@ -382,14 +506,29 @@ class BufferWriter(Interface):
     """
 
     def __enter__(self) -> list[np.ndarray, np.ndarray]:
+        """
+        Acquire writing token and retrieve metadata and data from the buffer.
+
+        Returns
+        -------
+        list[np.ndarray, np.ndarray]
+            Metadata and data arrays to which can be written.
+        """
         self.token, metadata, data = self.buffer.write()
         return [metadata, data]
 
     def __exit__(self, exc_type, exc_value, traceback) -> None:
+        """
+        Release the write token, returning the slot to the buffer.
+        """
         self.buffer.return_write_token(self.token)
 
     def send_flush_event(self) -> None:
+        """
+        Send a flush event to notify consumers that the buffer is shut down.
+        """
         self.buffer.send_flush_event()
+
 
 
 class BufferObserver(Interface):
@@ -405,12 +544,40 @@ class BufferObserver(Interface):
     """
 
     def __enter__(self) -> list[np.ndarray, np.ndarray] | list[None, None]:
+        """
+        Acquire observation token and retrieve metadata and data from the buffer.
+
+        Returns
+        -------
+        list[np.ndarray, np.ndarray] or [None, None]
+            Metadata and data arrays from the observed slot.
+            Returns [None, None] if the buffer has been shut down.
+        """
         self.token, metadata, data = self.buffer.observe()
         return [metadata, data]
 
     def __exit__(self, exc_type, exc_value, traceback) -> None:
+        """
+        Release the observation token, returning the slot to the buffer.
+        """
         self.buffer.return_observe_token(self.token)
 
 
 def _divide(a, b):
+    """
+    Safely divide two numbers, returning 0 if the denominator is zero.
+
+    Parameters
+    ----------
+    a : float or int
+        Numerator.
+    b : float or int
+        Denominator.
+
+    Returns
+    -------
+    float or int
+        The result of the division a / b, or 0 if b is zero.
+    """
     return a / b if b != 0 else 0
+
