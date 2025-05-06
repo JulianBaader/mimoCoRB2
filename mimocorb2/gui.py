@@ -78,10 +78,10 @@ class BufferManagerApp(QtWidgets.QMainWindow):
 
         self.buffer_stats_logger.setLevel(logging.INFO)
 
-    def update_main_table(self):
+    def update_main_table(self, buffer_stats, worker_stats):
         for i, buffer in enumerate(self.control.buffers_for_shutdown):
-            buffer_stats = self.control.get_buffer_stats()[buffer]
-            values = [buffer_stats["rate"], buffer_stats["average_deadtime"], buffer_stats["event_count"]]
+            stat = buffer_stats[buffer]
+            values = [stat["rate"], stat["average_deadtime"], stat["event_count"]]
             for j in range(3):
                 item = QtWidgets.QTableWidgetItem(str(values[j]))
                 item.setFlags(QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled)
@@ -106,7 +106,7 @@ class BufferManagerApp(QtWidgets.QMainWindow):
             self.buffer_canvas.update_plot(buffer_stats, worker_stats)
 
             self.update_processes_alive()
-            self.update_main_table()
+            self.update_main_table(buffer_stats, worker_stats)
             self.update_time_active()
         except Exception as e:
             print(f"Error updating plots: {e}")
