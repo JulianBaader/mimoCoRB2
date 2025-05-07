@@ -127,3 +127,19 @@ class Control:
     def get_time_active(self) -> float:
         """Return the time the workers have been active."""
         return time.time() - self.run_start_time
+    
+    def get_stats(self) -> dict:
+        """Get the statistics of all workers and buffers."""
+        stats = {
+            'buffers': self.get_buffer_stats(),
+            'workers': self.get_active_workers(),
+            'time_active': self.get_time_active()
+        }
+        return stats
+    
+    def get_stats_timed(self) -> dict:
+        """Get the statistics of all workers and buffers, but only once every second."""
+        if time.time() - self.last_stats_time > 1 or self.current_stats is None:
+            self.last_stats_time = time.time()
+            self.current_stats = self.get_stats()
+        return self.current_stats
