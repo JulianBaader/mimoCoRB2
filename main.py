@@ -20,14 +20,4 @@ else:
 
 
 control = ctrl.Control(setup_file)
-control.start_workers()
-
-
-app = QtWidgets.QApplication(sys.argv)
-try:
-    window = BufferManagerApp(control)
-except Exception as e:
-    control.kill_workers()
-    raise e
-window.show()
-sys.exit(app.exec_())
+control()

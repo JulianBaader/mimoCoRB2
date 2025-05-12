@@ -4,24 +4,32 @@ from mimocorb2.mimo_worker import mimoWorker
 import yaml
 import os
 import time
-import multiprocessing
+import queue
+import threading
 
 from graphviz import Digraph
 
 
 class Control:
-    def __init__(self, setup_file, gui=True):
+    def __init__(self, setup_file, gui=True, kbd=True):
         self.run_directory = None
         self.setup_dir = os.path.dirname(setup_file)
         
         self.roots = None
+        
+        self.gui = gui
+        self.kbd = kbd
         
         with open(setup_file, 'r') as file:
             self.setup = yaml.safe_load(file)
             
         self.setup_run_directory()
         
-        
+        self.command_queue = queue.Queue()
+        self.stats_queue = queue.Queue(1)
+        # TODO one stats_queue which is updated by the interface and one from control
+        self.last_stats_time = time.time()
+        self.current_stats = None
         
         self.buffers = {
             name: mimoBuffer.from_setup(name, setup) for name, setup in self.setup['Buffers'].items()
@@ -34,6 +42,39 @@ class Control:
         self.find_roots()
         self.visualize_data_flow(os.path.join(self.run_directory, 'data_flow'))
         
+        
+    def __call__(self):
+        if self.kbd:
+            import mimocorb2.control_terminal as ctrl_term
+            self.terminal_thread = threading.Thread(target=ctrl_term.control_terminal, args=(self.command_queue, self.stats_queue))
+            self.terminal_thread.start()
+        self.start_workers()
+        while True:
+            # update stats every second
+            if time.time() - self.last_stats_time > 1:
+                self.last_stats_time = time.time()
+                self.current_stats = self.get_stats()
+                try:
+                    self.stats_queue.get_nowait()
+                except queue.Empty:
+                    pass
+            # if the stats queue is empty, put the current stats in it
+            if self.stats_queue.empty():
+                try:
+                    self.stats_queue.put(self.current_stats, block=False)
+                except queue.Full:
+                    pass
+                
+            # check for commands
+            try:
+                command = self.command_queue.get_nowait()
+                if command is None:
+                    break
+                self.execute_command(command)
+            except queue.Empty:
+                pass
+            time.sleep(0.1)
+
         
     def save_setup():
         raise NotImplementedError("Saving setup is not implemented yet.")
@@ -89,30 +130,65 @@ class Control:
         self.run_start_time = time.time()
         for w in self.workers.values():
             w.start_processes()
+            
+            
+            
+    def execute_command(self, command: list) -> None:
+        if command[0] == 'buffer':
+            self.execute_buffer_command(command[1:])
+        elif command[0] == 'worker':
+            self.execute_worker_command(command[1:])
+        elif command[0] == 'stats':
+            self.execute_stats_command(command[1:])
+        else :
+            raise ValueError(f"Unknown command: {command[0]}")
+            
+    
+    def execute_buffer_command(self, command: list) -> None:
+        if command[0] == 'all':
+            target = self.buffers.values()
+        elif command[0] == 'roots':
+            target = self.roots.values()
+        elif command[0] == 'named':
+            names = command[2]
+            for name in names:
+                if name not in self.buffers:
+                    raise ValueError(f"Unknown buffer: {name}")
+            target = [self.buffers[name] for name in names]
+        else:
+            raise ValueError(f"Unknown buffer target: {command[0]}")
+        
+        if command[1] == 'shutdown':
+            for b in target:
+                b.send_flush_event()
+        elif command[1] == 'pause':
+            for b in target:
+                b.pause()
+        elif command[1] == 'resume':
+            for b in target:
+                b.resume()
+        else:
+            raise ValueError(f"Unknown buffer command: {command[1]}")
+                
+        
+    def execute_worker_command(self, command: list) -> None:
+        if command[0] == 'all':
+            target = self.workers.values()
+        elif command[0] == 'named':
+            names = command[2]
+            for name in names:
+                if name not in self.workers:
+                    raise ValueError(f"Unknown worker: {name}")
+            target = [self.workers[name] for name in names]
+        else:
+            raise ValueError(f"Unknown worker target: {command[0]}")
+        
+        if command[1] == 'shutdown':
+            for w in target:
+                w.shutdown()
+        else:
+            raise ValueError(f"Unknown worker command: {command[1]}")
 
-    
-    
-    # root buffer operations
-    def shutdown_roots(self) -> None:
-        for r in self.roots.values():
-            r.send_flush_event()
-    
-    def pause_roots(self) -> None:
-        for r in self.roots.values():
-            r.pause()
-            
-    def resume_roots(self) -> None:
-        for r in self.roots.values():
-            r.resume()
-            
-    # global operations            
-    def kill_workers(self) -> None:
-        for w in self.workers.values():
-            w.shutdown()
-            
-    def shutdown_buffers(self) -> None:
-        for b in self.buffers.values():
-            b.send_flush_event()
     
     # statistics
     def get_buffer_stats(self) -> dict:
@@ -136,10 +212,3 @@ class Control:
             'time_active': self.get_time_active()
         }
         return stats
-    
-    def get_stats_timed(self) -> dict:
-        """Get the statistics of all workers and buffers, but only once every second."""
-        if time.time() - self.last_stats_time > 1 or self.current_stats is None:
-            self.last_stats_time = time.time()
-            self.current_stats = self.get_stats()
-        return self.current_stats
