@@ -6,12 +6,13 @@ import os
 import time
 import queue
 import threading
+import multiprocessing as mp
 
 from graphviz import Digraph
 
 
 class Control:
-    def __init__(self, setup_file, gui=True, kbd=True):
+    def __init__(self, setup_file, gui=True, kbd=True, log_stats=True):
         self.run_directory = None
         self.setup_dir = os.path.dirname(setup_file)
         
@@ -25,8 +26,8 @@ class Control:
             
         self.setup_run_directory()
         
-        self.command_queue = queue.Queue()
-        self.stats_queue = queue.Queue(1)
+        self.command_queue = mp.Queue()
+        self.stats_queue = mp.Queue(1)
         # TODO one stats_queue which is updated by the interface and one from control
         self.last_stats_time = time.time()
         self.current_stats = None
@@ -48,6 +49,13 @@ class Control:
             import mimocorb2.control_terminal as ctrl_term
             self.terminal_thread = threading.Thread(target=ctrl_term.control_terminal, args=(self.command_queue, self.stats_queue))
             self.terminal_thread.start()
+        if self.gui:
+            import mimocorb2.control_gui as ctrl_gui
+            infos = ctrl_gui.get_infos_from_control(self)
+            self.gui_process = mp.Process(target=ctrl_gui.run_gui, args=(self.command_queue, self.stats_queue, infos))
+            self.gui_process.start()
+            
+        
         self.start_workers()
         while True:
             # update stats every second
@@ -74,6 +82,11 @@ class Control:
             except queue.Empty:
                 pass
             time.sleep(0.1)
+            
+        if self.kbd:
+            self.terminal_thread.join()
+        if self.gui:
+            self.gui_process.join()
 
         
     def save_setup():
@@ -141,7 +154,7 @@ class Control:
         elif command[0] == 'stats':
             self.execute_stats_command(command[1:])
         else :
-            raise ValueError(f"Unknown command: {command[0]}")
+            print(f"Unknown command: {command[0]}")
             
     
     def execute_buffer_command(self, command: list) -> None:
@@ -156,7 +169,7 @@ class Control:
                     raise ValueError(f"Unknown buffer: {name}")
             target = [self.buffers[name] for name in names]
         else:
-            raise ValueError(f"Unknown buffer target: {command[0]}")
+            print(f"Unknown buffer target: {command[0]}")
         
         if command[1] == 'shutdown':
             for b in target:
@@ -168,7 +181,7 @@ class Control:
             for b in target:
                 b.resume()
         else:
-            raise ValueError(f"Unknown buffer command: {command[1]}")
+            print(f"Unknown buffer command: {command[1]}")
                 
         
     def execute_worker_command(self, command: list) -> None:
@@ -181,13 +194,13 @@ class Control:
                     raise ValueError(f"Unknown worker: {name}")
             target = [self.workers[name] for name in names]
         else:
-            raise ValueError(f"Unknown worker target: {command[0]}")
+            print(f"Unknown worker target: {command[0]}")
         
         if command[1] == 'shutdown':
             for w in target:
                 w.shutdown()
         else:
-            raise ValueError(f"Unknown worker command: {command[1]}")
+            print(f"Unknown worker command: {command[1]}")
 
     
     # statistics
