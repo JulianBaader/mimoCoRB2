@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import time
 import os
-import logging
 import queue
 
 
@@ -16,20 +15,13 @@ DPI = 100
 
 MIN_RATE = 0.1
 
+
 def get_infos_from_control(control: Control):
     """
     Get the information from the control object.
     """
-    buffers = {
-        name: {
-            'slot_count': buffer.slot_count
-        }
-        for name, buffer in control.buffers.items()
-    }
-    workers = {
-        name: {'number_of_processes': worker.number_of_processes}
-        for name, worker in control.workers.items()
-    }
+    buffers = {name: {'slot_count': buffer.slot_count} for name, buffer in control.buffers.items()}
+    workers = {name: {'number_of_processes': worker.number_of_processes} for name, worker in control.workers.items()}
     roots = list(control.roots.keys())
     return {'buffers': buffers, 'workers': workers, 'roots': roots}
 
@@ -38,42 +30,40 @@ class BufferManagerApp(QtWidgets.QMainWindow):
     def __init__(self, command_queue: queue, stats_queue: queue, infos: dict):
         super().__init__()
         uic.loadUi(os.path.join(os.path.dirname(__file__), "gui.ui"), self)
-        
-        
+
         self.COLORS = plt.rcParams["axes.prop_cycle"].by_key()["color"]
-        
+
         self.command_queue = command_queue
         self.stats_queue = stats_queue
         self.infos = infos
-        
-        
+
         # Setup matplotlib canvases
         self.rate_canvas = RateCanvas(self.rate_tab, infos, title="Rate Information")
         self.process_canvas = WorkerCanvas(self.process_tab, infos, title="Process Information")
         self.buffer_canvas = BufferCanvas(self.buffer_tab, infos, title="Buffer Information")
-        
+
         # Add timers for real-time updates
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.update_plots)
         self.timer.start(1000)  # Update every second
-        
+
         # Connect control buttons
         self.shutdownRootBuffer.clicked.connect(self.action_shutdownRootBuffer)
         self.shutdownAllBuffers.clicked.connect(self.action_shutdownAllBuffers)
         self.killWorkers.clicked.connect(self.action_killWorkers)
         self.exitButton.clicked.connect(self.action_exit)
         self.pauseButton.clicked.connect(self.action_pause)
-        
-        
+
         # main tab
         # time active label
         self.time_active_label = self.findChild(QtWidgets.QLabel, "time_active")
         # processes alive label
         self.processes_alive_label = self.findChild(QtWidgets.QLabel, "processes_alive")
-        
-        
+
         # TODO
-        self.max_number_of_processes = sum(self.infos['workers'][key]['number_of_processes'] for key in self.infos['workers'])
+        self.max_number_of_processes = sum(
+            self.infos['workers'][key]['number_of_processes'] for key in self.infos['workers']
+        )
 
         # table
         self.main_table = self.findChild(QtWidgets.QTableWidget, "main_table")
@@ -85,7 +75,6 @@ class BufferManagerApp(QtWidgets.QMainWindow):
             item = QtWidgets.QTableWidgetItem(buffer)
             item.setFlags(QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled)
             self.main_table.setItem(i, 0, item)
-
 
     def update_main_table(self, stats: dict):
         for i, buffer in enumerate(self.infos['roots']):
@@ -159,12 +148,6 @@ class BufferManagerApp(QtWidgets.QMainWindow):
         self.command_queue.put(['buffer', 'roots', 'resume'])
         self.pauseButton.setText("Pause Roots")
         self.pauseButton.clicked.connect(self.action_pause)
-
-
-
-
-
-
 
 
 class PlotCanvas(FigureCanvas):
@@ -293,6 +276,7 @@ class RateCanvas(PlotCanvas):
         self.axes.relim()
         self.axes.autoscale_view()
         self.draw()
+
 
 def run_gui(command_queue: queue, stats_queue: queue, infos: dict):
     app = QtWidgets.QApplication([])

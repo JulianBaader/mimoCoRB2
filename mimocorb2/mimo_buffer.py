@@ -49,8 +49,8 @@ logger = logging.getLogger(__name__)
 
 class mimoBuffer:
     """
-    mimoBuffer is a class that implements a shared memory buffer for managing data slots with metadata. 
-    It provides mechanisms for reading, writing, observing, and managing the state of the buffer, 
+    mimoBuffer is a class that implements a shared memory buffer for managing data slots with metadata.
+    It provides mechanisms for reading, writing, observing, and managing the state of the buffer,
     including pausing, resuming, and sending flush events.
     Attributes
     metadata_dtype : np.dtype
@@ -180,7 +180,7 @@ class mimoBuffer:
             last_event_count (int): Event count at the last statistics update.
             last_deadtime (float): Dead time at the last statistics update.
         """
-        
+
         self.name = name
         self.slot_count = slot_count
         self.data_length = data_length
@@ -241,7 +241,7 @@ class mimoBuffer:
                 - paused_count (int): The total number of times the buffer has been paused.
                 - paused (bool): Indicates whether the buffer is currently paused.
         """
-        
+
         current_time = time.time()
         current_event_count = self.event_count.value
         current_deadtime = self.total_deadtime.value
@@ -261,18 +261,18 @@ class mimoBuffer:
         self.last_event_count = current_event_count
         self.last_deadtime = current_deadtime
         return stats
-    
+
     def _access_slot(self, slot_number: int | None) -> list[np.ndarray, np.ndarray]:
         """Access a slot by its slot number.
-        
+
         Get a slot from the buffer by its slot number and return the metadata and data arrays.
         When slot_number is None, returns the trash slot.
-        
+
         Parameters
         ----------
         slot_number : int | None
             The slot number to access.
-        
+
         Returns
         -------
         list[np.ndarray, np.ndarray]
@@ -282,18 +282,18 @@ class mimoBuffer:
             slot = self.trash[0]
         else:
             slot = self.buffer[slot_number]
-        
+
         metadata = slot[: self.metadata_byte_size].view(self.metadata_dtype)
         data = slot[self.metadata_byte_size :].view(self.data_dtype)
-        
+
         return [metadata, data]
-    
+
     def read(self) -> list[int, np.ndarray, np.ndarray] | list[None, None, None]:
         """Read data from the buffer.
-        
+
         After reading is finished the token needs to be returned by calling return_read_token.
         When the buffer is shut down, returns [None, None, None].
-        
+
         Returns
         -------
         list[int, np.ndarray, np.ndarray] | list[None, None, None]
@@ -304,19 +304,19 @@ class mimoBuffer:
             return [None, None, None]
         metadata, data = self._access_slot(token)
         return [token, metadata, data]
-    
+
     def return_read_token(self, token: int | None) -> None:
         """Return a token after reading data from it."""
         if token is not None:
             self.empty_slots.put(token)
         else:
             self.filled_slots.put(None)
-    
+
     def write(self) -> list[int, np.ndarray, np.ndarray]:
         """Write data to the buffer.
-        
+
         After writing is finished the token needs to be returned by calling return_write_token.
-        
+
         Returns
         -------
         list[int, np.ndarray, np.ndarray]
@@ -328,7 +328,7 @@ class mimoBuffer:
             token = self.empty_slots.get()
         metadata, data = self._access_slot(token)
         return [token, metadata, data]
-    
+
     def return_write_token(self, token: int | None) -> None:
         """Return a token to which data has been written."""
         if token is None:
@@ -344,13 +344,13 @@ class mimoBuffer:
             ]  # TODO i think this is ugly
 
         self.filled_slots.put(token)
-    
+
     def observe(self) -> list[int, np.ndarray, np.ndarray] | list[None, None, None]:
         """Observe data from the buffer.
-        
+
         After observing is finished the token needs to be returned by calling return_observe_token.
         When the buffer is shut down, returns [None, None, None].
-        
+
         Returns
         -------
         list[int, np.ndarray, np.ndarray] | list[None, None, None]
@@ -361,7 +361,7 @@ class mimoBuffer:
             return [None, None, None]
         metadata, data = self._access_slot(token)
         return [token, metadata, data]
-    
+
     def return_observe_token(self, token: int | None) -> None:
         """Return a token after observing data from it."""
         self.filled_slots.put(token)
@@ -371,16 +371,16 @@ class mimoBuffer:
         with self.flush_event_received.get_lock():
             if not self.flush_event_received.value:
                 self.flush_event_received.value = True
-                self.filled_slots.put(None)    
+                self.filled_slots.put(None)
 
     def pause(self) -> None:
-        """Pause the buffer, meaning data written to it will be discarded."""        
+        """Pause the buffer, meaning data written to it will be discarded."""
         self.paused.value = True
 
     def resume(self) -> None:
         """Resume the buffer, meaning data written to it will be accepted again."""
         self.paused.value = False
-        
+
     @classmethod
     def from_setup(cls, name: str, setup: dict) -> "mimoBuffer":
         """
@@ -388,7 +388,7 @@ class mimoBuffer:
 
         Args:
             name (str): The name of the buffer.
-            setup (dict): A dictionary containing the buffer configuration. 
+            setup (dict): A dictionary containing the buffer configuration.
                 Expected keys are:
                     - "slot_count" (int): The number of slots in the buffer.
                     - "data_length" (int): The length of the data in each slot.
@@ -448,6 +448,7 @@ class Interface:
     is_shutdown : multiprocessing.Value
         Indicates whether the buffer has been shut down.
     """
+
     def __init__(self, buffer: mimoBuffer) -> None:
         self.buffer = buffer
         self.shutdown_buffer = self.buffer.send_flush_event
@@ -530,7 +531,6 @@ class BufferWriter(Interface):
         self.buffer.send_flush_event()
 
 
-
 class BufferObserver(Interface):
     """
     A context manager for observing data in a mimoBuffer.
@@ -580,4 +580,3 @@ def _divide(a, b):
         The result of the division a / b, or 0 if b is zero.
     """
     return a / b if b != 0 else 0
-

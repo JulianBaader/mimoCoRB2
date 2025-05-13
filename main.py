@@ -1,10 +1,6 @@
 import mimocorb2.control as ctrl
 import logging
-import os
 import sys
-from mimocorb2.gui import BufferManagerApp
-from PyQt5 import QtWidgets
-import matplotlib.pyplot as plt
 
 # plt.style.use('dark_background')
 

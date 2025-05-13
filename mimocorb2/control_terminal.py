@@ -23,7 +23,7 @@ def control_terminal(command_queue: queue, stats_queue: queue):
         stats_queue (queue.Queue): Queue for receiving statistics from the control.
     """
     print("Control Terminal: Type 'help' for available commands.")
-    
+
     while True:
         try:
             command = input("mimocorb2> ").lower()

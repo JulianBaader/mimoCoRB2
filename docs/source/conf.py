@@ -36,8 +36,8 @@ napoleon_use_rtype = True
 typehints_use_rtype = True
 typehints_document_rtype = True
 
-#typehints_use_signature = True
-#typehints_use_signature_return = True
+# typehints_use_signature = True
+# typehints_use_signature_return = True
 
 
 templates_path = ['_templates']

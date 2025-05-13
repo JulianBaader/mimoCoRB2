@@ -1,7 +1,4 @@
-import logging
 import time
-import os
-import numpy as np
 from typing import Callable, Generator
 from mimocorb2.mimo_worker import BufferIO
 
@@ -14,8 +11,9 @@ METADATA = 1
 
 # TODO failing
 
+
 class Base:
-    def __init__(self, io : BufferIO):
+    def __init__(self, io: BufferIO):
         self.io = io
         # copy attributes from io
         self.read = io.read
@@ -26,11 +24,11 @@ class Base:
         self.name = io.name
         self.run_directory = io.run_directory
         self.setup_directory = io.setup_directory
-        
+
         # copy methods from io
         self.shutdown_sinks = io.shutdown_sinks
         self.__getitem__ = io.__getitem__
-        
+
         # set up data and metadata examples
         def set_examples(attr_name, sources):
             data_examples = [source.data_example for source in sources]
@@ -45,8 +43,7 @@ class Base:
         set_examples("in", self.read)
         set_examples("out", self.write)
         set_examples("observe", self.observe)
-        
-        
+
 
 class Importer(Base):
     """Worker class for importing data from an external generator.
@@ -83,7 +80,6 @@ class Importer(Base):
             self.fail("Importer must have 1 sink", force_shutdown=True)
         if len(self.observe) != 0:
             self.fail("Importer must have 0 observes", force_shutdown=True)
-
 
     def __call__(self, ufunc: Callable) -> None:
         """Start the generator and write data to the buffer.
@@ -159,8 +155,6 @@ class Exporter(Base):
             self.fail("Exporter must have 1 source", force_shutdown=True)
         if len(self.observe) != 0:
             self.fail("Exporter must have 0 observes", force_shutdown=True)
-
-
 
         if len(self.write) != 0:
             for do, mo in zip(self.data_out_examples, self.metadata_out_examples):
@@ -247,7 +241,7 @@ class Filter(Base):
             self.fail("Filter must have at least 1 sink", force_shutdown=True)
         if len(self.observe) != 0:
             self.fail("Filter must have 0 observes", force_shutdown=True)
-        
+
         for do, mo in zip(self.data_out_examples, self.metadata_out_examples):
             if do.shape != self.data_in_example.shape:
                 self.fail("Exporter source and sink shapes do not match", force_shutdown=True)
@@ -331,7 +325,6 @@ class Processor(Base):
             self.fail("Processor must have at least 1 sink", force_shutdown=True)
         if len(self.observe) != 0:
             self.fail("Processor must have 0 observes", force_shutdown=True)
-            
 
     def __call__(self, ufunc: Callable) -> None:
         """Start the processor and process data using ufunc(data).

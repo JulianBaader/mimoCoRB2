@@ -8,10 +8,11 @@ from mimocorb2.mimo_buffer import BufferReader, BufferWriter, BufferObserver
 
 FUNCTIONS_FOLDER = os.path.join(os.path.dirname(__file__), 'functions')
 
+
 class Config(dict):
     def __init__(self, config_dict):
         super().__init__(config_dict)
-    
+
     @classmethod
     def from_setup(cls, setup: str | dict | list, setup_dir: str):
         if isinstance(setup, str):
@@ -29,13 +30,15 @@ class Config(dict):
                     config.update(item)
         else:
             raise TypeError("setup must be a string, dict, or list of strings/dicts")
-        
+
         return cls(config)
+
+
 class BufferIO:
     """Collection of buffers for input/output operations.
-    
+
     Object which is passed to each worker process to provide access to the buffers.
-    
+
     Attributes
     ----------
     sources : list[BufferReader]
@@ -43,18 +46,19 @@ class BufferIO:
     observes : list[BufferObserver]
     config : Config
     logger : logging.Logger
-    
+
     Methods
     -------
     shutdown_sinks()
         Shutdown all sink buffers.
     __getitem__(key)
         Get the value of a key from the configuration dictionary.
-    
+
     Examples
     --------
     >>> with io.write[0] as (metadata, data):
     """
+
     def __init__(
         self,
         name: str,
@@ -65,7 +69,6 @@ class BufferIO:
         setup_directory: str,
         run_directory: str,
     ) -> None:
-        
         self.name = name
         self.read = sources
         self.write = sinks
@@ -74,12 +77,11 @@ class BufferIO:
         self.logger = logging.getLogger(name=self.name)
         self.setup_directory = setup_directory
         self.run_directory = run_directory
-        
-        
+
     def shutdown_sinks(self) -> None:
         for writer in self.write:
             writer.shutdown_buffer()
-            
+
     def __str__(self):
         """String representation of the BufferIO object."""
         read = [buffer.name for buffer in self.read]
@@ -88,10 +90,9 @@ class BufferIO:
         config = self.config
         return f"BufferIO(sources={read}, sinks={write}, observes={observe}, config={config})"
 
-            
     def __getitem__(self, key):
         return self.config[key]
-    
+
     @classmethod
     def from_setup(cls, name, setup: dict, setup_dir: str, run_dir: str, buffers: dict):
         """Initiate the BufferIO from a setup dictionary."""
@@ -99,7 +100,7 @@ class BufferIO:
         sinks = [BufferWriter(buffers[name]) for name in setup.get('sinks', [])]
         observes = [BufferObserver(buffers[name]) for name in setup.get('observes', [])]
         config = Config.from_setup(setup.get('config', {}), setup_dir)
-        
+
         return cls(
             name=name,
             sources=sources,
@@ -109,9 +110,7 @@ class BufferIO:
             setup_directory=setup_dir,
             run_directory=run_dir,
         )
-    
-    
-        
+
 
 class mimoWorker:
     """
@@ -159,9 +158,7 @@ class mimoWorker:
         Terminates all active worker processes.
     """
 
-    def __init__(
-        self, name: str, function: Callable, buffer_io: BufferIO, number_of_processes: int
-    ) -> None:
+    def __init__(self, name: str, function: Callable, buffer_io: BufferIO, number_of_processes: int) -> None:
         self.name = name
         self.function = function
         self.buffer_io = buffer_io
@@ -193,11 +190,10 @@ class mimoWorker:
             if p.is_alive():
                 self.logger.info(f"Killing process {p.name}")
                 p.terminate()
-                
+
     def __str__(self):
         """String representation of the mimoWorker object."""
         return f"mimoWorker(name={self.name}, function={self.function.__name__}, buffer_io={str(self.buffer_io)}, number_of_processes={self.number_of_processes})"
-    
 
     @classmethod
     def from_setup(cls, name: str, setup: dict, setup_dir: str, run_dir, buffers: dict):
@@ -208,21 +204,21 @@ class mimoWorker:
             file = os.path.join(FUNCTIONS_FOLDER, setup['function'].split('.')[0] + '.py')
         else:
             file = os.path.join(setup_dir, file)
-        
+
         return cls(
-            name = name,
-            function = cls._import_function(file, function_name),
-            buffer_io = BufferIO.from_setup(
+            name=name,
+            function=cls._import_function(file, function_name),
+            buffer_io=BufferIO.from_setup(
                 name=name,
                 setup=setup,
                 setup_dir=setup_dir,
                 run_dir=run_dir,
                 buffers=buffers,
             ),
-            number_of_processes = setup.get('number_of_processes', 1),
+            number_of_processes=setup.get('number_of_processes', 1),
         )
-        
-    @staticmethod        
+
+    @staticmethod
     def _import_function(file: str, function_name: str) -> Callable:
         """Import a function from a file and return it."""
         directory = os.path.dirname(file)
@@ -237,4 +233,3 @@ class mimoWorker:
         if function_name not in vars(module):
             raise ImportError(f"Function {function_name} not found in module {file}")
         return vars(module)[function_name]
-

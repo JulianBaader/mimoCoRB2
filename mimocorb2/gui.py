@@ -68,9 +68,7 @@ class BufferManagerApp(QtWidgets.QMainWindow):
 
         # logs for the buffer stats
         formatter = logging.Formatter('%(asctime)s - %(message)s')
-        file_handler = logging.FileHandler(
-            os.path.join(self.control.run_directory, "buffer_stats.log")
-        )
+        file_handler = logging.FileHandler(os.path.join(self.control.run_directory, "buffer_stats.log"))
         file_handler.setFormatter(formatter)
         self.buffer_stats_logger = logging.getLogger("buffer_stats")
         self.buffer_stats_logger.addHandler(file_handler)
@@ -106,7 +104,7 @@ class BufferManagerApp(QtWidgets.QMainWindow):
             self.buffer_canvas.update_plot(buffer_stats, worker_stats)
 
             self.update_processes_alive()
-            self.update_main_table(buffer_stats, worker_stats) # TODO die machts irgendwie arg langsam
+            self.update_main_table(buffer_stats, worker_stats)  # TODO die machts irgendwie arg langsam
             self.update_time_active()
         except Exception as e:
             print(f"Error updating plots: {e}")
