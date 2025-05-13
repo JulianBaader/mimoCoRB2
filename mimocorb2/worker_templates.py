@@ -266,7 +266,7 @@ class Filter(Base):
         if not callable(ufunc):
             self.shutdown_sinks()
             raise RuntimeError("ufunc not callable")
-        self.true_map = [True] * len(self.sinks)
+        self.true_map = [True] * len(self.data_out_examples)
         self.logger.info("Filter started")
         while True:
             with self.read[0] as (metadata, data):

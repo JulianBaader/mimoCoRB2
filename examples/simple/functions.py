@@ -40,7 +40,7 @@ def filter_data(buffer_io):
 
 def calculate_pulse_heights(buffer_io):
     processor = Processor(buffer_io)
-    example = processor.data_example
+    example = processor.data_out_example
 
     def ufunc(data):
         example['pulse_height'] = np.max(data['ch1'])
