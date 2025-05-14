@@ -28,7 +28,6 @@ class Control:
 
         self.command_queue = mp.Queue()
         self.stats_queue = mp.Queue(1)
-        # TODO one stats_queue which is updated by the interface and one from control
         self.last_stats_time = time.time()
         self.current_stats = None
 
@@ -63,16 +62,16 @@ class Control:
             if time.time() - self.last_stats_time > 1:
                 self.last_stats_time = time.time()
                 self.current_stats = self.get_stats()
+                # try to empty the stats queue to remove old stats
                 try:
                     self.stats_queue.get_nowait()
                 except queue.Empty:
                     pass
-            # if the stats queue is empty, put the current stats in it
-            if self.stats_queue.empty():
-                try:
-                    self.stats_queue.put(self.current_stats, block=False)
-                except queue.Full:
-                    pass
+            # fill the stats queue with the current stats
+            try:
+                self.stats_queue.put(self.current_stats, block=False)
+            except queue.Full:
+                pass
 
             # check for commands
             try:
