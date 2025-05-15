@@ -13,6 +13,9 @@ MIN_RATE = 0.1
 MAX_RATE = 250.0
 TIME_RATE = 60
 
+# Buffer Config
+BUFFER_COLORS = ["#E24A33", "#FBC15E", "#2CA02C", "#FFFFFF"]
+
 def get_infos_from_control(control: Control):
     """
     Get the information from the control object.
@@ -37,6 +40,7 @@ class ControlGui(QtWidgets.QMainWindow):
         self.infos = infos
         
         self.rate_plot = RatePlot(self.infos, self, "ratePlaceholder")
+        self.worker_plot = WorkerPlot(self.infos, self, "workerPlaceholder")
         self.buffer_plot = BufferPlot(self.infos, self, "bufferPlaceholder")
         
         self.timer = QtCore.QTimer()
@@ -50,14 +54,15 @@ class ControlGui(QtWidgets.QMainWindow):
         try:
             stats = self.stats_queue.get_nowait()
             self.rate_plot.update_plot(stats)
+            self.buffer_plot.update_plot(stats)
         except mp.queues.Empty:
             pass
 
 class MplCanvas(FigureCanvas):
     def __init__(self, infos: dict, parent=None, placeholder_name: str = None):
-        fig = Figure()
-        self.axes = fig.add_subplot(111)
-        super().__init__(fig)
+        self.fig = Figure()
+        self.axes = self.fig.add_subplot(111)
+        super().__init__(self.fig)
         self.infos = infos
         self.buffer_names = list(infos['buffers'].keys())
         self.worker_names = list(infos['workers'].keys())
@@ -70,7 +75,6 @@ class MplCanvas(FigureCanvas):
                 layout.setContentsMargins(0, 0, 0, 0)
                 layout.addWidget(self)
                 
-        fig.tight_layout()
         
         
 class RatePlot(MplCanvas):
@@ -86,7 +90,12 @@ class RatePlot(MplCanvas):
         self.axes.set_ylim(MIN_RATE, MAX_RATE)
         
         self.lines = {name: self.axes.plot(self.xdata, self.ydatas[name], label=name)[0] for name in self.buffer_names}
-        self.axes.legend()
+        self.axes.legend(loc="upper left")
+        self.axes.set_yscale("log")
+        self.axes.grid(True, which='major', alpha=0.9)
+        self.axes.grid(True, which='minor', alpha=0.5)
+        
+        self.fig.tight_layout()
         self.draw()
 
         
@@ -110,17 +119,33 @@ class RatePlot(MplCanvas):
         
         self.draw()
         
+class WorkerPlot(MplCanvas):
+    def __init__(self, infos: dict, parent=None, placeholder_name: str = None):
+        super().__init__(infos, parent, placeholder_name)
+        number_of_processes = [infos['workers'][name]['number_of_processes'] for name in self.worker_names]
+        self.axes.grid(True, which='major', alpha=0.9, axis='y')
+        self.axes.bar(self.worker_names, number_of_processes)
+        
+        self.axes.tick_params(axis="x", rotation=45)
+        for label in self.axes.get_xticklabels():
+            label.set_horizontalalignment('right')
+        self.axes.set_ylabel("Number of Workers")
+        self.axes.yaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
+        
+        
+        self.fig.tight_layout()
+        self.draw()
+        
 class BufferPlot(MplCanvas):
     def __init__(self, infos: dict, parent=None, placeholder_name: str = None):
         super().__init__(infos, parent, placeholder_name)
         x = np.arange(len(self.buffer_names))
-        colors = ["#E24A33", "#FBC15E", "#2CA02C", "#FFFFFF"]
-        # colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+        
         # the ordering of the bars is important
-        self.bar_filled = self.axes.bar(x, 0, label="Filled", color=colors[0])
-        self.bar_working = self.axes.bar(x, 0, label="Working", color=colors[1])
-        self.bar_empty = self.axes.bar(x, 1, label="Empty", color=colors[2])
-        self.shutdown_overlay = self.axes.bar(x, 0, label="Shutdown", color=colors[3], alpha=0.3, hatch="//")
+        self.bar_filled = self.axes.bar(x, 0, label="Filled", color=BUFFER_COLORS[0])
+        self.bar_working = self.axes.bar(x, 0, label="Working", color=BUFFER_COLORS[1])
+        self.bar_empty = self.axes.bar(x, 1, label="Empty", color=BUFFER_COLORS[2])
+        self.shutdown_overlay = self.axes.bar(x, 0, label="Shutdown", color=BUFFER_COLORS[3], alpha=0.3, hatch="//")
 
         self.axes.set_ylim(0, 1)
         self.axes.legend(loc="upper right")
@@ -138,23 +163,24 @@ class BufferPlot(MplCanvas):
         
         twiny.set_xticklabels(slot_counts)
         twiny.set_xlim(xlim)
+        self.fig.tight_layout()
         
     def update_plot(self, stats):
         buffer_stats = stats['buffers']
-        filled = np.array([buffer_stats[key]["filled_slots"] for key in self.buffers])
-        empty = np.array([buffer_stats[key]["empty_slots"] for key in self.buffers])
-        shutdown = np.array([buffer_stats[key]["flush_event_received"] for key in self.buffers])
+        filled = np.array([buffer_stats[key]["filled_slots"] for key in self.buffer_names])
+        empty = np.array([buffer_stats[key]["empty_slots"] for key in self.buffer_names])
+        shutdown = np.array([buffer_stats[key]["flush_event_received"] for key in self.buffer_names])
 
-        for bar, new_height in zip(self.bar_filled, [1] * len(self.buffers)):
-            bar.set_height(new_height)
-        for bar, new_height in zip(self.bar_working, 1 - filled):
-            bar.set_height(new_height)
-        for bar, new_height in zip(self.bar_empty, empty):
-            bar.set_height(new_height)
-        for bar, is_shutdown in zip(self.shutdown_overlay, shutdown):
-            bar.set_height(1 if is_shutdown else 0)
-
+        self._set_heights(self.bar_filled, [1] * len(self.buffer_names))
+        self._set_heights(self.bar_working, 1 - filled)
+        self._set_heights(self.bar_empty, empty)
+        self._set_heights(self.shutdown_overlay, shutdown)
         self.draw()
+        
+    def _set_heights(self, bars, new_heights):
+        for bar, new_height in zip(bars, new_heights):
+            bar.set_height(new_height)
+        
 
         
 if __name__ == '__main__':
