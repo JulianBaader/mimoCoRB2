@@ -12,7 +12,7 @@ from graphviz import Digraph
 
 
 class Control:
-    def __init__(self, setup_file, gui=True, kbd=True, log_stats=True):
+    def __init__(self, setup_file: str, gui: bool=True, kbd: bool=True) -> None:
         self.run_directory = None
         self.setup_dir = os.path.dirname(setup_file)
 
@@ -41,7 +41,8 @@ class Control:
         self.find_roots()
         self.visualize_data_flow(os.path.join(self.run_directory, 'data_flow'))
 
-    def __call__(self):
+    def __call__(self) -> None:
+        """Start the control loop as well as the control interfaces."""
         if self.kbd:
             import mimocorb2.control_terminal as ctrl_term
 
@@ -91,7 +92,7 @@ class Control:
     def save_setup():
         raise NotImplementedError("Saving setup is not implemented yet.")
 
-    def setup_run_directory(self):
+    def setup_run_directory(self) -> None:
         """Setup the run directory"""
         target_directory = os.path.join(self.setup_dir, self.setup.get('target_directory', 'target'))
         os.makedirs(target_directory, exist_ok=True)
@@ -100,14 +101,14 @@ class Control:
         os.makedirs(self.run_directory, exist_ok=False)
         self.run_directory = os.path.abspath(self.run_directory)
 
-    def find_roots(self):
+    def find_roots(self) -> None:
         self.roots = {}
         for worker_name, worker_info in self.setup['Workers'].items():
             if len(worker_info.get('sources', [])) == 0 and len(worker_info.get('observes', [])) == 0:
                 for buffer_name in worker_info.get('sinks', []):
                     self.roots[buffer_name] = self.buffers[buffer_name]
 
-    def visualize_data_flow(self, file, **digraph_kwargs):
+    def visualize_data_flow(self, file: str, **digraph_kwargs) -> None:
         dot = Digraph(format='svg', **digraph_kwargs)
 
         # Buffer Nodes
