@@ -10,11 +10,40 @@ FUNCTIONS_FOLDER = os.path.join(os.path.dirname(__file__), 'functions')
 
 
 class Config(dict):
+    """Configuration of the mimoWorker
+
+    A dictionary-like object that holds the configuration for the mimoWorker.
+    
+    Attributes
+    ----------
+    config_dict : dict
+        A dictionary containing the configuration parameters.
+    
+    Methods
+    -------
+    from_setup(setup: str | dict | list, setup_dir: str)
+        Load the configuration from a setup.
+    """
     def __init__(self, config_dict):
         super().__init__(config_dict)
 
     @classmethod
-    def from_setup(cls, setup: str | dict | list, setup_dir: str):
+    def from_setup(cls, setup: str | dict | list[str], setup_dir: str):
+        """Load the configuration from a setup.
+        
+        Parameters
+        ----------
+        setup : str | dict | list[str]
+            If a string or a list of strings is provided, the yaml files are loaded relative to the setup_dir.
+            If a dictionary is provided, it is used as the configuration directly.
+        setup_dir : str
+            The directory where the setup file is located.
+
+        Returns
+        -------
+        Config
+            An instance of the Config class containing the loaded configuration.
+        """
         if isinstance(setup, str):
             with open(os.path.join(setup_dir, setup), 'r') as file:
                 config = yaml.safe_load(file)
@@ -41,10 +70,20 @@ class BufferIO:
 
     Attributes
     ----------
+    name : str
+        The name of the corresponding worker.
     sources : list[BufferReader]
+        List of source buffers (read).
     sinks : list[BufferWriter]
+        List of sink buffers (write).
     observes : list[BufferObserver]
+        List of observe buffers.
     config : Config
+        Configuration dictionary for the worker.
+    setup_directory : str
+        Directory where the setup file is located. (Load external data)
+    run_directory : str
+        Directory where the run is located. (Save external data)
     logger : logging.Logger
 
     Methods
@@ -53,6 +92,10 @@ class BufferIO:
         Shutdown all sink buffers.
     __getitem__(key)
         Get the value of a key from the configuration dictionary.
+    __str__()
+        String representation of the BufferIO object.
+    from_setup(name, setup, setup_dir, run_dir, buffers)
+        Create a BufferIO object from a setup dictionary.
 
     Examples
     --------
@@ -79,6 +122,7 @@ class BufferIO:
         self.run_directory = run_directory
 
     def shutdown_sinks(self) -> None:
+        """Shutdown all sink buffers."""
         for writer in self.write:
             writer.shutdown_buffer()
 
