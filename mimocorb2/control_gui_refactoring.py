@@ -43,6 +43,8 @@ class ControlGui(QtWidgets.QMainWindow):
         self.worker_plot = WorkerPlot(self.infos, self, "workerPlaceholder")
         self.buffer_plot = BufferPlot(self.infos, self, "bufferPlaceholder")
         self.table = Table(self.infos, self, "tablePlaceholder")
+        self.buttons = Buttons(self.command_queue, self)
+        self.status_bar = StatusBar(self)
         
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.update_gui)
@@ -58,6 +60,7 @@ class ControlGui(QtWidgets.QMainWindow):
             self.buffer_plot.update_plot(stats)
             self.worker_plot.update_plot(stats)
             self.table.update_table(stats)
+            self.status_bar.update_status(stats)
         except mp.queues.Empty:
             pass
 
@@ -213,8 +216,55 @@ class Table:
             self.table.setItem(i, 3, QtWidgets.QTableWidgetItem(str(buffer_stats['event_count'])))
             
 
+class Buttons:
+    def __init__(self, command_queue: mp.Queue, parent):
+        self.command_queue = command_queue
+        self.parent = parent
 
+        self.pause_resume_RootBuffersButton = parent.findChild(QtWidgets.QPushButton, "pause_resume_RootBuffersButton")
+        self.shutdownRootBuffersButton = parent.findChild(QtWidgets.QPushButton, "shutdownRootBuffersButton")
+        self.shutdownAllBuffersButton = parent.findChild(QtWidgets.QPushButton, "shutdownAllBuffersButton")
+        self.shutdownAllWorkersButton = parent.findChild(QtWidgets.QPushButton, "shutdownAllWorkersButton")
+        
+        self.pause_resume_Root_status = 'resume'
+        
+        self.pause_resume_RootBuffersButton.clicked.connect(self.action_pause_resume_root_buffers)
+        self.shutdownRootBuffersButton.clicked.connect(self.action_shutdown_root_buffers)
+        self.shutdownAllBuffersButton.clicked.connect(self.action_shutdown_all_buffers)
+        self.shutdownAllWorkersButton.clicked.connect(self.action_shutdown_all_workers)
 
+        
+    def action_shutdown_root_buffers(self):
+        self.command_queue.put(['buffer', 'roots', 'shutdown'])
+        
+    def action_shutdown_all_buffers(self):
+        self.command_queue.put(['buffer', 'all', 'shutdown'])
+        
+    def action_shutdown_all_workers(self):
+        self.command_queue.put(['worker', 'all', 'shutdown'])
+        
+    def action_pause_resume_root_buffers(self):
+        if self.pause_resume_Root_status == 'resume':
+            self.command_queue.put(['buffer', 'roots', 'pause'])
+            self.pause_resume_RootBuffersButton.setText("Resume Roots")
+            self.pause_resume_Root_status = 'pause'
+        else:
+            self.command_queue.put(['buffer', 'roots', 'resume'])
+            self.pause_resume_RootBuffersButton.setText("Pause Roots")
+            self.pause_resume_Root_status = 'resume'
+
+class StatusBar:
+    def __init__(self, parent):
+        self.parent = parent
+        self.timeActiveLabel = parent.findChild(QtWidgets.QLabel, "timeActiveLabel")
+        self.processesAliveLabel = parent.findChild(QtWidgets.QLabel, "processesAliveLabel")
+        
+    def update_status(self, stats):
+        time_active = stats['time_active']
+        self.timeActiveLabel.setText(f"Time Active: {time_active:.2f} s")
+        
+        processes_alive = sum(stats['workers'][name]['number_of_processes'] for name in stats['workers'])
+        self.processesAliveLabel.setText(f"Processes Alive: {processes_alive}")
         
 if __name__ == '__main__':
     infos = {'buffers': {'InputBuffer': {'slot_count': 128}, 'AcceptedPulses': {'slot_count': 128}, 'PulseParametersUp': {'slot_count': 32}, 'PulseParametersDown': {'slot_count': 32}, 'PulseParametersUp_Export': {'slot_count': 32}, 'PulseParametersDown_Export': {'slot_count': 32}}, 'workers': {'input': {'number_of_processes': 1}, 'filter': {'number_of_processes': 3}, 'save_pulses': {'number_of_processes': 1}, 'histUp': {'number_of_processes': 1}, 'histDown': {'number_of_processes': 1}, 'saveUp': {'number_of_processes': 1}, 'saveDown': {'number_of_processes': 1}, 'oscilloscope': {'number_of_processes': 1}, 'accepted_ocilloscope': {'number_of_processes': 1}}, 'roots': ['InputBuffer']}
