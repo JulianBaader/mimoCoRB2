@@ -61,19 +61,19 @@
        </widget>
       </item>
       <item>
-       <widget class="QTableWidget" name="main_table"/>
+       <widget class="QTableWidget" name="tablePlaceholder"/>
       </item>
       <item>
        <layout class="QHBoxLayout" name="horizontalLayout_3">
         <item>
-         <widget class="QLabel" name="time_active">
+         <widget class="QLabel" name="timeActiveLabel">
           <property name="text">
            <string>Time active: </string>
           </property>
          </widget>
         </item>
         <item>
-         <widget class="QLabel" name="processes_alive">
+         <widget class="QLabel" name="processesAliveLabel">
           <property name="text">
            <string>Processes Alive:</string>
           </property>
@@ -84,28 +84,28 @@
       <item>
        <layout class="QHBoxLayout" name="buttonLayout">
         <item>
-         <widget class="QPushButton" name="pauseButton">
+         <widget class="QPushButton" name="pause_resume_RootBuffersButton">
           <property name="text">
            <string>Pause Roots</string>
           </property>
          </widget>
         </item>
         <item>
-         <widget class="QPushButton" name="shutdownRootBuffer">
+         <widget class="QPushButton" name="shutdownRootBuffersButton">
           <property name="text">
            <string>Shutdown Root Buffer</string>
           </property>
          </widget>
         </item>
         <item>
-         <widget class="QPushButton" name="shutdownAllBuffers">
+         <widget class="QPushButton" name="shutdownAllBuffersButton">
           <property name="text">
            <string>Shutdown all Buffers</string>
           </property>
          </widget>
         </item>
         <item>
-         <widget class="QPushButton" name="killWorkers">
+         <widget class="QPushButton" name="shutdownAllWorkersButton">
           <property name="text">
            <string>Kill Workers</string>
           </property>

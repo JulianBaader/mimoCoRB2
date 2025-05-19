@@ -2,19 +2,19 @@ from PyQt5 import QtWidgets, uic, QtCore
 from mimocorb2.control import Control
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
-import matplotlib.pyplot as plt
-import numpy as np
+import multiprocessing as mp
 import time
+import numpy as np
 import os
-import queue
+import matplotlib
 
-
-WIDTH = 5
-HEIGHT = 4
-DPI = 100
-
+# Rate Config
 MIN_RATE = 0.1
+MAX_RATE = 250.0
+TIME_RATE = 60
 
+# Buffer Config
+BUFFER_COLORS = ["#E24A33", "#FBC15E", "#2CA02C", "#FFFFFF"]
 
 def get_infos_from_control(control: Control):
     """
@@ -25,167 +25,139 @@ def get_infos_from_control(control: Control):
     roots = list(control.roots.keys())
     return {'buffers': buffers, 'workers': workers, 'roots': roots}
 
+def run_gui(command_queue: mp.Queue, stats_queue: mp.Queue, infos: dict):
+    app = QtWidgets.QApplication([])
+    window = ControlGui(command_queue, stats_queue, infos)
+    window.show()
+    app.exec_()
 
-class BufferManagerApp(QtWidgets.QMainWindow):
-    def __init__(self, command_queue: queue, stats_queue: queue, infos: dict):
+class ControlGui(QtWidgets.QMainWindow):
+    def __init__(self, command_queue: mp.Queue, stats_queue: mp.Queue, infos: dict):
         super().__init__()
         uic.loadUi(os.path.join(os.path.dirname(__file__), "gui.ui"), self)
-
-        self.COLORS = plt.rcParams["axes.prop_cycle"].by_key()["color"]
-
         self.command_queue = command_queue
         self.stats_queue = stats_queue
         self.infos = infos
-
-        # Setup matplotlib canvases
-        self.rate_canvas = RateCanvas(self.rate_tab, infos, title="Rate Information")
-        self.process_canvas = WorkerCanvas(self.process_tab, infos, title="Process Information")
-        self.buffer_canvas = BufferCanvas(self.buffer_tab, infos, title="Buffer Information")
-
-        # Add timers for real-time updates
+        
+        self.rate_plot = RatePlot(self.infos, self, "ratePlaceholder")
+        self.worker_plot = WorkerPlot(self.infos, self, "workerPlaceholder")
+        self.buffer_plot = BufferPlot(self.infos, self, "bufferPlaceholder")
+        self.table = Table(self.infos, self, "tablePlaceholder")
+        self.buttons = Buttons(self.command_queue, self)
+        self.status_bar = StatusBar(self)
+        
         self.timer = QtCore.QTimer()
-        self.timer.timeout.connect(self.update_plots)
+        self.timer.timeout.connect(self.update_gui)
         self.timer.start(1000)  # Update every second
-
-        # Connect control buttons
-        self.shutdownRootBuffer.clicked.connect(self.action_shutdownRootBuffer)
-        self.shutdownAllBuffers.clicked.connect(self.action_shutdownAllBuffers)
-        self.killWorkers.clicked.connect(self.action_killWorkers)
-        self.exitButton.clicked.connect(self.action_exit)
-        self.pauseButton.clicked.connect(self.action_pause)
-
-        # main tab
-        # time active label
-        self.time_active_label = self.findChild(QtWidgets.QLabel, "time_active")
-        # processes alive label
-        self.processes_alive_label = self.findChild(QtWidgets.QLabel, "processes_alive")
-
-        # TODO
-        self.max_number_of_processes = sum(
-            self.infos['workers'][key]['number_of_processes'] for key in self.infos['workers']
-        )
-
-        # table
-        self.main_table = self.findChild(QtWidgets.QTableWidget, "main_table")
-        self.main_table.setColumnCount(4)
-        self.main_table.setRowCount(len(self.infos['roots']))
-        self.main_table.setHorizontalHeaderLabels(["Buffer", "Rate (Hz)", "Dead Time (%)", "Number of Events"])
-        self.main_table.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
-        for i, buffer in enumerate(self.infos['roots']):
-            item = QtWidgets.QTableWidgetItem(buffer)
-            item.setFlags(QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled)
-            self.main_table.setItem(i, 0, item)
-
-    def update_main_table(self, stats: dict):
-        for i, buffer in enumerate(self.infos['roots']):
-            stat = stats['buffers'][buffer]
-            values = [stat["rate"], stat["average_deadtime"], stat["event_count"]]
-            for j in range(3):
-                item = QtWidgets.QTableWidgetItem(str(values[j]))
-                item.setFlags(QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled)
-                self.main_table.setItem(i, j + 1, item)
-
-    def update_processes_alive(self, stats: dict):
-        processes_alive = sum(stats['workers'].values())
-        self.processes_alive_label.setText(f"Processes alive: {processes_alive}/{self.max_number_of_processes}")
-
-    def update_time_active(self, stats: dict):
-        self.time_active_label.setText(f"Time active: {int(stats['time_active'])}s")
-
-    def update_plots(self):
+        
+    def update_gui(self):
+        """
+        Update the GUI with the latest stats.
+        """
         try:
-            self.stats = self.stats_queue.get_nowait()
-        except queue.Empty:
-            # If the queue is empty, we can skip this update
-            return
+            stats = self.stats_queue.get_nowait()
+            self.rate_plot.update_plot(stats)
+            self.buffer_plot.update_plot(stats)
+            self.worker_plot.update_plot(stats)
+            self.table.update_table(stats)
+            self.status_bar.update_status(stats)
+        except mp.queues.Empty:
+            pass
 
-        self.rate_canvas.update_plot(self.stats)
-        self.process_canvas.update_plot(self.stats)
-        self.buffer_canvas.update_plot(self.stats)
+class MplCanvas(FigureCanvas):
+    def __init__(self, infos: dict, parent=None, placeholder_name: str = None):
+        self.fig = Figure()
+        self.axes = self.fig.add_subplot(111)
+        super().__init__(self.fig)
+        self.infos = infos
+        self.buffer_names = list(infos['buffers'].keys())
+        self.worker_names = list(infos['workers'].keys())
 
-        self.update_processes_alive(self.stats)
-        self.update_main_table(self.stats)
-        self.update_time_active(self.stats)
+        # If a placeholder name is given, find and set it up
+        if placeholder_name and parent:
+            rateWidget_placeholder = parent.findChild(QtWidgets.QWidget, placeholder_name)
+            if rateWidget_placeholder:
+                layout = QtWidgets.QVBoxLayout(rateWidget_placeholder)
+                layout.setContentsMargins(0, 0, 0, 0)
+                layout.addWidget(self)
+                
+        
+        
+class RatePlot(MplCanvas):
+    def __init__(self, infos: dict, parent=None, placeholder_name: str = None):
+        super().__init__(infos, parent, placeholder_name)
+        self.axes.set_title("Rate")
+        self.axes.set_xlabel("Time (s)")
+        self.axes.set_ylabel("Rate (Hz)")
+        
+        self.xdata = [-TIME_RATE, 0]
+        self.ydatas = {name: [0, 0] for name in self.buffer_names}
+        self.axes.set_xlim(-TIME_RATE, 0)
+        self.axes.set_ylim(MIN_RATE, MAX_RATE)
+        
+        self.lines = {name: self.axes.plot(self.xdata, self.ydatas[name], label=name)[0] for name in self.buffer_names}
+        self.axes.legend(loc="upper left")
+        self.axes.set_yscale("log")
+        self.axes.grid(True, which='major', alpha=0.9)
+        self.axes.grid(True, which='minor', alpha=0.5)
+        
+        self.fig.tight_layout()
+        self.draw()
 
-    def closeEvent(self, event):
-        """Handle the window close event."""
-        # Replace this with your test condition
-        if sum(self.stats['workers'].values()) != 0:
-            # Show a warning message
-            reply = QtWidgets.QMessageBox.warning(
-                self,
-                "Warning",
-                """Some processes are incomplete. Are you sure you want to exit?
-                This will shutdown all buffers and then kill all workers.""",
-                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
-                QtWidgets.QMessageBox.No,
-            )
-            if reply == QtWidgets.QMessageBox.No:
-                event.ignore()
-                return
-            self.control.kill_workers()
-            # Proceed with closing
-            event.accept()
+        
+    def update_plot(self, stats):
+        time_active = stats['time_active']
 
-    def action_shutdownRootBuffer(self):
-        self.command_queue.put(['buffer', 'roots', 'shutdown'])
+        self.xdata.append(time_active)
+        
+        while self.xdata and self.xdata[0] < time_active - TIME_RATE:
+            self.xdata.pop(0)
 
-    def action_shutdownAllBuffers(self):
-        self.command_queue.put(['buffer', 'all', 'shutdown'])
+        shifted_x = [x - time_active for x in self.xdata]
 
-    def action_killWorkers(self):
-        self.command_queue.put(['worker', 'all', 'shutdown'])
+        for name in self.buffer_names:
+            self.ydatas[name].append(stats['buffers'][name]['rate'])
+            while len(self.ydatas[name]) > len(self.xdata):
+                self.ydatas[name].pop(0)
 
-    def action_exit(self):
-        self.close()
-
-    def action_pause(self):
-        self.command_queue.put(['buffer', 'roots', 'pause'])
-        self.pauseButton.setText("Resume Roots")
-        self.pauseButton.clicked.connect(self.action_resume)
-
-    def action_resume(self):
-        self.command_queue.put(['buffer', 'roots', 'resume'])
-        self.pauseButton.setText("Pause Roots")
-        self.pauseButton.clicked.connect(self.action_pause)
-
-
-class PlotCanvas(FigureCanvas):
-    def __init__(self, parent, infos: dict, title=""):
-        fig = Figure()
-        self.axes = fig.add_subplot(111)
-        super().__init__(fig)
-
-        layout = parent.layout()  # Get the existing layout
-        if layout is None:
-            layout = QtWidgets.QVBoxLayout(parent)
-            parent.setLayout(layout)
-
-        layout.addWidget(self)
-        layout.setContentsMargins(0, 0, 0, 0)  # Ensure no extra margins
-        layout.setSpacing(0)  # Remove extra spacing
-        self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)  # Allow expansion
-
-        self.axes.set_title(title)
-
-        self.buffers = list(infos['buffers'].keys())
-        self.workers = list(infos['workers'].keys())
-        self.slot_counts = [infos['buffers'][key]['slot_count'] for key in self.buffers]
-
-        self.init_plot()
-        fig.tight_layout()
-
-
-class BufferCanvas(PlotCanvas):
-    def init_plot(self):
-        x = np.arange(len(self.buffers))
-        colors = ["#E24A33", "#FBC15E", "#2CA02C", "#FFFFFF"]
-        # colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+            self.lines[name].set_xdata(shifted_x)
+            self.lines[name].set_ydata(self.ydatas[name])
+        
+        self.draw()
+        
+class WorkerPlot(MplCanvas):
+    def __init__(self, infos: dict, parent=None, placeholder_name: str = None):
+        super().__init__(infos, parent, placeholder_name)
+        number_of_processes = [infos['workers'][name]['number_of_processes'] for name in self.worker_names]
+        self.axes.grid(True, which='major', alpha=0.9, axis='y')
+        self.axes.bar(self.worker_names, number_of_processes)
+        
+        self.axes.tick_params(axis="x", rotation=45)
+        for label in self.axes.get_xticklabels():
+            label.set_horizontalalignment('right')
+        self.axes.set_ylabel("Number of Workers")
+        self.axes.yaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
+        
+        
+        self.fig.tight_layout()
+        self.draw()
+        
+    def update_plot(self, stats):
+        number_of_processes = [stats['workers'][name] for name in self.worker_names]
+        for bar, new_height in zip(self.axes.patches, number_of_processes):
+            bar.set_height(new_height)
+        self.draw()
+        
+class BufferPlot(MplCanvas):
+    def __init__(self, infos: dict, parent=None, placeholder_name: str = None):
+        super().__init__(infos, parent, placeholder_name)
+        x = np.arange(len(self.buffer_names))
+        
         # the ordering of the bars is important
-        self.bar_filled = self.axes.bar(x, 0, label="Filled", color=colors[0])
-        self.bar_working = self.axes.bar(x, 0, label="Working", color=colors[1])
-        self.bar_empty = self.axes.bar(x, 1, label="Empty", color=colors[2])
-        self.shutdown_overlay = self.axes.bar(x, 0, label="Shutdown", color=colors[3], alpha=0.3, hatch="//")
+        self.bar_filled = self.axes.bar(x, 0, label="Filled", color=BUFFER_COLORS[0])
+        self.bar_working = self.axes.bar(x, 0, label="Working", color=BUFFER_COLORS[1])
+        self.bar_empty = self.axes.bar(x, 1, label="Empty", color=BUFFER_COLORS[2])
+        self.shutdown_overlay = self.axes.bar(x, 0, label="Shutdown", color=BUFFER_COLORS[3], alpha=0.3, hatch="//")
 
         self.axes.set_ylim(0, 1)
         self.axes.legend(loc="upper right")
@@ -193,93 +165,181 @@ class BufferCanvas(PlotCanvas):
         self.axes.set_ylabel("Ratio")
 
         self.axes.set_xticks(x)
-        self.axes.set_xticklabels(self.buffers)
+        self.axes.set_xticklabels(self.buffer_names)
 
         xlim = self.axes.get_xlim()
         twiny = self.axes.twiny()
         twiny.set_xticks(x)
-        twiny.set_xticklabels(self.slot_counts)
+        
+        slot_counts = [infos['buffers'][name]['slot_count'] for name in self.buffer_names]
+        
+        twiny.set_xticklabels(slot_counts)
         twiny.set_xlim(xlim)
-
+        self.fig.tight_layout()
+        
     def update_plot(self, stats):
         buffer_stats = stats['buffers']
-        filled = np.array([buffer_stats[key]["filled_slots"] for key in self.buffers])
-        empty = np.array([buffer_stats[key]["empty_slots"] for key in self.buffers])
-        shutdown = np.array([buffer_stats[key]["flush_event_received"] for key in self.buffers])
+        filled = np.array([buffer_stats[key]["filled_slots"] for key in self.buffer_names])
+        empty = np.array([buffer_stats[key]["empty_slots"] for key in self.buffer_names])
+        shutdown = np.array([buffer_stats[key]["flush_event_received"] for key in self.buffer_names])
 
-        for bar, new_height in zip(self.bar_filled, [1] * len(self.buffers)):
-            bar.set_height(new_height)
-        for bar, new_height in zip(self.bar_working, 1 - filled):
-            bar.set_height(new_height)
-        for bar, new_height in zip(self.bar_empty, empty):
-            bar.set_height(new_height)
-        for bar, is_shutdown in zip(self.shutdown_overlay, shutdown):
-            bar.set_height(1 if is_shutdown else 0)
-
+        self._set_heights(self.bar_filled, [1] * len(self.buffer_names))
+        self._set_heights(self.bar_working, 1 - filled)
+        self._set_heights(self.bar_empty, empty)
+        self._set_heights(self.shutdown_overlay, shutdown)
         self.draw()
+        
+    def _set_heights(self, bars, new_heights):
+        for bar, new_height in zip(bars, new_heights):
+            bar.set_height(new_height)
+        
 
+class Table:
+    def __init__(self, infos: dict, parent, widget_name: str):
+        self.table = parent.findChild(QtWidgets.QTableWidget, widget_name)
+        self.infos = infos
 
-class WorkerCanvas(PlotCanvas):
-    def init_plot(self):
-        colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
-        self.bars = self.axes.bar(self.workers, 0, label="Workers", color=colors[0])
+        self.table.setColumnCount(4)
+        self.table.setRowCount(len(infos['roots']))
+        self.table.setHorizontalHeaderLabels(["Buffer", "Rate (Hz)", "Dead Time (%)", "Number of Events"])
+        self.table.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
+        for i, buffer in enumerate(self.infos['roots']):
+            item = QtWidgets.QTableWidgetItem(buffer)
+            item.setFlags(QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled)
+            self.table.setItem(i, 0, item)
+            
+    def update_table(self, stats):
+        for i, buffer in enumerate(self.infos['roots']):
+            buffer_stats = stats['buffers'][buffer]
+            self.table.setItem(i, 1, QtWidgets.QTableWidgetItem(f"{buffer_stats['rate']:.2f}"))
+            self.table.setItem(i, 2, QtWidgets.QTableWidgetItem(f"{buffer_stats['average_deadtime']:.2f}"))
+            self.table.setItem(i, 3, QtWidgets.QTableWidgetItem(str(buffer_stats['event_count'])))
+            
 
-        self.resize_axis(1)
-        self.axes.tick_params(axis="x", rotation=45)
-        for label in self.axes.get_xticklabels():
-            label.set_horizontalalignment('right')
-        self.axes.set_ylabel("Number of Workers")
+class Buttons:
+    def __init__(self, command_queue: mp.Queue, parent):
+        self.command_queue = command_queue
+        self.parent = parent
 
-    def update_plot(self, stats):
-        worker_stats = stats['workers']
-        for bar, key in zip(self.bars, self.workers):
-            n = worker_stats[key]
-            if n > self.max:
-                self.resize_axis(n)
-            bar.set_height(n)
+        self.pause_resume_RootBuffersButton = parent.findChild(QtWidgets.QPushButton, "pause_resume_RootBuffersButton")
+        self.shutdownRootBuffersButton = parent.findChild(QtWidgets.QPushButton, "shutdownRootBuffersButton")
+        self.shutdownAllBuffersButton = parent.findChild(QtWidgets.QPushButton, "shutdownAllBuffersButton")
+        self.shutdownAllWorkersButton = parent.findChild(QtWidgets.QPushButton, "shutdownAllWorkersButton")
+        
+        self.pause_resume_Root_status = 'resume'
+        
+        self.pause_resume_RootBuffersButton.clicked.connect(self.action_pause_resume_root_buffers)
+        self.shutdownRootBuffersButton.clicked.connect(self.action_shutdown_root_buffers)
+        self.shutdownAllBuffersButton.clicked.connect(self.action_shutdown_all_buffers)
+        self.shutdownAllWorkersButton.clicked.connect(self.action_shutdown_all_workers)
 
-        self.draw()
+        
+    def action_shutdown_root_buffers(self):
+        self.command_queue.put(['buffer', 'roots', 'shutdown'])
+        
+    def action_shutdown_all_buffers(self):
+        self.command_queue.put(['buffer', 'all', 'shutdown'])
+        
+    def action_shutdown_all_workers(self):
+        self.command_queue.put(['worker', 'all', 'shutdown'])
+        
+    def action_pause_resume_root_buffers(self):
+        if self.pause_resume_Root_status == 'resume':
+            self.command_queue.put(['buffer', 'roots', 'pause'])
+            self.pause_resume_RootBuffersButton.setText("Resume Roots")
+            self.pause_resume_Root_status = 'pause'
+        else:
+            self.command_queue.put(['buffer', 'roots', 'resume'])
+            self.pause_resume_RootBuffersButton.setText("Pause Roots")
+            self.pause_resume_Root_status = 'resume'
 
-    def resize_axis(self, n):
-        self.max = n
-        self.axes.set_ylim(0, 1.1 * self.max)
-        self.axes.set_yticks(np.arange(self.max + 1))
+class StatusBar:
+    def __init__(self, parent):
+        self.parent = parent
+        self.timeActiveLabel = parent.findChild(QtWidgets.QLabel, "timeActiveLabel")
+        self.processesAliveLabel = parent.findChild(QtWidgets.QLabel, "processesAliveLabel")
+        
+    def update_status(self, stats):
+        time_active = stats['time_active']
+        self.timeActiveLabel.setText(f"Time Active: {time_active:.2f} s")
+        
+        processes_alive = sum(stats['workers'][name] for name in stats['workers'])
+        self.processesAliveLabel.setText(f"Processes Alive: {processes_alive}")
+        
+if __name__ == '__main__':
+    infos = {'buffers': {'InputBuffer': {'slot_count': 128}, 'AcceptedPulses': {'slot_count': 128}, 'PulseParametersUp': {'slot_count': 32}, 'PulseParametersDown': {'slot_count': 32}, 'PulseParametersUp_Export': {'slot_count': 32}, 'PulseParametersDown_Export': {'slot_count': 32}}, 'workers': {'input': {'number_of_processes': 1}, 'filter': {'number_of_processes': 3}, 'save_pulses': {'number_of_processes': 1}, 'histUp': {'number_of_processes': 1}, 'histDown': {'number_of_processes': 1}, 'saveUp': {'number_of_processes': 1}, 'saveDown': {'number_of_processes': 1}, 'oscilloscope': {'number_of_processes': 1}, 'accepted_ocilloscope': {'number_of_processes': 1}}, 'roots': ['InputBuffer']}
+    buffer_example = {
+        'event_count': 0,
+        'filled_slots': 0.0,
+        'empty_slots': 0.984375,
+        'flush_event_received': False,
+        'rate': 127.95311213377948,
+        'average_deadtime': 0.08628888769168282,
+        'paused_count': 0,
+        'paused': False
+    }
+    worker_example = {
+        1
+    }
+    
+    stats = {
+        'buffers': {
+            'InputBuffer': buffer_example.copy(),
+            'AcceptedPulses': buffer_example.copy(),
+            'PulseParametersUp': buffer_example.copy(),
+            'PulseParametersDown': buffer_example.copy(),
+            'PulseParametersUp_Export': buffer_example.copy(),
+            'PulseParametersDown_Export': buffer_example.copy()
+        },
+        'workers': {
+            'input': worker_example.copy(),
+            'filter': worker_example.copy(),
+            'save_pulses': worker_example.copy(),
+            'histUp': worker_example.copy(),
+            'histDown': worker_example.copy(),
+            'saveUp': worker_example.copy(),
+            'saveDown': worker_example.copy(),
+            'oscilloscope': worker_example.copy(),
+            'accepted_ocilloscope': worker_example.copy()
+        },
+        'time_active': 0
+    }
+    def update_stats(stats):
+        """
+        Update the stats with random values for testing.
+        """
+        for buffer in stats['buffers'].values():
+            buffer['rate'] = np.random.uniform(MIN_RATE, MAX_RATE)
+            empty = np.random.uniform(0, 1)
+            filled = np.random.uniform(0, 1-empty)
+            buffer['filled_slots'] = filled
+            buffer['empty_slots'] = empty
+            buffer['event_count'] += np.random.randint(0, 1000)
+            buffer['average_deadtime'] = np.random.uniform(0, 1)
+        for name in stats['workers']:
+            stats['workers'][name] = np.random.randint(0, 10)
+        return stats
 
-
-class RateCanvas(PlotCanvas):
-    def init_plot(self):
-        self.rates = {key: [0] for key in self.buffers}
-        self.times = [0]
-        self.lines = {}
-        self.init_time = time.time()
-        for key in self.buffers:
-            self.lines[key] = self.axes.plot(self.times, self.rates[key], label=key)[0]
-
-        self.axes.legend(loc="upper left")
-        self.axes.set_ylim(bottom=MIN_RATE)
-        self.axes.set_yscale("log")
-        self.axes.set_ylabel("Rate (events/s)")
-        self.axes.set_xlabel("Time (s)")
-        self.axes.grid(True, which='major', alpha=0.9)
-        self.axes.grid(True, which='minor', alpha=0.5)
-        self.max_y = MIN_RATE
-
-    def update_plot(self, stats):
-        buffer_stats = stats['buffers']
-        self.times.append(time.time() - self.init_time)
-        for key in self.buffers:
-            self.rates[key].append(buffer_stats[key]["rate"])
-            self.lines[key].set_data(self.times, self.rates[key])
-            if self.rates[key][-1] > self.max_y:
-                self.max_y = self.rates[key][-1]
-                self.axes.set_ylim(top=self.max_y * 1.1)
-        self.axes.relim()
-        self.axes.autoscale_view()
-        self.draw()
-
-
-def run_gui(command_queue: queue, stats_queue: queue, infos: dict):
-    app = QtWidgets.QApplication([])
-    window = BufferManagerApp(command_queue, stats_queue, infos)
-    window.show()
-    app.exec_()
+    
+    command_queue = mp.Queue()
+    stats_queue = mp.Queue(1)
+    
+    # Start the GUI in a separate process
+    gui_process = mp.Process(target=run_gui, args=(command_queue, stats_queue, infos))
+    gui_process.start()
+    # Simulate sending stats to the GUI
+    last_stats = time.time()
+    start_time = time.time()
+    while True:
+        try:
+            print(command_queue.get_nowait())
+        except mp.queues.Empty:
+            pass
+        if time.time() - last_stats > 1:
+            last_stats = time.time()
+            stats = update_stats(stats)
+            stats['time_active'] = time.time() - start_time
+            stats_queue.put(stats)
+        # Check if the GUI process is still alive
+        if not gui_process.is_alive():
+            break
