@@ -42,6 +42,7 @@ class ControlGui(QtWidgets.QMainWindow):
         self.rate_plot = RatePlot(self.infos, self, "ratePlaceholder")
         self.worker_plot = WorkerPlot(self.infos, self, "workerPlaceholder")
         self.buffer_plot = BufferPlot(self.infos, self, "bufferPlaceholder")
+        self.table = Table(self.infos, self, "tablePlaceholder")
         
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.update_gui)
@@ -55,6 +56,8 @@ class ControlGui(QtWidgets.QMainWindow):
             stats = self.stats_queue.get_nowait()
             self.rate_plot.update_plot(stats)
             self.buffer_plot.update_plot(stats)
+            self.worker_plot.update_plot(stats)
+            self.table.update_table(stats)
         except mp.queues.Empty:
             pass
 
@@ -136,6 +139,12 @@ class WorkerPlot(MplCanvas):
         self.fig.tight_layout()
         self.draw()
         
+    def update_plot(self, stats):
+        number_of_processes = [stats['workers'][name]['number_of_processes'] for name in self.worker_names]
+        for bar, new_height in zip(self.axes.patches, number_of_processes):
+            bar.set_height(new_height)
+        self.draw()
+        
 class BufferPlot(MplCanvas):
     def __init__(self, infos: dict, parent=None, placeholder_name: str = None):
         super().__init__(infos, parent, placeholder_name)
@@ -181,6 +190,30 @@ class BufferPlot(MplCanvas):
         for bar, new_height in zip(bars, new_heights):
             bar.set_height(new_height)
         
+
+class Table:
+    def __init__(self, infos: dict, parent, widget_name: str):
+        self.table = parent.findChild(QtWidgets.QTableWidget, widget_name)
+        self.infos = infos
+
+        self.table.setColumnCount(4)
+        self.table.setRowCount(len(infos['roots']))
+        self.table.setHorizontalHeaderLabels(["Buffer", "Rate (Hz)", "Dead Time (%)", "Number of Events"])
+        self.table.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
+        for i, buffer in enumerate(self.infos['roots']):
+            item = QtWidgets.QTableWidgetItem(buffer)
+            item.setFlags(QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled)
+            self.table.setItem(i, 0, item)
+            
+    def update_table(self, stats):
+        for i, buffer in enumerate(self.infos['roots']):
+            buffer_stats = stats['buffers'][buffer]
+            self.table.setItem(i, 1, QtWidgets.QTableWidgetItem(f"{buffer_stats['rate']:.2f}"))
+            self.table.setItem(i, 2, QtWidgets.QTableWidgetItem(f"{buffer_stats['average_deadtime']:.2f}"))
+            self.table.setItem(i, 3, QtWidgets.QTableWidgetItem(str(buffer_stats['event_count'])))
+            
+
+
 
         
 if __name__ == '__main__':
