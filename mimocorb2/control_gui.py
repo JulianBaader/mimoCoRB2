@@ -46,9 +46,12 @@ class ControlGui(QtWidgets.QMainWindow):
         self.buttons = Buttons(self.command_queue, self)
         self.status_bar = StatusBar(self)
         
+        self.exitButton.clicked.connect(self.close)
+        
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.update_gui)
         self.timer.start(1000)  # Update every second
+        
         
     def update_gui(self):
         """
@@ -63,6 +66,17 @@ class ControlGui(QtWidgets.QMainWindow):
             self.status_bar.update_status(stats)
         except mp.queues.Empty:
             pass
+        
+    def closeEvent(self, event):
+        stats = self.stats_queue.get()
+        if sum(stats['workers'][name] for name in stats['workers']) > 0:
+            reply = QtWidgets.QMessageBox.question(self, 'Shutdown', "There are still processes running. This will shut them down.",
+                                                   QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.No)
+            if reply == QtWidgets.QMessageBox.Yes:
+                self.command_queue.put(['worker', 'all', 'shutdown'])
+                event.accept()
+            else:
+                event.ignore()
 
 class MplCanvas(FigureCanvas):
     def __init__(self, infos: dict, parent=None, placeholder_name: str = None):
