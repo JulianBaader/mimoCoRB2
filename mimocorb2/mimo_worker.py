@@ -1,4 +1,5 @@
 import multiprocessing
+import io
 import logging
 from typing import Callable
 import os
@@ -166,14 +167,12 @@ class mimoWorker:
         A unique name for the worker group.
     function : Callable
         The function to be executed by each process.
-    args : list[list, list, list, dict]
-        A list containing four elements:
-        - List of source buffers (SOURCES)
-        - List of sink buffers (SINKS)
-        - List of observe buffers (OBSERVES)
-        - Configuration dictionary (CONFIG)
+    buffer_io : BufferIO
+        An instance of BufferIO containing the buffers for input/output operations.
     number_of_processes : int
         The number of processes to spawn.
+    print_queue : multiprocessing.Queue
+        A queue for capturing print output from the worker processes.
 
     Attributes
     ----------
@@ -202,11 +201,12 @@ class mimoWorker:
         Terminates all active worker processes.
     """
 
-    def __init__(self, name: str, function: Callable, buffer_io: BufferIO, number_of_processes: int) -> None:
+    def __init__(self, name: str, function: Callable, buffer_io: BufferIO, number_of_processes: int, print_queue: multiprocessing.Queue) -> None:
         self.name = name
         self.function = function
         self.buffer_io = buffer_io
         self.number_of_processes = number_of_processes
+        self.print_queue = print_queue
 
         self.logger = logging.getLogger(name=name)
         self.processes = []
@@ -216,7 +216,13 @@ class mimoWorker:
         if len(self.processes) > 0:
             raise RuntimeError("Processes already initialized")
         for i in range(self.number_of_processes):
-            process = multiprocessing.Process(target=self.function, args=(self.buffer_io,), name=f'{self.name}_{i}')
+            def redirected_stdout(buffer_io: BufferIO):
+                """Redirect stdout to a buffer."""
+                sys.stdout = QueueWriter(self.print_queue)
+                sys.stderr = QueueWriter(self.print_queue)
+                self.function(buffer_io)
+                
+            process = multiprocessing.Process(target=redirected_stdout, args=(self.buffer_io,), name=f'{self.name}_{i}')
             self.processes.append(process)
 
     def start_processes(self) -> None:
@@ -240,7 +246,7 @@ class mimoWorker:
         return f"mimoWorker(name={self.name}, function={self.function.__name__}, buffer_io={str(self.buffer_io)}, number_of_processes={self.number_of_processes})"
 
     @classmethod
-    def from_setup(cls, name: str, setup: dict, setup_dir: str, run_dir, buffers: dict):
+    def from_setup(cls, name: str, setup: dict, setup_dir: str, run_dir, buffers: dict, print_queue: multiprocessing.Queue) -> 'mimoWorker':
         """Initiate the Worker from a setup dictionary."""
         function_name = setup['function'].split('.')[-1]
         file = setup.get('file')
@@ -260,6 +266,7 @@ class mimoWorker:
                 buffers=buffers,
             ),
             number_of_processes=setup.get('number_of_processes', 1),
+            print_queue=print_queue,
         )
 
     @staticmethod
@@ -277,3 +284,14 @@ class mimoWorker:
         if function_name not in vars(module):
             raise ImportError(f"Function {function_name} not found in module {file}")
         return vars(module)[function_name]
+
+
+
+class QueueWriter(io.TextIOBase):
+    def __init__(self, queue):
+        self.queue = queue
+    def write(self, msg):
+        if msg.strip():  # Avoid blank lines
+            self.queue.put(msg)
+    def flush(self):
+        pass

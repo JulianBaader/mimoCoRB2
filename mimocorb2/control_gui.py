@@ -25,18 +25,19 @@ def get_infos_from_control(control: Control):
     roots = list(control.roots.keys())
     return {'buffers': buffers, 'workers': workers, 'roots': roots}
 
-def run_gui(command_queue: mp.Queue, stats_queue: mp.Queue, infos: dict):
+def run_gui(command_queue: mp.Queue, stats_queue: mp.Queue, print_queue: mp.Queue, infos: dict):
     app = QtWidgets.QApplication([])
-    window = ControlGui(command_queue, stats_queue, infos)
+    window = ControlGui(command_queue, stats_queue, print_queue, infos)
     window.show()
     app.exec_()
 
 class ControlGui(QtWidgets.QMainWindow):
-    def __init__(self, command_queue: mp.Queue, stats_queue: mp.Queue, infos: dict):
+    def __init__(self, command_queue: mp.Queue, stats_queue: mp.Queue, print_queue: mp.Queue, infos: dict):
         super().__init__()
         uic.loadUi(os.path.join(os.path.dirname(__file__), "gui.ui"), self)
         self.command_queue = command_queue
         self.stats_queue = stats_queue
+        self.print_queue = print_queue
         self.infos = infos
         
         self.rate_plot = RatePlot(self.infos, self, "ratePlaceholder")
@@ -45,6 +46,7 @@ class ControlGui(QtWidgets.QMainWindow):
         self.table = Table(self.infos, self, "tablePlaceholder")
         self.buttons = Buttons(self.command_queue, self)
         self.status_bar = StatusBar(self)
+        self.logs = Logs(self)
         
         self.exitButton.clicked.connect(self.close)
         
@@ -52,6 +54,14 @@ class ControlGui(QtWidgets.QMainWindow):
         self.timer.timeout.connect(self.update_gui)
         self.timer.start(1000)  # Update every second
         
+        self.logTimer = QtCore.QTimer()
+        self.logTimer.timeout.connect(self.update_log)
+        self.logTimer.start(100)  # Update every 0.1 seconds
+    
+    def update_log(self):
+        while not self.print_queue.empty():
+            message = self.print_queue.get()
+            self.logs.update_log(message) 
         
     def update_gui(self):
         """
@@ -280,6 +290,15 @@ class StatusBar:
         processes_alive = sum(stats['workers'][name] for name in stats['workers'])
         self.processesAliveLabel.setText(f"Processes Alive: {processes_alive}")
         
+class Logs:
+    def __init__(self, parent):
+        self.parent = parent
+        self.logTextEdit = parent.findChild(QtWidgets.QTextEdit, "logTextEdit")
+
+    def update_log(self, message):
+        self.logTextEdit.append(message)
+        self.logTextEdit.verticalScrollBar().setValue(self.logTextEdit.verticalScrollBar().maximum())
+        
 if __name__ == '__main__':
     infos = {'buffers': {'InputBuffer': {'slot_count': 128}, 'AcceptedPulses': {'slot_count': 128}, 'PulseParametersUp': {'slot_count': 32}, 'PulseParametersDown': {'slot_count': 32}, 'PulseParametersUp_Export': {'slot_count': 32}, 'PulseParametersDown_Export': {'slot_count': 32}}, 'workers': {'input': {'number_of_processes': 1}, 'filter': {'number_of_processes': 3}, 'save_pulses': {'number_of_processes': 1}, 'histUp': {'number_of_processes': 1}, 'histDown': {'number_of_processes': 1}, 'saveUp': {'number_of_processes': 1}, 'saveDown': {'number_of_processes': 1}, 'oscilloscope': {'number_of_processes': 1}, 'accepted_ocilloscope': {'number_of_processes': 1}}, 'roots': ['InputBuffer']}
     buffer_example = {
@@ -337,9 +356,10 @@ if __name__ == '__main__':
     
     command_queue = mp.Queue()
     stats_queue = mp.Queue(1)
+    print_queue = mp.Queue()
     
     # Start the GUI in a separate process
-    gui_process = mp.Process(target=run_gui, args=(command_queue, stats_queue, infos))
+    gui_process = mp.Process(target=run_gui, args=(command_queue, stats_queue, print_queue, infos))
     gui_process.start()
     # Simulate sending stats to the GUI
     last_stats = time.time()
@@ -354,6 +374,8 @@ if __name__ == '__main__':
             stats = update_stats(stats)
             stats['time_active'] = time.time() - start_time
             stats_queue.put(stats)
+            
+            print_queue.put(str(np.random.randint(0, 100)))
         # Check if the GUI process is still alive
         if not gui_process.is_alive():
             break

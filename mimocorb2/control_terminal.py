@@ -14,13 +14,14 @@ COMMANDS = {
 }
 
 
-def control_terminal(command_queue: queue, stats_queue: queue):
+def control_terminal(command_queue: queue, stats_queue: queue, print_queue: queue):
     """
     A simple terminal interface for controlling the mimocorb2 application.
 
     Args:
         command_queue (queue.Queue): Queue for sending commands to the control.
         stats_queue (queue.Queue): Queue for receiving statistics from the control.
+        print_queue (queue.Queue): Queue for printing messages to the terminal.
     """
     print("Control Terminal: Type 'help' for available commands.")
 

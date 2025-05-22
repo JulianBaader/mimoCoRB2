@@ -25,6 +25,8 @@ class Control:
             self.setup = yaml.safe_load(file)
 
         self.setup_run_directory()
+        
+        self.print_queue = mp.Queue()
 
         self.command_queue = mp.Queue()
         self.stats_queue = mp.Queue(1)
@@ -34,7 +36,7 @@ class Control:
         self.buffers = {name: mimoBuffer.from_setup(name, setup) for name, setup in self.setup['Buffers'].items()}
 
         self.workers = {
-            name: mimoWorker.from_setup(name, setup, self.setup_dir, self.run_directory, self.buffers)
+            name: mimoWorker.from_setup(name, setup, self.setup_dir, self.run_directory, self.buffers, self.print_queue)
             for name, setup in self.setup['Workers'].items()
         }
 
@@ -47,14 +49,14 @@ class Control:
             import mimocorb2.control_terminal as ctrl_term
 
             self.terminal_thread = threading.Thread(
-                target=ctrl_term.control_terminal, args=(self.command_queue, self.stats_queue)
+                target=ctrl_term.control_terminal, args=(self.command_queue, self.stats_queue, self.print_queue)
             )
             self.terminal_thread.start()
         if self.gui:
             import mimocorb2.control_gui as ctrl_gui
 
             infos = ctrl_gui.get_infos_from_control(self)
-            self.gui_process = mp.Process(target=ctrl_gui.run_gui, args=(self.command_queue, self.stats_queue, infos))
+            self.gui_process = mp.Process(target=ctrl_gui.run_gui, args=(self.command_queue, self.stats_queue, self.print_queue, infos))
             self.gui_process.start()
 
         self.start_workers()

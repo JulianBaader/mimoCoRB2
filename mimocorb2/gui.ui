@@ -23,7 +23,7 @@
          <enum>QTabWidget::North</enum>
         </property>
         <property name="currentIndex">
-         <number>0</number>
+         <number>3</number>
         </property>
         <property name="tabsClosable">
          <bool>false</bool>
@@ -55,6 +55,20 @@
          <layout class="QVBoxLayout" name="bufferLayout">
           <item>
            <widget class="QWidget" name="bufferPlaceholder" native="true"/>
+          </item>
+         </layout>
+        </widget>
+        <widget class="QWidget" name="log_tab">
+         <attribute name="title">
+          <string>Logs</string>
+         </attribute>
+         <layout class="QHBoxLayout" name="horizontalLayout_2">
+          <item>
+           <widget class="QTextEdit" name="logTextEdit">
+            <property name="readOnly">
+             <bool>true</bool>
+            </property>
+           </widget>
           </item>
          </layout>
         </widget>
