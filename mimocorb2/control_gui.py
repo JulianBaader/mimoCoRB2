@@ -84,9 +84,14 @@ class ControlGui(QtWidgets.QMainWindow):
                                                    QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.No)
             if reply == QtWidgets.QMessageBox.Yes:
                 self.command_queue.put(['worker', 'all', 'shutdown'])
+                self.command_queue.put(None)
                 event.accept()
             else:
                 event.ignore()
+        else:
+            self.command_queue.put(None)
+            event.accept()
+        
 
 class MplCanvas(FigureCanvas):
     def __init__(self, infos: dict, parent=None, placeholder_name: str = None):

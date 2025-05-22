@@ -12,14 +12,13 @@ from graphviz import Digraph
 
 
 class Control:
-    def __init__(self, setup_file: str, gui: bool=True, kbd: bool=True) -> None:
+    def __init__(self, setup_file: str, mode: str='kbd') -> None:
         self.run_directory = None
         self.setup_dir = os.path.dirname(setup_file)
 
         self.roots = None
 
-        self.gui = gui
-        self.kbd = kbd
+        self.mode = mode
 
         with open(setup_file, 'r') as file:
             self.setup = yaml.safe_load(file)
@@ -45,14 +44,14 @@ class Control:
 
     def __call__(self) -> None:
         """Start the control loop as well as the control interfaces."""
-        if self.kbd:
+        if self.mode == 'kbd':
             import mimocorb2.control_terminal as ctrl_term
 
             self.terminal_thread = threading.Thread(
                 target=ctrl_term.control_terminal, args=(self.command_queue, self.stats_queue, self.print_queue)
             )
             self.terminal_thread.start()
-        if self.gui:
+        if self.mode == 'gui':
             import mimocorb2.control_gui as ctrl_gui
 
             infos = ctrl_gui.get_infos_from_control(self)
@@ -86,9 +85,9 @@ class Control:
                 pass
             time.sleep(0.1)
 
-        if self.kbd:
+        if self.mode == 'kbd':
             self.terminal_thread.join()
-        if self.gui:
+        if self.mode == 'gui':
             self.gui_process.join()
 
     def save_setup():

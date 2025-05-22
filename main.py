@@ -15,5 +15,5 @@ else:
     setup_file = sys.argv[1]
 
 
-control = ctrl.Control(setup_file)
+control = ctrl.Control(setup_file, mode='gui')
 control()
