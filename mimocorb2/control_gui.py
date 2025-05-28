@@ -1,4 +1,4 @@
-from PyQt5 import QtWidgets, uic, QtCore
+from PyQt5 import QtWidgets, uic, QtCore, QtGui
 from mimocorb2.control import Control
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -46,7 +46,7 @@ class ControlGui(QtWidgets.QMainWindow):
         self.table = Table(self.infos, self, "tablePlaceholder")
         self.buttons = Buttons(self.command_queue, self)
         self.status_bar = StatusBar(self)
-        self.logs = Logs(self)
+        self.logs = Logs(self.infos, self)
         
         self.exitButton.clicked.connect(self.close)
         
@@ -60,8 +60,8 @@ class ControlGui(QtWidgets.QMainWindow):
     
     def update_log(self):
         while not self.print_queue.empty():
-            message = self.print_queue.get()
-            self.logs.update_log(message) 
+            name, message = self.print_queue.get()
+            self.logs.add_entry(name, message) 
         
     def update_gui(self):
         """
@@ -296,13 +296,51 @@ class StatusBar:
         self.processesAliveLabel.setText(f"Processes Alive: {processes_alive}")
         
 class Logs:
-    def __init__(self, parent):
+    def __init__(self, infos: dict, parent):
         self.parent = parent
         self.logTextEdit = parent.findChild(QtWidgets.QTextEdit, "logTextEdit")
-
-    def update_log(self, message):
-        self.logTextEdit.append(message)
-        self.logTextEdit.verticalScrollBar().setValue(self.logTextEdit.verticalScrollBar().maximum())
+        self.logComboBox = parent.findChild(QtWidgets.QComboBox, "logComboBox")
+        
+        self.logComboBox.addItems(['All'])
+        self.logComboBox.addItems(infos['workers'].keys())
+        self.logComboBox.setCurrentText('All')
+        self.current_filter = 'All'
+        self.logComboBox.currentTextChanged.connect(self.on_filter_change)
+        
+        font = QtGui.QFont("Courier New")  # or "Monospace"
+        font.setStyleHint(QtGui.QFont.Monospace)
+        self.logTextEdit.setFont(font)
+        
+        self.all_messages = []
+        worker_names = list(infos['workers'].keys())
+        self.filtered_messages = {name: [] for name in worker_names}
+        self.longest_worker_name = max(len(name) for name in worker_names)
+        
+    
+        
+    def add_entry(self, name, message):
+        self.all_messages.append((name, message))
+        self.filtered_messages[name].append(message)
+        if self.current_filter == 'All':
+            self.logTextEdit.append(f"{name:<{self.longest_worker_name}}: {message}")
+        elif self.current_filter == name:
+            self.logTextEdit.append(f"{message}")
+        
+    def on_filter_change(self, text):
+        self.current_filter = text
+        self.logTextEdit.clear()
+        if text == 'All':
+            for name, message in self.all_messages:
+                self.logTextEdit.append(f"{name:<{self.longest_worker_name}}: {message}")
+        else:
+            for message in self.filtered_messages[text]:
+                self.logTextEdit.append(f"{message}")
+                
+    
+                
+    
+            
+        
         
 if __name__ == '__main__':
     infos = {'buffers': {'InputBuffer': {'slot_count': 128}, 'AcceptedPulses': {'slot_count': 128}, 'PulseParametersUp': {'slot_count': 32}, 'PulseParametersDown': {'slot_count': 32}, 'PulseParametersUp_Export': {'slot_count': 32}, 'PulseParametersDown_Export': {'slot_count': 32}}, 'workers': {'input': {'number_of_processes': 1}, 'filter': {'number_of_processes': 3}, 'save_pulses': {'number_of_processes': 1}, 'histUp': {'number_of_processes': 1}, 'histDown': {'number_of_processes': 1}, 'saveUp': {'number_of_processes': 1}, 'saveDown': {'number_of_processes': 1}, 'oscilloscope': {'number_of_processes': 1}, 'accepted_ocilloscope': {'number_of_processes': 1}}, 'roots': ['InputBuffer']}
@@ -380,7 +418,9 @@ if __name__ == '__main__':
             stats['time_active'] = time.time() - start_time
             stats_queue.put(stats)
             
-            print_queue.put(str(np.random.randint(0, 100)))
+            print_queue.put(
+                (np.random.choice(list(infos['workers'].keys())),
+                 str(np.random.randint(0, 100))))
         # Check if the GUI process is still alive
         if not gui_process.is_alive():
             break

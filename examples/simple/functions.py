@@ -52,4 +52,5 @@ def calculate_pulse_heights(buffer_io):
 def print_pulse_heights(buffer_io):
     exporter = Exporter(buffer_io)
     for data, metadata in exporter:
+        print(data['pulse_height'][0])
         pass

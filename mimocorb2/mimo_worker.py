@@ -218,8 +218,8 @@ class mimoWorker:
         for i in range(self.number_of_processes):
             def redirected_stdout(buffer_io: BufferIO):
                 """Redirect stdout to a buffer."""
-                sys.stdout = QueueWriter(self.print_queue)
-                sys.stderr = QueueWriter(self.print_queue)
+                sys.stdout = QueueWriter(self.print_queue, self.name)
+                sys.stderr = QueueWriter(self.print_queue, self.name)
                 self.function(buffer_io)
                 
             process = multiprocessing.Process(target=redirected_stdout, args=(self.buffer_io,), name=f'{self.name}_{i}')
@@ -288,10 +288,11 @@ class mimoWorker:
 
 
 class QueueWriter(io.TextIOBase):
-    def __init__(self, queue):
+    def __init__(self, queue, name):
         self.queue = queue
+        self.name = name
     def write(self, msg):
         if msg.strip():  # Avoid blank lines
-            self.queue.put(msg)
+            self.queue.put((self.name,msg))
     def flush(self):
         pass
