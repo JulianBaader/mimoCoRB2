@@ -4,3 +4,4 @@
 docs/build/
 !docs/build/latex/mimocorb2.pdf
 todo
+mimoCoRB2.egg-info
