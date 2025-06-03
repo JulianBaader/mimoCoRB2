@@ -180,7 +180,7 @@ class mimoBuffer:
             last_event_count (int): Event count at the last statistics update.
             last_deadtime (float): Dead time at the last statistics update.
         """
-
+        logger.info(f"Creating buffer {name} with {slot_count} slots of length {data_length} and dtype {data_dtype}")
         self.name = name
         self.slot_count = slot_count
         self.data_length = data_length
@@ -422,7 +422,7 @@ class mimoBuffer:
         self.shared_memory_buffer.unlink()
         self.shared_memory_trash.close()
         self.shared_memory_trash.unlink()
-        logger.info(f"Buffer {self.name} is shut down.")
+        logger.info(f"{self.name} is shut down.")
 
 
 class Interface:

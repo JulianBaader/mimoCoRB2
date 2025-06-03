@@ -9,6 +9,7 @@ from mimocorb2.mimo_buffer import BufferReader, BufferWriter, BufferObserver
 
 FUNCTIONS_FOLDER = os.path.join(os.path.dirname(__file__), 'functions')
 
+logger = logging.getLogger(__name__)
 
 class Config(dict):
     """Configuration of the mimoWorker
@@ -118,7 +119,7 @@ class BufferIO:
         self.write = sinks
         self.observe = observes
         self.config = config
-        self.logger = logging.getLogger(name=self.name)
+        self.logger = logging.getLogger(name=f'{__name__}.{self.name}')
         self.setup_directory = setup_directory
         self.run_directory = run_directory
 
@@ -208,7 +209,8 @@ class mimoWorker:
         self.number_of_processes = number_of_processes
         self.print_queue = print_queue
 
-        self.logger = logging.getLogger(name=name)
+        logger.info(f"Creating mimoWorker: {str(self)}")
+        self.logger = logging.getLogger(f'{__name__}.{self.name}')
         self.processes = []
 
     def initialize_processes(self) -> None:
