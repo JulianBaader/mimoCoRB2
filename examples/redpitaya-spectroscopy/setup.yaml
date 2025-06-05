@@ -1,0 +1,50 @@
+Buffers:
+  oscilloscope:
+    slot_count: 128
+    data_length: 1000
+    data_dtype:
+      'IN1': 'int16'
+      'IN2': 'int16'
+  pulse_parameters:
+    slot_count: 128
+    data_length: 1
+    data_dtype:
+      'peak_heights': 'int16'
+  pulse_parameters_export:
+    slot_count: 128
+    data_length: 1
+    data_dtype: 
+      'peak_heights': 'int16'
+
+Workers:
+  # rp_to_mimo:
+  #   file: redpitaya-mimocorb.py
+  #   function: redpitaya_to_mimoCoRB
+  #   sinks: [oscilloscope]
+  #   config: config.yaml
+  from_simulation:
+    file: spectra/simulate_source.py
+    function: simulate_source
+    sinks: [oscilloscope]
+    config: config.yaml
+  osc:
+    function: observers.oscilloscope
+    observes: [oscilloscope]
+    config: {"ylim": [-4096, 4096]}
+  pha:
+    function: analyzers.pha
+    sources: [oscilloscope]
+    sinks: [pulse_parameters]
+    config: pha_config.yaml
+  histogram:
+    function: exporters.histogram
+    sources: [pulse_parameters]
+    sinks: [pulse_parameters_export]
+    config: histogram_config.yaml
+  pulse_parameters_export:
+    function: exporters.csv
+    sources: [pulse_parameters_export]
+
+Options:
+  debug_workers: True
+    

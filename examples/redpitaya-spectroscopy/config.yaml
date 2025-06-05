@@ -1,0 +1,17 @@
+# configuration of the Red Pitaya
+ip: 'rp-f0c38f.local'
+sample_rate: 4                          # int (see SAMPLE_RATES)
+negator_IN1: false                      # bool
+negator_IN2: false                      # bool
+trigger_slope: 'rising'                 # str (see TRIGGER_SLOPES)
+trigger_mode: 'normal'                  # str (see TRIGGER_MODES)
+trigger_level: 100                      # int
+number_of_samples_before_trigger: 100   # int
+set_size: 100                           # int
+
+
+# configuration for simultation
+tau: 50
+energy_conversion: [3, 0]
+noise: 5
+file: 'spectra/Co-60.html'

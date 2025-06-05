@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1011</width>
+    <height>816</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Buffer Manager</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QHBoxLayout" name="horizontalLayout">
+    <item>
+     <layout class="QVBoxLayout" name="verticalLayout">
+      <item>
+       <widget class="QTabWidget" name="tabWidget">
+        <property name="tabPosition">
+         <enum>QTabWidget::North</enum>
+        </property>
+        <property name="currentIndex">
+         <number>0</number>
+        </property>
+        <property name="tabsClosable">
+         <bool>false</bool>
+        </property>
+        <widget class="QWidget" name="rate_tab">
+         <attribute name="title">
+          <string>Rate Information</string>
+         </attribute>
+         <layout class="QVBoxLayout" name="rateLayout">
+          <item>
+           <widget class="QWidget" name="ratePlaceholder" native="true"/>
+          </item>
+         </layout>
+        </widget>
+        <widget class="QWidget" name="process_tab">
+         <attribute name="title">
+          <string>Process Information</string>
+         </attribute>
+         <layout class="QVBoxLayout" name="processLayout">
+          <item>
+           <widget class="QWidget" name="workerPlaceholder" native="true"/>
+          </item>
+         </layout>
+        </widget>
+        <widget class="QWidget" name="buffer_tab">
+         <attribute name="title">
+          <string>Buffer Information</string>
+         </attribute>
+         <layout class="QVBoxLayout" name="bufferLayout">
+          <item>
+           <widget class="QWidget" name="bufferPlaceholder" native="true"/>
+          </item>
+         </layout>
+        </widget>
+        <widget class="QWidget" name="log_tab">
+         <attribute name="title">
+          <string>Logs</string>
+         </attribute>
+         <layout class="QHBoxLayout" name="horizontalLayout_2">
+          <item>
+           <layout class="QVBoxLayout" name="verticalLayout_2">
+            <item>
+             <widget class="QTextEdit" name="logTextEdit">
+              <property name="readOnly">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QComboBox" name="logComboBox"/>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </widget>
+       </widget>
+      </item>
+      <item>
+       <widget class="QTableWidget" name="tablePlaceholder"/>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_3">
+        <item>
+         <widget class="QLabel" name="timeActiveLabel">
+          <property name="text">
+           <string>Time active: </string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="processesAliveLabel">
+          <property name="text">
+           <string>Processes Alive:</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="buttonLayout">
+        <item>
+         <widget class="QPushButton" name="pause_resume_RootBuffersButton">
+          <property name="text">
+           <string>Pause Roots</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="shutdownRootBuffersButton">
+          <property name="text">
+           <string>Shutdown Root Buffer</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="shutdownAllBuffersButton">
+          <property name="text">
+           <string>Shutdown all Buffers</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="shutdownAllWorkersButton">
+          <property name="text">
+           <string>Kill Workers</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="exitButton">
+          <property name="text">
+           <string>Exit</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1011</width>
+     <height>24</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

@@ -1,0 +1,92 @@
+osc_template: &osc_template
+  slot_count: 128
+  data_length: 4250
+  data_dtype: 
+    chA: 'f4'
+    chB: 'f4'
+    chC: 'f4'
+    chD: 'f4'
+  
+param_template: &param_template
+  slot_count: 32
+  data_length: 1
+  data_dtype:
+    decay_time: "int32"
+    1st_chA_h: "float32"
+    1st_chB_h: "float32"
+    1st_chC_h: "float32"
+    1st_chA_p: "int32"
+    1st_chB_p: "int32"
+    1st_chC_p: "int32"
+    1st_chA_int: "float32"
+    1st_chB_int: "float32"
+    1st_chC_int: "float32"
+    2nd_chA_h: "float32"
+    2nd_chB_h: "float32"
+    2nd_chC_h: "float32"
+    2nd_chA_p: "int32"
+    2nd_chB_p: "int32"
+    2nd_chC_p: "int32"
+    2nd_chA_int: "float32"
+    2nd_chB_int: "float32"
+    2nd_chC_int: "float32"
+    1st_chD_h: "float32"
+    1st_chD_p: "int32"
+    1st_chD_int: "float32"
+    2nd_chD_h: "float32"
+    2nd_chD_p: "int32"
+    2nd_chD_int: "float32"
+
+
+
+Buffers:
+  InputBuffer: *osc_template
+  AcceptedPulses: *osc_template
+  PulseParametersUp: *param_template
+  PulseParametersDown: *param_template
+  PulseParametersUp_Export: *param_template
+  PulseParametersDown_Export: *param_template
+
+Workers:
+  input:
+    file: simulate_source.py
+    function: simulate_source
+    sinks: [InputBuffer]
+    config: config.yaml
+  filter:
+    file: lifetime_filter.py
+    function: calculate_decay_time
+    number_of_processes: 3
+    sources: [InputBuffer]
+    sinks: [AcceptedPulses, PulseParametersUp, PulseParametersDown]
+    config: config.yaml
+  
+  save_pulses:
+    function: data.export
+    sources: [AcceptedPulses]
+  histUp:
+    function: exporters.histogram
+    sources: [PulseParametersUp]
+    sinks: [PulseParametersUp_Export]
+    config: hist_config_up.yaml
+  histDown:
+    function: exporters.histogram
+    sources: [PulseParametersDown]
+    sinks: [PulseParametersDown_Export]
+    config: hist_config_down.yaml
+  saveUp:
+    function: exporters.csv
+    sources: [PulseParametersUp_Export]
+    config: hist_config_up.yaml
+  saveDown:
+    function: exporters.csv
+    sources: [PulseParametersDown_Export]
+    config: hist_config_down.yaml
+
+
+  oscilloscope:
+    function: observers.oscilloscope
+    observes: [InputBuffer]
+  accepted_ocilloscope:
+    function: observers.oscilloscope
+    observes: [AcceptedPulses]

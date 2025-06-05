@@ -1,0 +1,1 @@
+The spectrum files are used from the [Gamma-Spectrum-Database](https://github.com/OpenGammaProject/Gamma-Spectrum-Database/tree/main) from the [Open Gamma Project](https://github.com/OpenGammaProject)

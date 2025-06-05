@@ -1,0 +1,115 @@
+from mimocorb2.worker_templates import Observer
+import matplotlib.pyplot as plt
+import numpy as np
+import time
+
+
+def oscilloscope(buffer_io):
+    """mimoCoRB Observer: Visualize oscilloscope data
+
+    Configs
+    -------
+    update_interval : int, optional (default=1)
+        Interval in seconds to update the oscilloscope
+    ylim : tuple, optional
+        Y-axis limits, if None autoscale on every refresh
+    t_scaling : tuple, optional (default=(1, 0, 'Samples'))
+        Scaling of the time axis (scaling, offset, unit)
+    y_scaling : tuple, optional (default=(1, 0, 'Value'))
+        Scaling of the y axis (scaling, offset, unit)
+    channels : list, optional
+        List of channels to plot, if None plot all available channels
+    trigger_level : float, optional
+        Trigger level to be plotted as a dotted line
+    """
+    # Get info from the buffer
+    observer = Observer(buffer_io)
+    data_example = observer.data_observe_example
+    number_of_samples = data_example.size
+    available_channels = data_example.dtype.names
+
+    # Get the configuration parameters
+    update_interval = observer.config.get('update_interval', 1)
+    ylim = observer.config.get('ylim')
+    t_scaling = observer.config.get('t_scaling', (1, 0, 'Samples'))  # (scaling, offset, unit)
+    y_scaling = observer.config.get('y_scaling', (1, 0, 'Value'))  # (scaling, offset, unit)
+    requested_channels = observer.config.get('channels', available_channels)
+    trigger_level = observer.config.get('trigger_level')
+
+    # Apply the t scaling
+    t = np.arange(number_of_samples) * t_scaling[0] + t_scaling[1]
+
+    # Get the channels to be plotted
+    for rch in requested_channels:
+        if rch not in available_channels:
+            raise ValueError(f"Channel '{rch}' not found in the data")
+    channels = requested_channels
+
+    fig = plt.figure()
+    fig.canvas.manager.set_window_title(f'Oscilloscope: {observer.name}')
+    ax = fig.add_subplot(111)
+
+    # set limits
+    ax.set_xlim(t[0], t[-1])
+    if ylim is not None:
+        ax.set_ylim(ylim[0], ylim[1])
+
+    if trigger_level is not None:
+        ax.hlines(trigger_level, t[0], t[-1], linestyles='dotted', label='Trigger Level')
+
+    ys = {ch: np.zeros(number_of_samples) for ch in channels}
+    lines = {ch: ax.plot(t, ys[ch], label=ch)[0] for ch in channels}
+
+    ax.set_xlabel(t_scaling[2])
+    ax.set_ylabel(y_scaling[2])
+
+    # create the legend and make it interactive
+    legend = ax.legend(title='Click to hide/show')
+    legend_texts = legend.get_texts()
+    legend_lines = legend.get_lines()
+    legend_artists = legend_texts + legend_lines
+
+    for a in legend_artists:
+        a.set_picker(5)
+
+    artist_to_channel = {artist: ch for artist, ch in zip(legend_artists, 2 * channels)}
+    channel_to_texts = {artist_to_channel[text]: text for text in legend_texts}
+    channel_to_lines = {artist_to_channel[patch]: patch for patch in legend_lines}
+
+    def on_pick(event):
+        artist = event.artist
+        if artist not in legend_artists:
+            return
+        ch = artist_to_channel[artist]
+        # Toggle visibility of plot
+        visible = not lines[ch].get_visible()
+        lines[ch].set_visible(visible)
+        # Toggle visibility of legend
+        channel_to_texts[ch].set_alpha(1.0 if visible else 0.2)
+        channel_to_lines[ch].set_alpha(1.0 if visible else 0.2)
+        # Update the plot
+        fig.canvas.draw()
+
+    fig.canvas.mpl_connect('pick_event', on_pick)
+
+    plt.ion()
+    plt.show()
+
+    last_update = time.time()
+
+    generator = observer()
+    while True:
+        if time.time() - last_update > update_interval:
+            data, metadata = next(generator)
+            if data is None:
+                break
+            for ch in channels:
+                ys[ch] = data[ch]
+                lines[ch].set_ydata(ys[ch])
+            if ylim is None:
+                ax.relim()
+                ax.autoscale_view()
+            fig.canvas.draw()
+            last_update = time.time()
+        fig.canvas.flush_events()
+        time.sleep(0.05)
