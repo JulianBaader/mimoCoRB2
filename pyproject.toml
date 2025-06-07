@@ -23,12 +23,15 @@ dependencies = [
 requires-python = ">= 3.12"
 
 readme = "README.md"
-license = "MIT"
+license = {file = "LICENSE"}
+#license = "MIT"
 # TODO Keywords
 
 [project.scripts]
 mimocorb2 = "mimocorb2.__main__:main"
 
+[tool.setuptools.package-data]
+mimocorb2 = ["*.ui"]
 
 [project.optional-dependencies]
 dev = [

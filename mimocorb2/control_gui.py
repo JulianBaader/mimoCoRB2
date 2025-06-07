@@ -10,7 +10,7 @@ import matplotlib
 
 # Rate Config
 MIN_RATE = 0.1
-MAX_RATE = 250.0
+MAX_RATE = 5000.0
 TIME_RATE = 60
 
 # Buffer Config
