@@ -231,7 +231,7 @@ class mimoWorker:
             def redirected_stdout(buffer_io: BufferIO):
                 """Redirect stdout to a buffer."""
                 sys.stdout = QueueWriter(self.print_queue, self.name)
-                sys.stderr = QueueWriter(self.print_queue, self.name)
+                #sys.stderr = QueueWriter(self.print_queue, self.name)
                 self.function(buffer_io)
 
             process = multiprocessing.Process(target=redirected_stdout, args=(self.buffer_io,), name=f'{self.name}_{i}')

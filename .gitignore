@@ -7,3 +7,4 @@ todo
 mimoCoRB2.egg-info
 .venv-dev/
 .venv/
+build/
