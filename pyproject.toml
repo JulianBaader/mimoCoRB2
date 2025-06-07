@@ -33,4 +33,6 @@ mimocorb2 = "mimocorb2.__main__:main"
 [project.optional-dependencies]
 dev = [
     "sphinx",
+    "sphinx-autodoc-typehints",
+    "ruff"
 ]
