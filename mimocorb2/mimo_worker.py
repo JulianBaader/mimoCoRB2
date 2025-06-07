@@ -38,7 +38,7 @@ class Config(dict):
         Parameters
         ----------
         setup : str | dict | list[str]
-            If a string or a list of strings is provided, the yaml files are loaded relative to the setup_dir.
+            If a string or a list of strings is provided, the yaml files relative to the setup_dir are loaded.
             If a dictionary is provided, it is used as the configuration directly.
         setup_dir : str
             The directory where the setup file is located.
@@ -104,6 +104,15 @@ class BufferIO:
     Examples
     --------
     >>> with io.write[0] as (metadata, data):
+    ...     # write data and metadata to the buffer
+    ...     pass
+    >>> with io.read[0] as (metadata, data):
+    ...     # read data and metadata from the buffer
+    ...     pass
+    >>> with io.observe[0] as (metadata, data):
+    ...     # observe data and metadata from the buffer
+    ...     pass
+    >>> io.shutdown_sinks()  # Shutdown all sink buffers
     """
 
     def __init__(
@@ -165,8 +174,11 @@ class BufferIO:
 
 
 class mimoWorker:
-    """
-    Worker class for the execution of (muliple instances of) function interacting with mimoBuffers.
+    """Worker class for the execution of (muliple instances of) a function interacting with mimoBuffers.
+    
+    This class manages multiple instances of a function using multiprocessing.
+    The function is provided the BufferIO object, which contains the (multiprocessing safe) buffers for input/output operations.
+    Any print statements executed in the function are redirected to a multiprocessing queue for later retrieval.
 
     Parameters
     ----------
@@ -206,6 +218,10 @@ class mimoWorker:
         Returns a list indicating the status of each process (True if alive, False otherwise).
     shutdown()
         Terminates all active worker processes.
+    __str__()
+        Returns a string representation of the mimoWorker object.
+    from_setup(name, setup, setup_dir, run_dir, buffers, print_queue)
+        Class method to create a mimoWorker instance from a setup dictionary.
     """
 
     def __init__(
@@ -265,7 +281,31 @@ class mimoWorker:
     def from_setup(
         cls, name: str, setup: dict, setup_dir: str, run_dir, buffers: dict, print_queue: multiprocessing.Queue
     ) -> 'mimoWorker':
-        """Initiate the Worker from a setup dictionary."""
+        """Initiate the Worker from a setup dictionary.
+
+        This method creates an instance of mimoWorker from a setup dictionary.
+        This is required to ensure that the function is imported correctly and the BufferIO is set up with the correct buffers.
+        
+        Parameters
+        ----------
+        name : str
+            A unique name for the worker group.
+        setup : dict
+            A dictionary containing the setup configuration.
+        setup_dir : str
+            The directory where the setup file is located.
+        run_dir : str
+            The directory where the run is located.
+        buffers : dict
+            A dictionary containing the buffers of the current run.
+        print_queue : multiprocessing.Queue
+            A queue for capturing print output from the worker processes.
+            
+        Returns
+        -------
+        mimoWorker
+            An instance of the mimoWorker class initialized with the provided setup.
+        """
         function_name = setup['function'].split('.')[-1]
         file = setup.get('file')
         if not file:
@@ -289,7 +329,7 @@ class mimoWorker:
 
     @staticmethod
     def _import_function(file: str, function_name: str) -> Callable:
-        """Import a function from a file and return it."""
+        """Import a function from a file and return it as a callable."""
         directory = os.path.dirname(file)
         module_name = os.path.basename(file).removesuffix('.py')
 
@@ -305,11 +345,24 @@ class mimoWorker:
 
 
 class QueueWriter(io.TextIOBase):
+    """A class to write to a multiprocessing queue, redirecting stdout/stderr.
+    
+    This class is used to capture print statements from worker processes and send them to a queue.
+    
+    Parameters
+    ----------
+    queue : multiprocessing.Queue
+        The queue to which the messages will be sent.
+    name : str
+        The name of the worker process, used to identify the source of the messages.
+    """
     def __init__(self, queue, name):
+        """Initialize the QueueWriter with a queue and a name."""
         self.queue = queue
         self.name = name
 
     def write(self, msg):
+        """Write a message to the queue."""
         if msg.strip():  # Avoid blank lines
             self.queue.put((self.name, msg))
 
