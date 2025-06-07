@@ -12,7 +12,7 @@ from graphviz import Digraph
 
 
 class Control:
-    def __init__(self, setup_file: str, mode: str='kbd') -> None:
+    def __init__(self, setup_file: str, mode: str = 'kbd') -> None:
         self.run_directory = None
         self.setup_dir = os.path.dirname(setup_file)
 
@@ -24,7 +24,7 @@ class Control:
             self.setup = yaml.safe_load(file)
 
         self.setup_run_directory()
-        
+
         self.print_queue = mp.Queue()
 
         self.command_queue = mp.Queue()
@@ -55,7 +55,9 @@ class Control:
             import mimocorb2.control_gui as ctrl_gui
 
             infos = ctrl_gui.get_infos_from_control(self)
-            self.gui_process = mp.Process(target=ctrl_gui.run_gui, args=(self.command_queue, self.stats_queue, self.print_queue, infos))
+            self.gui_process = mp.Process(
+                target=ctrl_gui.run_gui, args=(self.command_queue, self.stats_queue, self.print_queue, infos)
+            )
             self.gui_process.start()
 
         self.start_workers()
