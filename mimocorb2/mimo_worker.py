@@ -139,6 +139,10 @@ class BufferIO:
         return f"BufferIO(sources={read}, sinks={write}, observes={observe}, config={config})"
 
     def __getitem__(self, key):
+        if key not in self.config:
+            self.shutdown_sinks()
+            self.logger.error(f"Key '{key}' not found in provided configuration.")
+            raise KeyError(f"Key '{key}' not found in configuration of {self.name}.")
         return self.config[key]
 
     @classmethod

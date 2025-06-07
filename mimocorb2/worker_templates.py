@@ -35,6 +35,7 @@ class Base:
             metadata_examples = [source.metadata_example for source in sources]
             setattr(self, f"data_{attr_name}_examples", data_examples)
             setattr(self, f"metadata_{attr_name}_examples", metadata_examples)
+            # TODO remove this
             if len(sources) == 1:
                 setattr(self, f"data_{attr_name}_example", data_examples[0])
                 setattr(self, f"metadata_{attr_name}_example", metadata_examples[0])
