@@ -37,5 +37,6 @@ mimocorb2 = ["*.ui"]
 dev = [
     "sphinx",
     "sphinx-autodoc-typehints",
-    "ruff"
+    "ruff",
+    "pre-commit",
 ]
