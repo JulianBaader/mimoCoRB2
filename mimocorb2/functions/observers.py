@@ -5,22 +5,41 @@ import time
 
 
 def oscilloscope(buffer_io):
-    """mimoCoRB Observer: Visualize oscilloscope data
+    """mimoCoRB2 Function: Show an Osilloscope plot of the buffer.
+
+    Observes data from a buffer and shows it as an oscilloscope plot.
+
+    Type
+    ----
+    Observer
+
+    Buffers
+    -------
+    sources
+        0
+    sinks
+        0
+    observes
+        1
 
     Configs
     -------
-    update_interval : int, optional (default=1)
-        Interval in seconds to update the oscilloscope
-    ylim : tuple, optional
-        Y-axis limits, if None autoscale on every refresh
-    t_scaling : tuple, optional (default=(1, 0, 'Samples'))
-        Scaling of the time axis (scaling, offset, unit)
-    y_scaling : tuple, optional (default=(1, 0, 'Value'))
-        Scaling of the y axis (scaling, offset, unit)
-    channels : list, optional
-        List of channels to plot, if None plot all available channels
-    trigger_level : float, optional
-        Trigger level to be plotted as a dotted line
+    <key> : <type>
+        <description>
+    <key> : <type>, optional (default=<default value>)
+        <description>
+    ylim : tuple of float, optional (default=None)
+        (min, max) of the y-axis. If None, the y-axis will be autoscaled upon each update.
+    t_scaling : tuple of float, optional (default=(1, 0, 'Samples'))
+        (scaling, offset, unit) for the x-axis. The x-axis will be scaled accordingly.
+    y_scaling : tuple of float, optional (default=(1, 0, 'Value'))
+        (scaling, offset, unit) for the y-axis. The y-axis will be scaled accordingly.
+    channels : list of str, optional (default=None)
+        List of channel names to be plotted. If None, all available channels will be plotted.
+    trigger_level : float, optional (default=None)
+        If specified, a horizontal line will be drawn at this level to indicate the trigger level.
+    update_interval : float, optional (default=1)
+        Interval to update the plot in seconds. Default is 1 second.
     """
     # Get info from the buffer
     observer = Observer(buffer_io)

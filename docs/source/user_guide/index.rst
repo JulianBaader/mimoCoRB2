@@ -9,4 +9,5 @@ This user guide provides an in-depth description of mimoCoRB2 features required 
     :maxdepth: 1
 
     setup
+    provided_functions
     simple_workers

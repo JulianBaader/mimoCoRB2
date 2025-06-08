@@ -112,7 +112,23 @@ class mimoFile:
 
 
 def export(buffer_io):
-    """mimoCoRB Exporter: Export data to a mimo file"""
+    """mimoCoRB2 Function: Export data to a mimo file.
+
+    Exports data from a source buffer to a mimo file. This function is useful for saving data streams within the mimoCoRB2 framework.
+
+    Type
+    ----
+    Exporter
+
+    Buffers
+    -------
+    sources
+        1
+    sinks
+        Pass through data without modification to all sinks. Must share same dtype as source buffer.
+    observes
+        0
+    """
     exporter = Exporter(buffer_io)
 
     file = mimoFile.from_buffer_object(exporter.io.read[0].buffer, exporter.run_directory)
@@ -123,7 +139,28 @@ def export(buffer_io):
 
 
 def simulate_importer(buffer_io):
-    """mimoCoRB Importer: Import data from a mimo file with the timing of the original data"""
+    """mimoCoRB2 Function: Simulate an Importer by inputting data according to the timestamps in a mimo file.
+
+    Imports data from a mimo file and simulates the Importer behavior by yielding data according to the timestamps in the file.
+
+    Type
+    ----
+    Importer
+
+    Buffers
+    -------
+    sources
+        0
+    sinks
+        1 with the same dtype as the data in the mimo file
+    observes
+        0
+
+    Configs
+    -------
+    filename : str
+        Path to the mimo file to be imported.
+    """
     # TODO Think about the fact, that the ordering of events is probably not correct
     # TODO check if the sink is still alive
     importer = Importer(buffer_io)

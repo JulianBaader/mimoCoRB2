@@ -10,13 +10,22 @@ import matplotlib.pyplot as plt
 
 
 def drain(buffer_io):
-    """mimoCoRB Exporter: drain data from a buffer
+    """mimoCoRB2 Function: Drain buffer
+
+    Drains all data from the source buffer and does nothing with it.
+
+    Type
+    ----
+    Exporter
 
     Buffers
     -------
-    1 source
-    0 sink
-    0 observe
+    sources
+        1
+    sinks
+        0
+    observes
+        0
     """
     exporter = Exporter(buffer_io)
     for data, metadata in exporter:
@@ -24,27 +33,42 @@ def drain(buffer_io):
 
 
 def histogram(buffer_io):
-    """mimoCoRB Monitor: Create Histograms of data and optionally visualize them.
+    """mimoCoRB2 Function: Export data as a histogram and optionally visualize it.
 
-    Histograms are saved in the run_directory under the name of the source buffer and the channel.
+    Saves histograms of the data in the source buffer to csv files in the run_directory for each field in the source buffer.
+    If visualize is True, it will also start a separate process to visualize the histograms in real-time.
 
+    Type
+    ----
+    Exporter
 
     Buffers
     -------
-    1 source with data_length = 1
-    0 or 1 sink depending on whether the data should be through-passed
-    0 observe
+    sources
+        1 with data_length = 1
+    sinks
+        Pass through data without modification to all sinks. Must share same dtype as source buffer.
+    observes
+        0
 
     Configs
     -------
     update_interval : int, optional (default=1)
-        Interval in seconds to update the histograms
-    bins : dict
-        channel: [start, stop, num_bins]
-    visualize : bool, optional (default=False)
-        Whether to visualize the histograms in real-time
+        Interval in seconds to save the histogram data to files and update the visualization.
     plot_type : str, optional (default='bar')
-        Type of plot to use for the histograms. Options are 'line', 'bar', or 'step'.
+        Type of plot to use for visualization. Options are 'line', 'bar', or 'step'.
+    bins : dict
+        Dictionary where keys are channel names and values are tuples of (min, max, number_of_bins).
+        Channels must be present in the source buffer data.
+    visualize : bool, optional (default=False)
+        If True, starts a separate process to visualize the histograms in real-time.
+        
+    Examples
+    --------
+    >>> import numpy as np
+    >>> import matplotlib.pyplot as plt
+    >>> plt.plot(np.load('run_directory/field_name.npy'))
+    >>> plt.show()
     """
     exporter = Exporter(buffer_io)
 
@@ -166,20 +190,34 @@ def sub_histogram(files, bins, update_interval, name, plot_type):
 
 
 def csv(buffer_io):
-    """mimoCoRB Exporter: Save data to a csv file for pandas to read.
+    """mimoCoRB2 Function: Save data from the source buffer to a CSV file.
 
-    File is saved in the run_directory under the name of the source buffer.
+    Saves data from the source buffer to a CSV file in the run_directory.
+    Each field in the source buffer is saved as a column in the CSV file.
+
+    Type
+    ----
+    Exporter
 
     Buffers
     -------
-    1 source with data_length = 1
-    0 sink
-    0 observe
+    sources
+        1 with data_length = 1
+    sinks
+        Pass through data without modification to all sinks. Must share same dtype as source buffer.
+    observes
+        0
 
     Configs
     -------
     save_interval : int, optional (default=1)
-        Interval in seconds to save the csv file.
+        Interval in seconds to save the CSV file.
+        
+    Examples
+    --------
+    >>> import numpy as np
+    >>> import pandas as pd
+    >>> print(pd.read_csv('run_directory/exporter_name.csv'))
     """
     exporter = Exporter(buffer_io)
     data_example = exporter.data_in_example
