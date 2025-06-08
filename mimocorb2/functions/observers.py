@@ -24,10 +24,6 @@ def oscilloscope(buffer_io):
 
     Configs
     -------
-    <key> : <type>
-        <description>
-    <key> : <type>, optional (default=<default value>)
-        <description>
     ylim : tuple of float, optional (default=None)
         (min, max) of the y-axis. If None, the y-axis will be autoscaled upon each update.
     t_scaling : tuple of float, optional (default=(1, 0, 'Samples'))
