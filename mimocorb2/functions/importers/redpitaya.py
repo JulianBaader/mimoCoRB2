@@ -298,7 +298,7 @@ def waveform(buffer_io):
         0
     sinks
         1 with data_dtype: {'IN1': int16, 'IN2': int16}
-        slot_count decides the total number of samples (must be larger than number_of_samples_before_trigger and less than MAXIMUM_SAMPLES)
+        data_length decides the total number of samples (must be larger than number_of_samples_before_trigger and less than MAXIMUM_SAMPLES)
     observes
         0
 
