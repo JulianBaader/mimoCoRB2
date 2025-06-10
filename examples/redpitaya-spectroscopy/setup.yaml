@@ -18,8 +18,7 @@ Buffers:
 
 Workers:
   # rp_to_mimo:
-  #   file: redpitaya-mimocorb.py
-  #   function: redpitaya_to_mimoCoRB
+  #   function: importers.redpitaya.waveform
   #   sinks: [oscilloscope]
   #   config: config.yaml
   from_simulation:

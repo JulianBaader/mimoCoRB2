@@ -283,34 +283,65 @@ class rpControll:
         self.start_oscillocsope()
 
 
-def redpitaya_to_mimoCoRB(buffer_io):
+def waveform(buffer_io):
+    """mimoCoRB2 Function: Use RedPitaya to acquire waveform data.
+
+    <longer description>
+
+    Type
+    ----
+    Importer
+
+    Buffers
+    -------
+    sources
+        0
+    sinks
+        1 with data_dtype: {'IN1': int16, 'IN2': int16}
+        slot_count decides the total number of samples (must be larger than number_of_samples_before_trigger and less than MAXIMUM_SAMPLES)
+    observes
+        0
+
+    Configs
+    -------
+    ip: str
+        IP address of the RedPitaya device.
+    sample_rate: int
+        Number of samples (125MHz) averaged into one. Must be one of the values in SAMPLE_RATES.
+    negator_IN1: bool, optional (default=False)
+        If True, the IN1 input is negated.
+    negator_IN2: bool, optional (default=False)
+        If True, the IN2 input is negated.
+    trigger_slope: str, optional (default='rising')
+        Slope of the trigger. Must be one of the values in TRIGGER_SLOPES.
+    trigger_mode: str, optional (default='normal')
+        Mode of the trigger. Must be one of the values in TRIGGER_MODES.
+    trigger_level: int
+        Level of the trigger. Must be between MIN_ADC_VALUE and MAX_ADC_VALUE.
+    trigger_source: str, optional (default='IN1')
+        Source of the trigger. Must be one of the values in INPUTS.
+    number_of_samples_before_trigger: int
+        Number of samples to acquire before the trigger. Must be an integer between 0 and the total number of samples.
+    set_size: int, optional (default=100)
+        Number of sets to acquire in one acquisition.
+    """
     importer = Importer(buffer_io)
 
-    # read the configuration
-    """
-    ip: str
-    sample_rate: 4                          # int (see SAMPLE_RATES)
-    negator_IN1: false                      # bool
-    negator_IN2: false                      # bool
-    trigger_slope: 'rising'                 # str (see TRIGGER_SLOPES)
-    trigger_mode: 'normal'                  # str (see TRIGGER_MODES)
-    trigger_level: 100                      # int
-    number_of_samples_before_trigger: 500   # int
-    set_size: 100                           # int
-    """
     config_dict = importer.config
     try:
         ip = config_dict['ip']
         sample_rate = config_dict['sample_rate']
-        negator_IN1 = config_dict['negator_IN1']
-        negator_IN2 = config_dict['negator_IN2']
-        trigger_slope = config_dict['trigger_slope']
-        trigger_mode = config_dict['trigger_mode']
         trigger_level = config_dict['trigger_level']
         number_of_samples_before_trigger = config_dict['number_of_samples_before_trigger']
-        set_size = config_dict['set_size']
     except KeyError as e:
         raise ValueError("ERROR! Missing configuration parameter: " + str(e))
+
+    negator_IN1 = config_dict.get('negator_IN1', False)
+    negator_IN2 = config_dict.get('negator_IN2', False)
+    trigger_slope = config_dict.get('trigger_slope', 'rising')
+    trigger_mode = config_dict.get('trigger_mode', 'normal')
+    set_size = config_dict.get('set_size', 100)
+    trigger_source = config_dict.get('trigger_source', 'IN1')
 
     rp = rpControll()
     rp.connect(ip)
@@ -324,7 +355,7 @@ def redpitaya_to_mimoCoRB(buffer_io):
 
     rp.set_set_size(set_size)
 
-    rp.set_trigger_source("IN1")  # TODO
+    rp.set_trigger_source(trigger_source)  # TODO
 
     data_example = importer.data_example
 
