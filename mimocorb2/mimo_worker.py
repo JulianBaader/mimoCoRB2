@@ -175,7 +175,7 @@ class BufferIO:
 
 class mimoWorker:
     """Worker class for the execution of (muliple instances of) a function interacting with mimoBuffers.
-    
+
     This class manages multiple instances of a function using multiprocessing.
     The function is provided the BufferIO object, which contains the (multiprocessing safe) buffers for input/output operations.
     Any print statements executed in the function are redirected to a multiprocessing queue for later retrieval.
@@ -251,7 +251,7 @@ class mimoWorker:
             def redirected_stdout(buffer_io: BufferIO):
                 """Redirect stdout to a buffer."""
                 sys.stdout = QueueWriter(self.print_queue, self.name)
-                #sys.stderr = QueueWriter(self.print_queue, self.name)
+                # sys.stderr = QueueWriter(self.print_queue, self.name)
                 self.function(buffer_io)
 
             process = multiprocessing.Process(target=redirected_stdout, args=(self.buffer_io,), name=f'{self.name}_{i}')
@@ -285,7 +285,7 @@ class mimoWorker:
 
         This method creates an instance of mimoWorker from a setup dictionary.
         This is required to ensure that the function is imported correctly and the BufferIO is set up with the correct buffers.
-        
+
         Parameters
         ----------
         name : str
@@ -300,18 +300,23 @@ class mimoWorker:
             A dictionary containing the buffers of the current run.
         print_queue : multiprocessing.Queue
             A queue for capturing print output from the worker processes.
-            
+
         Returns
         -------
         mimoWorker
             An instance of the mimoWorker class initialized with the provided setup.
         """
-        function_name = setup['function'].split('.')[-1]
-        file = setup.get('file')
-        if not file:
-            file = os.path.join(FUNCTIONS_FOLDER, setup['function'].split('.')[0] + '.py')
-        else:
-            file = os.path.join(setup_dir, file)
+
+        file = setup.get('file', '')
+        function_name = setup['function']
+
+        if file == '':
+            parts = function_name.split('.')
+            function_name = parts.pop(-1)
+            file_name = parts.pop(-1) + '.py'
+            file = os.path.join(FUNCTIONS_FOLDER, *parts, file_name)
+        if not os.path.isfile(file):
+            raise FileNotFoundError(f"Function file {file} not found for function {function_name}")
 
         return cls(
             name=name,
@@ -346,9 +351,9 @@ class mimoWorker:
 
 class QueueWriter(io.TextIOBase):
     """A class to write to a multiprocessing queue, redirecting stdout/stderr.
-    
+
     This class is used to capture print statements from worker processes and send them to a queue.
-    
+
     Parameters
     ----------
     queue : multiprocessing.Queue
@@ -356,6 +361,7 @@ class QueueWriter(io.TextIOBase):
     name : str
         The name of the worker process, used to identify the source of the messages.
     """
+
     def __init__(self, queue, name):
         """Initialize the QueueWriter with a queue and a name."""
         self.queue = queue
