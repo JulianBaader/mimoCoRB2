@@ -12,16 +12,15 @@ from graphviz import Digraph
 
 
 class Control:
-    def __init__(self, setup_file: str, mode: str = 'kbd') -> None:
+    def __init__(self, setup_dict: dict, setup_directory: str, mode: str = 'kbd') -> None:
         self.run_directory = None
-        self.setup_dir = os.path.dirname(setup_file)
+        self.setup_dir = setup_directory
 
         self.roots = None
 
         self.mode = mode
 
-        with open(setup_file, 'r') as file:
-            self.setup = yaml.safe_load(file)
+        self.setup = setup_dict
 
         self.setup_run_directory()
 
@@ -217,3 +216,16 @@ class Control:
             'time_active': self.get_time_active(),
         }
         return stats
+
+    @classmethod
+    def from_setup_file(cls, setup_file: str, mode: str = 'kbd') -> 'Control':
+        """Create a Control instance from a setup file."""
+        if not os.path.exists(setup_file):
+            raise FileNotFoundError(f"Setup file {setup_file} does not exist.")
+
+        with open(setup_file, 'r') as f:
+            setup_dict = yaml.safe_load(f)
+        if not isinstance(setup_dict, dict):
+            raise ValueError(f"Setup file {setup_file} does not contain a valid setup dictionary.")
+        setup_directory = os.path.dirname(os.path.abspath(setup_file))
+        return cls(setup_dict, setup_directory, mode=mode)

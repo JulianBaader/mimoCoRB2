@@ -50,7 +50,7 @@ def main():
     args = parse_args()
 
     print(f"Using setup file: {args.setup_file} in {args.control_mode} mode. Logs will be saved to: {log_path}")
-    control = ctrl.Control(args.setup_file, mode=args.control_mode)
+    control = ctrl.Control.from_setup_file(args.setup_file, mode=args.control_mode)
     control()
 
 
