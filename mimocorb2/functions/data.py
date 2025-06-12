@@ -142,6 +142,7 @@ def simulate_importer(buffer_io):
     """mimoCoRB2 Function: Simulate an Importer by inputting data according to the timestamps in a mimo file.
 
     Imports data from a mimo file and simulates the Importer behavior by yielding data according to the timestamps in the file.
+    This may lead to bunches of data if the timestamps are not ordered correctly.
 
     Type
     ----
@@ -167,9 +168,9 @@ def simulate_importer(buffer_io):
     filename = importer.config['filename']
 
     file = mimoFile.from_file(filename)
-    if file.data_dtype != importer.data_example.dtype:
+    if file.data_dtype != importer.data_out_examples[0].dtype:
         raise ValueError("Data type mismatch")
-    if file.data_length != importer.data_example.size:
+    if file.data_length != importer.data_out_examples[0].size:
         raise ValueError("Data length mismatch")
     generator = file.read_data()
 
@@ -181,7 +182,8 @@ def simulate_importer(buffer_io):
         while True:
             data, metadata = next(generator)
             if data is None or metadata is None:
-                yield None, None
+                print("End of file reached")
+                yield None
                 break
             event_time = metadata["timestamp"][0]
             time_between_event = event_time - last_event_time
@@ -196,6 +198,69 @@ def simulate_importer(buffer_io):
 
 
 def clocked_importer(buffer_io):
-    """mimoCoRB Importer: Import data from a mimo file with a fixed (uniform/poisson) rate"""
-    raise NotImplementedError("This function is not yet implemented")
-    # TODO a function which just puts in the data and metadata from the file, with a uniform/poisson fixed rate
+    """mimoCoRB2 Function: Simulate an Importer by inputting data at a fixed rate.
+
+    Imports data from a mimo file and simulates the Importer behavior by yielding data at a fixed rate.
+    This is useful for testing and simulating data streams in a controlled manner.
+    Can be used to input uniform or poisson distributed data.
+
+    Type
+    ----
+    Importer
+
+    Buffers
+    -------
+    sources
+        0
+    sinks
+        1 with the same dtype as the data in the mimo file
+    observes
+        0
+
+    Configs
+    -------
+    rate : float
+        Rate at which to yield data in Hz
+    distribution : str, optional (default='uniform')
+        Distribution to use for generating timestamps. Can be 'uniform' or 'poisson'.
+    filename : str
+        Path to the mimo file to be imported.
+    """
+
+    importer = Importer(buffer_io)
+    filename = importer.config['filename']
+    rate = importer.config['rate']
+    distribution = importer.config.get('distribution', 'uniform')
+    if rate <= 0:
+        raise ValueError("Rate must be a positive number")
+
+    file = mimoFile.from_file(filename)
+    if file.data_dtype != importer.data_out_examples[0].dtype:
+        raise ValueError("Data type mismatch")
+    if file.data_length != importer.data_out_examples[0].size:
+        raise ValueError("Data length mismatch")
+    generator = file.read_data()
+
+    if distribution == 'uniform':
+
+        def wait():
+            time.sleep(1 / rate)
+    elif distribution == 'poisson':
+
+        def wait():
+            time_between_events = np.random.poisson(1 / rate)
+            time.sleep(time_between_events)
+    else:
+        raise ValueError("Invalid distribution type. Use 'uniform' or 'poisson'.")
+
+    def ufunc():
+        while True:
+            data, metadata = next(generator)
+            if data is None or metadata is None:
+                print("End of file reached")
+                yield None
+                break
+            wait()
+            yield data
+
+    importer(ufunc)

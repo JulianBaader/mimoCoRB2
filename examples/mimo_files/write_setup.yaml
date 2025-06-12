@@ -1,0 +1,22 @@
+Buffers:
+  waveform_buffer:
+    slot_count: 128
+    data_length: 4250
+    data_dtype: 
+      chA: 'f4'
+      chB: 'f4'
+      chC: 'f4'
+      chD: 'f4'
+
+Workers:
+  input:
+    file: ../muon/simulate_source.py
+    function: simulate_source
+    sinks: [waveform_buffer]
+    config: ../muon/config.yaml
+  write:
+    function: data.export
+    sources: [waveform_buffer]
+  oscilloscope:
+    function: observers.oscilloscope
+    observes: [waveform_buffer]

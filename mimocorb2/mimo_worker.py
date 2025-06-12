@@ -315,6 +315,8 @@ class mimoWorker:
             function_name = parts.pop(-1)
             file_name = parts.pop(-1) + '.py'
             file = os.path.join(FUNCTIONS_FOLDER, *parts, file_name)
+        else:
+            file = os.path.join(setup_dir, file)
         if not os.path.isfile(file):
             raise FileNotFoundError(f"Function file {file} not found for function {function_name}")
 
