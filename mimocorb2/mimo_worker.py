@@ -157,10 +157,23 @@ class BufferIO:
     @classmethod
     def from_setup(cls, name, setup: dict, setup_dir: str, run_dir: str, buffers: dict):
         """Initiate the BufferIO from a setup dictionary."""
-        sources = [BufferReader(buffers[name]) for name in setup.get('sources', [])]
-        sinks = [BufferWriter(buffers[name]) for name in setup.get('sinks', [])]
-        observes = [BufferObserver(buffers[name]) for name in setup.get('observes', [])]
-        config = Config.from_setup(setup.get('config', {}), setup_dir)
+        sources = []
+        for buffer_name in setup.get('sources', []):
+            if buffer_name not in buffers:
+                raise KeyError(f"Source {buffer_name} of worker {name} is not defined in the setup.")
+            sources.append(BufferReader(buffers[buffer_name]))
+
+        sinks = []
+        for buffer_name in setup.get('sinks', []):
+            if buffer_name not in buffers:
+                raise KeyError(f"Sink '{buffer_name}' of worker '{name}' is not defined in the setup.")
+            sinks.append(BufferWriter(buffers[buffer_name]))
+
+        observes = []
+        for buffer_name in setup.get('observes', []):
+            if buffer_name not in buffers:
+                raise KeyError(f"Observer {buffer_name} of worker {name} is not defined in the setup.")
+            observes.append(BufferObserver(buffers[buffer_name]))
 
         return cls(
             name=name,
