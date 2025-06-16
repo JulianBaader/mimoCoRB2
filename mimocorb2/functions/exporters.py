@@ -62,7 +62,7 @@ def histogram(buffer_io):
         Channels must be present in the source buffer data.
     visualize : bool, optional (default=False)
         If True, starts a separate process to visualize the histograms in real-time.
-        
+
     Examples
     --------
     >>> import numpy as np
@@ -212,7 +212,9 @@ def csv(buffer_io):
     -------
     save_interval : int, optional (default=1)
         Interval in seconds to save the CSV file.
-        
+    filename : str, optional (default='exporter_name')
+        Name of the CSV file to save the data to. The file will be saved in the run_directory.
+
     Examples
     --------
     >>> import numpy as np
@@ -223,14 +225,16 @@ def csv(buffer_io):
     data_example = exporter.data_in_example
     metadata_example = exporter.metadata_in_example
 
+    run_directory = exporter.run_directory
+    exporter_name = exporter.name
+
     config = exporter.config
     save_interval = config.get('save_interval', 1)
+    filename = config.get('filename', exporter_name)
+    filename = os.path.join(run_directory, f"{filename}.csv")
 
     if data_example.size != 1:
         raise ValueError('csv exporter only supports data_length = 1')
-
-    run_directory = exporter.run_directory
-    name = exporter.name
 
     header = []
     for dtype_name in metadata_example.dtype.names:
@@ -241,7 +245,7 @@ def csv(buffer_io):
 
     # create empty dataframe
     df = pd.DataFrame(columns=header)
-    df.to_csv(os.path.join(run_directory, f"{name}.csv"), index=False)
+    df.to_csv(filename, index=False)
     count = 0
 
     last_save = time.time()
@@ -251,9 +255,9 @@ def csv(buffer_io):
         line = np.append(rfn.structured_to_unstructured(metadata), rfn.structured_to_unstructured(data))
         df.loc[count] = line
         if time.time() - last_save > save_interval:
-            df.to_csv(os.path.join(run_directory, f"{name}.csv"), index=False, mode='a', header=False)
+            df.to_csv(filename, index=False, mode='a', header=False)
             last_save = time.time()
             df = pd.DataFrame(columns=header)
             count = 0
 
-    df.to_csv(os.path.join(run_directory, f"{name}.csv"), index=False, mode='a', header=False)
+    df.to_csv(filename, index=False, mode='a', header=False)
