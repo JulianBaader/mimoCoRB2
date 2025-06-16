@@ -421,3 +421,46 @@ class Observer(Base):
             # TODO check if buffer is alive
         self.logger.info("Observer finished")
         yield None, None
+
+
+class IsAlive(Base):
+    """Worker class for checking if the buffer is alive.
+
+    This worker does not read or write any data, it only checks if the buffer provided as an observer is still alive.
+
+    Examples
+    --------
+    >>> def worker(buffer_io: BufferIO):
+    ...     is_alive = IsAlive(mimo_args)
+    ...     while True:
+    ...         if not is_alive():
+    ...             print("Buffer is not alive")
+    ...             break
+    ...         time.sleep(1)
+    """
+
+    def __init__(self, io: BufferIO) -> None:
+        """Initialize the IsAlive worker.
+
+        Parameters
+        ----------
+        io : BufferIO
+            BufferIO object containing the buffer to check.
+        """
+        super().__init__(io)
+        if len(self.read) != 0:
+            self.fail("IsAlive must have 0 sources", force_shutdown=True)
+        if len(self.write) != 0:
+            self.fail("IsAlive must have 0 sinks", force_shutdown=True)
+        if len(self.observe) != 1:
+            self.fail("IsAlive must have 1 observes", force_shutdown=True)
+
+    def __call__(self) -> bool:
+        """Check if the buffer is alive.
+
+        Returns
+        -------
+        bool
+            True if the buffer is alive, False otherwise.
+        """
+        return self.io.observe[0].is_shutdown.value is False
