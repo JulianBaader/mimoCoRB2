@@ -175,6 +175,8 @@ class BufferIO:
                 raise KeyError(f"Observer {buffer_name} of worker {name} is not defined in the setup.")
             observes.append(BufferObserver(buffers[buffer_name]))
 
+        config = Config.from_setup(setup.get('config', {}), setup_dir)
+
         return cls(
             name=name,
             sources=sources,
