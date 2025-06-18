@@ -134,6 +134,19 @@ class BufferIO:
         self.setup_directory = setup_directory
         self.run_directory = run_directory
 
+        self._set_examples('in', self.read)
+        self._set_examples('out', self.write)
+        self._set_examples('observe', self.observe)
+
+    def _set_examples(self, attr_name: str, buffers: list) -> None:
+        """Set the data and metadata examples for the buffers."""
+        data_examples = [b.data_example for b in buffers]
+        metadata_examples = [b.metadata_example for b in buffers]
+        names = [b.name for b in buffers]
+        setattr(self, f"data_{attr_name}_examples", data_examples)
+        setattr(self, f"metadata_{attr_name}_examples", metadata_examples)
+        setattr(self, f"buffer_names_{attr_name}", names)
+
     def shutdown_sinks(self) -> None:
         """Shutdown all sink buffers."""
         for writer in self.write:

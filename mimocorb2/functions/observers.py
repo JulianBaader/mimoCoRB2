@@ -39,9 +39,8 @@ def oscilloscope(buffer_io):
     """
     # Get info from the buffer
     observer = Observer(buffer_io)
-    data_example = observer.data_observe_example
-    number_of_samples = data_example.size
-    available_channels = data_example.dtype.names
+    number_of_samples = observer.data_example.size
+    available_channels = observer.data_example.dtype.names
 
     # Get the configuration parameters
     update_interval = observer.config.get('update_interval', 1)

@@ -57,11 +57,13 @@ def pha(buffer_io: BufferIO):
         Minimum size of the plateau at the peak. If None, plateau sizes will not be calculated.
     """
     processor = Processor(buffer_io)
-    if len(processor.data_out_examples) != 1:
+    if len(buffer_io.data_out_examples) != 1:
         raise ValueError("mimocorb2.analyzers.pha only supports one sink.")
+    data_in = buffer_io.data_in_examples[0].copy()
+    data_out = buffer_io.data_out_examples[0].copy()
 
     config = processor.config
-    channel = config.get('channel', processor.data_in_example.dtype.names[0])
+    channel = config.get('channel', data_in.dtype.names[0])
     height = config.get('height', None)
     threshold = config.get('threshold', None)
     distance = config.get('distance', None)
@@ -71,14 +73,12 @@ def pha(buffer_io: BufferIO):
     rel_height = config.get('rel_height', 0.5)
     plateau_size = config.get('plateau_size', None)
 
-    example_data_in = processor.data_in_example
-    channels = example_data_in.dtype.names
+    channels = data_in.dtype.names
     if channel not in channels:
         raise ValueError(f"Channel {channel} is not available in the source.")
 
-    data_example_out = processor.io.write[0].data_example.copy()
-    requested_parameters = data_example_out.dtype.names
-    if data_example_out.size != 1:
+    requested_parameters = data_out.dtype.names
+    if data_out.size != 1:
         raise ValueError("mimocorb2.analyzers.pha only data_length = 1 in the sink.")
 
     for parameter in requested_parameters:
@@ -117,9 +117,9 @@ def pha(buffer_io: BufferIO):
         for i in range(len(peaks)):
             for parameter in requested_parameters:
                 if parameter in ['position']:
-                    data_example_out['position'] = peaks[i]
+                    data_out['position'] = peaks[i]
                 else:
-                    data_example_out[parameter] = properties[parameter][i]
-            return [data_example_out]
+                    data_out[parameter] = properties[parameter][i]
+            return [data_out]
 
     processor(ufunc)

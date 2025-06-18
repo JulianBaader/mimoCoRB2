@@ -357,7 +357,7 @@ def waveform(buffer_io):
 
     rp.set_trigger_source(trigger_source)  # TODO
 
-    data_example = importer.data_out_examples[0].copy()
+    data_example = importer.data_example.copy()
 
     rp.set_total_number_of_samples(data_example.size)
 

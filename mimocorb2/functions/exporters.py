@@ -74,7 +74,7 @@ def histogram(buffer_io):
 
     # Get info from the buffer
     name = exporter.name
-    data_example = exporter.data_in_example
+    data_example = exporter.data_example
     available_channels = data_example.dtype.names
 
     if data_example.size != 1:
@@ -222,8 +222,8 @@ def csv(buffer_io):
     >>> print(pd.read_csv('run_directory/exporter_name.csv'))
     """
     exporter = Exporter(buffer_io)
-    data_example = exporter.data_in_example
-    metadata_example = exporter.metadata_in_example
+    data_example = exporter.data_example
+    metadata_example = exporter.metadata_example
 
     run_directory = exporter.run_directory
     exporter_name = exporter.name

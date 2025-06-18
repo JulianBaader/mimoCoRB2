@@ -168,9 +168,9 @@ def simulate_importer(buffer_io):
     filename = importer.config['filename']
 
     file = mimoFile.from_file(filename)
-    if file.data_dtype != importer.data_out_examples[0].dtype:
+    if file.data_dtype != importer.data_example.dtype:
         raise ValueError("Data type mismatch")
-    if file.data_length != importer.data_out_examples[0].size:
+    if file.data_length != importer.data_example.size:
         raise ValueError("Data length mismatch")
     generator = file.read_data()
 
@@ -235,9 +235,9 @@ def clocked_importer(buffer_io):
         raise ValueError("Rate must be a positive number")
 
     file = mimoFile.from_file(filename)
-    if file.data_dtype != importer.data_out_examples[0].dtype:
+    if file.data_dtype != importer.data_example.dtype:
         raise ValueError("Data type mismatch")
-    if file.data_length != importer.data_out_examples[0].size:
+    if file.data_length != importer.data_example.size:
         raise ValueError("Data length mismatch")
     generator = file.read_data()
 

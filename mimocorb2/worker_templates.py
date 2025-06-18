@@ -29,21 +29,21 @@ class Base:
         self.shutdown_sinks = io.shutdown_sinks
         self.__getitem__ = io.__getitem__
 
-        # set up data and metadata examples
-        def set_examples(attr_name, sources):
-            data_examples = [source.data_example for source in sources]
-            metadata_examples = [source.metadata_example for source in sources]
-            setattr(self, f"data_{attr_name}_examples", data_examples)
-            setattr(self, f"metadata_{attr_name}_examples", metadata_examples)
-            # TODO remove this
-            if len(sources) == 1:
-                setattr(self, f"data_{attr_name}_example", data_examples[0])
-                setattr(self, f"metadata_{attr_name}_example", metadata_examples[0])
+        # # set up data and metadata examples
+        # def set_examples(attr_name, sources):
+        #     data_examples = [source.data_example for source in sources]
+        #     metadata_examples = [source.metadata_example for source in sources]
+        #     setattr(self, f"data_{attr_name}_examples", data_examples)
+        #     setattr(self, f"metadata_{attr_name}_examples", metadata_examples)
+        #     # TODO remove this
+        #     if len(sources) == 1:
+        #         setattr(self, f"data_{attr_name}_example", data_examples[0])
+        #         setattr(self, f"metadata_{attr_name}_example", metadata_examples[0])
 
-        # Apply to read, write, observe
-        set_examples("in", self.read)
-        set_examples("out", self.write)
-        set_examples("observe", self.observe)
+        # # Apply to read, write, observe
+        # set_examples("in", self.read)
+        # set_examples("out", self.write)
+        # set_examples("observe", self.observe)
 
 
 class Importer(Base):
@@ -51,20 +51,17 @@ class Importer(Base):
 
     Attributes
     ----------
-    data_example
-    metadata_example
-    config
+    data_example : np.ndarray
+        Example data from the buffer.
 
     Examples
     --------
-    >>> def worker(*mimo_args):
-    ...     importer = Importer(mimo_args)
-    ...     config = importer.config
-    ...     data_example = importer.writer.data_example
-    ...     buffer_name = importer.writer.name
+    >>> def worker(buffer_io: BufferIO):
+    ...     importer = Importer(buffer_io)
+    ...     data_shape = importer.data_example.shape
     ...     def ufunc():
-    ...        for i in range(config['n_events']):
-    ...            data = np.random.normal(size=data_example.shape)
+    ...        for i in range(buffer_io['n_events']):
+    ...            data = np.random.normal(size=shape)
     ...            yield data
     ...        yield None
     ...     importer(ufunc)
@@ -82,10 +79,13 @@ class Importer(Base):
         if len(self.observe) != 0:
             self.fail("Importer must have 0 observes", force_shutdown=True)
 
+        self.data_example = self.io.data_out_examples[0]
+        self.metadata_example = self.io.metadata_out_examples[0]
+
     def __call__(self, ufunc: Callable) -> None:
         """Start the generator and write data to the buffer.
 
-        ufunc must yield data of the same format as the Importer.writer.data_example and yield None at the end.
+        ufunc must yield data of the same format as the io.data_out_examples[0] and yield None at the end.
         Metadata (counter, timestamp, deadtime) is automatically added to the buffer.
 
         Parameters
@@ -136,15 +136,15 @@ class Exporter(Base):
 
     Attributes
     ----------
-    data_example
-    metadata_example
+    data_example : np.ndarray
+        Example data from the buffer.
+    metadata_example : np.ndarray
+        Example metadata from the buffer.
 
     Examples
     --------
-    >>> def worker(*mimo_args):
-    ...     exporter = Exporter(mimo_args)
-    ...     data_example = exporter.reader.data_example
-    ...     buffer_name = exporter.reader.name
+    >>> def worker(buffer_io: BufferIO):
+    ...     exporter = Exporter(buffer_io)
     ...     for data, metadata in exporter:
     ...         print(data, metadata)
     """
@@ -157,12 +157,16 @@ class Exporter(Base):
         if len(self.observe) != 0:
             self.fail("Exporter must have 0 observes", force_shutdown=True)
 
+        data_in_example = self.io.data_in_examples[0]
         if len(self.write) != 0:
-            for do, mo in zip(self.data_out_examples, self.metadata_out_examples):
-                if do.shape != self.data_in_example.shape:
+            for do in self.io.data_out_examples:
+                if do.shape != data_in_example.shape:
                     self.fail("Exporter source and sink shapes do not match", force_shutdown=True)
-                if do.dtype != self.data_in_example.dtype:
+                if do.dtype != data_in_example.dtype:
                     self.fail("Exporter source and sink dtypes do not match", force_shutdown=True)
+
+        self.data_example = self.io.data_in_examples[0]
+        self.metadata_example = self.io.metadata_in_examples[0]
 
     def _iter_without_sinks(self) -> Generator:
         """Yields data and metadata from the buffer until the buffer is shutdown."""
@@ -212,15 +216,14 @@ class Filter(Base):
 
     Attributes
     ----------
-    data_example
-    metadata_example
-    config
+    data_example : np.ndarray
+        Example data from the buffer.
 
     Examples
     --------
-    >>> def worker(*mimo_args):
-    ...     filter = Filter(mimo_args)
-    ...     min_height = filter.config['min_height']
+    >>> def worker(buffer_io: BufferIO):
+    ...     filter = Filter(buffer_io)
+    ...     min_height = buffer_io['min_height']
     ...     def ufunc(data):
     ...         if np.max(data) > min_height:
     ...             return True
@@ -230,11 +233,7 @@ class Filter(Base):
     """
 
     def __init__(self, io: BufferIO) -> None:
-        """Checks the setup.
-
-        Check that the number of sources, sinks, and observes are correct.
-        Check that the source and sink shapes and dtypes match.
-        """
+        """Checks the setup."""
         super().__init__(io)
         if len(self.read) != 1:
             self.fail("Filter must have 1 source", force_shutdown=True)
@@ -243,11 +242,14 @@ class Filter(Base):
         if len(self.observe) != 0:
             self.fail("Filter must have 0 observes", force_shutdown=True)
 
-        for do, mo in zip(self.data_out_examples, self.metadata_out_examples):
-            if do.shape != self.data_in_example.shape:
+        data_in_example = self.io.data_in_examples[0]
+        for do in self.io.data_out_examples:
+            if do.shape != data_in_example.shape:
                 self.fail("Exporter source and sink shapes do not match", force_shutdown=True)
-            if do.dtype != self.data_in_example.dtype:
+            if do.dtype != data_in_example.dtype:
                 self.fail("Exporter source and sink dtypes do not match", force_shutdown=True)
+
+        self.data_example = self.io.data_in_examples[0]
 
     def __call__(self, ufunc) -> None:
         """Start the filter and copy or discard data based on the result of ufunc(data).
@@ -267,7 +269,7 @@ class Filter(Base):
         if not callable(ufunc):
             self.shutdown_sinks()
             raise RuntimeError("ufunc not callable")
-        self.true_map = [True] * len(self.data_out_examples)
+        self.true_map = [True] * len(self.io.data_out_examples)
         self.logger.info("Filter started")
         while True:
             with self.read[0] as (metadata, data):
@@ -304,21 +306,15 @@ class Processor(Base):
 
     Examples
     --------
-    >>> def worker(*mimo_args):
-    ...     processor = Processor(mimo_args)
+    >>> def worker(buffer_io: BufferIO):
+    ...     processor = Processor(buffer_io)
     ...     def ufunc(data):
     ...         return [data + 1, data - 1]
     ...     processor(ufunc)
     """
 
     def __init__(self, io: BufferIO) -> None:
-        """Checks the setup.
-
-        Parameters
-        ----------
-        mimo_args : ArgsAlias
-            List of sources, sinks, observes, and config dictionary
-        """
+        """Checks the setup."""
         super().__init__(io)
         if len(self.read) != 1:
             self.fail("Processor must have 1 source", force_shutdown=True)
@@ -333,7 +329,7 @@ class Processor(Base):
         Parameters
         ----------
         ufunc : Callable
-            Function which will be called upon the data (Processor.reader.data_example).
+            Function which will be called upon the data (io.data_in_examples[0]).
             When the function returns None the data will be discarded.
             Otherwise the function must return a list of results, one for each sink.
             If the result is not None it will be written to the corresponding sink.
@@ -367,13 +363,13 @@ class Observer(Base):
 
     Attributes
     ----------
-    observer : BufferObserver
-        BufferObserver object for observing data from the buffer
+    data_example : np.ndarray
+        Example data from the buffer.
 
     Examples
     --------
-    >>> def worker(*mimo_args):
-    ...     observer = Observer(mimo_args)
+    >>> def worker(buffer_io: BufferIO):
+    ...     observer = Observer(buffer_io)
     ...     generator = observer()
     ...     while True:
     ...         data, metadata = next(generator)
@@ -384,13 +380,7 @@ class Observer(Base):
     """
 
     def __init__(self, io: BufferIO) -> None:
-        """Checks the setup.
-
-        Parameters
-        ----------
-        mimo_args : ArgsAlias
-            List of sources, sinks, observes, and config dictionary
-        """
+        """Checks the setup."""
         super().__init__(io)
         if len(self.read) != 0:
             self.fail("Observer must have 0 source", force_shutdown=True)
@@ -398,6 +388,8 @@ class Observer(Base):
             self.fail("Observer must have 0 sinks", force_shutdown=True)
         if len(self.observe) != 1:
             self.fail("Observer must have 1 observes", force_shutdown=True)
+
+        self.data_example = self.io.data_observe_examples[0]
 
     def __call__(self) -> Generator:
         """Start the observer and yield data and metadata.
@@ -432,11 +424,10 @@ class IsAlive(Base):
     --------
     >>> def worker(buffer_io: BufferIO):
     ...     is_alive = IsAlive(mimo_args)
-    ...     while True:
-    ...         if not is_alive():
-    ...             print("Buffer is not alive")
-    ...             break
+    ...     while is_alive():
+    ...         print("Buffer is alive")
     ...         time.sleep(1)
+    ...     print("Buffer is dead")
     """
 
     def __init__(self, io: BufferIO) -> None:
