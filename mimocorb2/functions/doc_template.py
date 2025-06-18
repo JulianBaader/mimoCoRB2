@@ -1,6 +1,7 @@
 # This is a template for documenting mimoCoRB2 functions.
 from mimocorb2.mimo_worker import BufferIO
 
+
 def mimoCoRB2_function(buffer_io: BufferIO):
     """mimoCoRB2 Function: <short description of the function>
 
@@ -25,7 +26,7 @@ def mimoCoRB2_function(buffer_io: BufferIO):
         <description>
     <key> : <type>, optional (default=<default value>)
         <description>
-        
+
     Examples
     --------
     <example usage of the function, if applicable. In doctest format>
