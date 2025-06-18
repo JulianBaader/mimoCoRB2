@@ -2,6 +2,13 @@ Simple Workers
 ==============
 Simple Workers can be built using the classes provided in the :py:module:`mimocorb2.worker_templates` module.
 
+In order to document your workers, you can use the following docstring format:
+
+.. literalinclude:: ../../../mimocorb2/functions/doc_template.py
+   :language: python
+   :lines: 1-
+   :caption: mimoCoRB2 docstring template
+
 
 Importer
 --------
@@ -16,7 +23,7 @@ Exporter
 Exporters are used to export data from the mimocorb2 system.
 
 .. autoclass:: mimocorb2.worker_templates.Exporter
-    :members: __init__, __call__
+    :members: __init__, __iter__
 
 Filter
 ------
@@ -37,4 +44,11 @@ Observer
 Observers are used to observe data. This means that a copy of the data is exported.
 
 .. autoclass:: mimocorb2.worker_templates.Observer
+    :members: __init__, __call__
+
+IsAlive
+----------
+IsAlive workers are used to check if the system or a specific buffer is still alive.
+
+.. autoclass:: mimocorb2.worker_templates.IsAlive
     :members: __init__, __call__

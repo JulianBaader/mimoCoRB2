@@ -17,6 +17,7 @@ Data
 ------
 .. automethod:: mimocorb2.functions.data.export
 .. automethod:: mimocorb2.functions.data.simulate_importer
+.. automethod:: mimocorb2.functions.data.clocked_importer
 
 Misc
 ----
@@ -25,3 +26,9 @@ Misc
 Observers
 ---------
 .. automethod:: mimocorb2.functions.observers.oscilloscope
+
+Importers
+---------
+redpitaya
+^^^^^^^^^^
+.. automethod:: mimocorb2.functions.importers.redpitaya.waveform
