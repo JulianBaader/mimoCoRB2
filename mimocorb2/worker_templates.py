@@ -27,23 +27,6 @@ class Base:
 
         # copy methods from io
         self.shutdown_sinks = io.shutdown_sinks
-        self.__getitem__ = io.__getitem__
-
-        # # set up data and metadata examples
-        # def set_examples(attr_name, sources):
-        #     data_examples = [source.data_example for source in sources]
-        #     metadata_examples = [source.metadata_example for source in sources]
-        #     setattr(self, f"data_{attr_name}_examples", data_examples)
-        #     setattr(self, f"metadata_{attr_name}_examples", metadata_examples)
-        #     # TODO remove this
-        #     if len(sources) == 1:
-        #         setattr(self, f"data_{attr_name}_example", data_examples[0])
-        #         setattr(self, f"metadata_{attr_name}_example", metadata_examples[0])
-
-        # # Apply to read, write, observe
-        # set_examples("in", self.read)
-        # set_examples("out", self.write)
-        # set_examples("observe", self.observe)
 
 
 class Importer(Base):
