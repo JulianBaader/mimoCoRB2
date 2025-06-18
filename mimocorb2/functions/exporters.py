@@ -35,7 +35,7 @@ def drain(buffer_io):
 def histogram(buffer_io):
     """mimoCoRB2 Function: Export data as a histogram and optionally visualize it.
 
-    Saves histograms of the data in the source buffer to csv files in the run_directory for each field in the source buffer.
+    Saves histograms of the data in the source buffer to npy files in the run_directory for each field in the source buffer.
     If visualize is True, it will also start a separate process to visualize the histograms in real-time.
 
     Type
