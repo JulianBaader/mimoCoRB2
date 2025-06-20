@@ -40,6 +40,7 @@ class Control:
 
         self.find_roots()
         self.visualize_data_flow(os.path.join(self.run_directory, 'data_flow'))
+        self.save_setup()
 
     def __call__(self) -> None:
         """Start the control loop as well as the control interfaces."""
@@ -91,8 +92,13 @@ class Control:
         if self.mode == 'gui':
             self.gui_process.join()
 
-    def save_setup():
-        raise NotImplementedError("Saving setup is not implemented yet.")
+    def save_setup(self):
+        copy = self.setup.copy()
+        for worker_name, worker in self.workers.items():
+            copy['Workers'][worker_name]['config'] = worker.buffer_io.config.copy()
+        setup_file = os.path.join(self.run_directory, 'setup.yaml')
+        with open(setup_file, 'w') as f:
+            yaml.safe_dump(copy, f, default_flow_style=False, sort_keys=False)
 
     def setup_run_directory(self) -> None:
         """Setup the run directory"""
