@@ -7,8 +7,7 @@ import time
 import queue
 import threading
 import multiprocessing as mp
-
-from graphviz import Digraph
+import graphviz
 
 
 class Control:
@@ -39,7 +38,11 @@ class Control:
         }
 
         self.find_roots()
-        self.visualize_data_flow(os.path.join(self.run_directory, 'data_flow'))
+        try:
+            self.visualize_data_flow(os.path.join(self.run_directory, 'data_flow'))
+        except graphviz.backend.ExecutableNotFound as e:
+            print("Graphviz executables not found. Data flow visualization will not be generated.")
+            print(e)
         self.save_setup()
 
     def __call__(self) -> None:
@@ -117,7 +120,7 @@ class Control:
                     self.roots[buffer_name] = self.buffers[buffer_name]
 
     def visualize_data_flow(self, file: str, **digraph_kwargs) -> None:
-        dot = Digraph(format='svg', **digraph_kwargs)
+        dot = graphviz.Digraph(format='svg', **digraph_kwargs)
 
         # Buffer Nodes
         for name in self.buffers:
