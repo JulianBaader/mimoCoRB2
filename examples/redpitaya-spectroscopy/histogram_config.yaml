@@ -1,4 +1,2 @@
 bins:
   peak_heights: [0, 4095, 4096]
-visualize: True
-plot_type: step

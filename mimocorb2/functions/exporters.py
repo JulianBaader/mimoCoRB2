@@ -1,9 +1,8 @@
-from mimocorb2.worker_templates import Exporter
+from mimocorb2.worker_templates import Exporter, IsAlive
 
 import numpy as np
 from numpy.lib import recfunctions as rfn
 import pandas as pd
-import multiprocessing
 import time
 import os
 import matplotlib.pyplot as plt
@@ -33,10 +32,12 @@ def drain(buffer_io):
 
 
 def histogram(buffer_io):
-    """mimoCoRB2 Function: Export data as a histogram and optionally visualize it.
+    """mimoCoRB2 Function: Export data as a histogram.
 
     Saves histograms of the data in the source buffer to npy files in the run_directory for each field in the source buffer.
-    If visualize is True, it will also start a separate process to visualize the histograms in real-time.
+    The histograms are saved in a directory named "Histograms_<source_buffer_name>".
+    The directory contains a file named "info.csv" with the histogram configuration and individual npy files for each channel.
+    It is possible to visualize the histograms using the `visualize_histogram` function.
 
     Type
     ----
@@ -54,51 +55,62 @@ def histogram(buffer_io):
     Configs
     -------
     update_interval : int, optional (default=1)
-        Interval in seconds to save the histogram data to files and update the visualization.
-    plot_type : str, optional (default='bar')
-        Type of plot to use for visualization. Options are 'line', 'bar', or 'step'.
+        Interval in seconds to save the histogram data to files.
     bins : dict
         Dictionary where keys are channel names and values are tuples of (min, max, number_of_bins).
         Channels must be present in the source buffer data.
-    visualize : bool, optional (default=False)
-        If True, starts a separate process to visualize the histograms in real-time.
 
     Examples
     --------
     >>> import numpy as np
     >>> import matplotlib.pyplot as plt
-    >>> plt.plot(np.load('run_directory/field_name.npy'))
+    >>> import pandas as pd
+    >>> info_df = pd.read_csv('info.csv')
+    >>> bins = {ch: np.linspace(info_df['Min'][i], info_df['Max'][i], info_df['NBins'][i]) for i, ch in enumerate(info_df['Channel'])}
+    >>> for ch in info_df['Channel']:
+    ...     data = np.load(f'{ch}.npy')
+    ...     plt.plot(bins[ch][:-1], data, label=ch)
+    >>> plt.legend()
     >>> plt.show()
     """
     exporter = Exporter(buffer_io)
 
     # Get info from the buffer
-    name = exporter.name
-    data_example = exporter.data_example
+    name = buffer_io.buffer_names_in[0]
+    data_example = buffer_io.data_in_examples[0]
     available_channels = data_example.dtype.names
 
     if data_example.size != 1:
         raise ValueError('histogram exporter only supports data_length = 1')
-    run_directory = exporter.run_directory
+
+    directory = os.path.join(buffer_io.run_directory, "Histograms_" + name)
+    os.makedirs(directory, exist_ok=True)
+
+    # Get config
     update_interval = exporter.config.get('update_interval', 1)
-    plot_type = exporter.config.get('plot_type', 'bar')
     bin_config = exporter.config['bins']
-    visualize = exporter.config.get('visualize', False)
+
     requested_channels = bin_config.keys()
     for rch in requested_channels:
         if rch not in available_channels:
             raise ValueError(f"Channel '{rch}' not found in the data")
     channels = requested_channels
 
+    info_df = pd.DataFrame(
+        {
+            'Channel': channels,
+            'Min': [bin_config[ch][0] for ch in channels],
+            'Max': [bin_config[ch][1] for ch in channels],
+            'NBins': [bin_config[ch][2] for ch in channels],
+        }
+    )
+    info_df.to_csv(os.path.join(directory, 'info.csv'), index=False)
+
     bins = {}
     hists = {}
     files = {}
-    # TODO i think this should be removed
-    if len(channels) > 1:
-        run_directory = os.path.join(run_directory, name)
-        os.makedirs(run_directory, exist_ok=True)
     for ch in channels:
-        files[ch] = os.path.join(run_directory, name + '_' + ch + '.npy')
+        files[ch] = os.path.join(directory, ch + '.npy')
         bins[ch] = np.linspace(bin_config[ch][0], bin_config[ch][1], bin_config[ch][2])
         hists[ch] = np.histogram([], bins=bins[ch])[0]
 
@@ -108,14 +120,7 @@ def histogram(buffer_io):
 
     save_hists()
 
-    if visualize:
-        p = multiprocessing.Process(
-            target=sub_histogram, args=(files, bins, update_interval, name, plot_type), daemon=True
-        )
-        p.start()
-
     last_save = time.time()
-
     for data, metadata in exporter:
         for ch in channels:
             hists[ch] += np.histogram(data[ch], bins=bins[ch])[0]
@@ -124,49 +129,85 @@ def histogram(buffer_io):
             save_hists()
             last_save = time.time()
     save_hists()
-    if visualize:
-        p.terminate()
 
 
-def sub_histogram(files, bins, update_interval, name, plot_type):
-    channels = list(files.keys())
+def visualize_histogram(buffer_io):
+    """mimoCoRB2 Function: Visualize histograms from the histogram exporter.
+
+    Visualizes histograms of the data in the source buffer using matplotlib.
+    The histograms are read from the npy files saved by the histogram exporter.
+
+    Type
+    ----
+    IsAlive
+
+    Buffers
+    -------
+    sources
+        0
+    sinks
+        0
+    observes
+        1 the same as the source buffer of the exporter
+
+    Configs
+    -------
+    update_interval : int, optional (default=1)
+        Interval in seconds to update the histograms.
+    plot_type : str, optional (default='line')
+        Type of plot to use for the histograms. Options are 'line', 'bar', or 'step'.
+    """
+    is_alive = IsAlive(buffer_io)
+    name = buffer_io.buffer_names_observe[0]
+    directory = os.path.join(buffer_io.run_directory, "Histograms_" + name)
+    info_df = pd.read_csv(os.path.join(directory, 'info.csv'))
+
+    # Get config
+    update_interval = buffer_io.get('update_interval', 1)
+    plot_type = buffer_io.get('plot_type', 'line')  # 'line', 'bar', or 'step'
+
+    # Make grid of subplots
+    n_channels = len(info_df)
     fig = plt.figure()
     fig.canvas.manager.set_window_title('Histogram ' + name)
-
-    n_plots = len(channels)
-    cols = int(np.ceil(np.sqrt(n_plots)))
-    rows = int(np.ceil(n_plots / cols))
+    cols = int(np.ceil(np.sqrt(n_channels)))
+    rows = int(np.ceil(n_channels / cols))
     axes = fig.subplots(rows, cols)
-    if n_plots == 1:
+    if n_channels == 1:
         axes = np.array([axes])
     axes = axes.flatten()
 
     hist_artists = {}
+    files = {}
+    for i in range(n_channels):
+        ch = info_df['Channel'][i]
+        ax = axes[i]
+        bins = np.linspace(info_df['Min'][i], info_df['Max'][i], info_df['NBins'][i])
 
-    for ch, ax in zip(channels, axes):
+        files[ch] = os.path.join(directory, ch + '.npy')
         data = np.load(files[ch])
         if plot_type == 'line':
-            (hist_artists[ch],) = ax.plot(bins[ch][:-1], data)
+            (hist_artists[ch],) = ax.plot(bins[:-1], data)
         elif plot_type == 'bar':
-            hist_artists[ch] = ax.bar(bins[ch][:-1], data, width=0.8 * np.diff(bins[ch]), align='edge')
+            hist_artists[ch] = ax.bar(bins[:-1], data, width=0.8 * np.diff(bins), align='edge')
         elif plot_type == 'step':
-            (hist_artists[ch],) = ax.step(bins[ch][:-1], data, where='mid')
+            (hist_artists[ch],) = ax.step(bins[:-1], data, where='mid')
         else:
             raise ValueError("plot_type must be 'line', 'bar', or 'step'.")
 
         ax.set_title(ch)
         ax.set_xlabel('Value')
         ax.set_ylabel('Count')
-        ax.set_xlim(bins[ch][0], bins[ch][-1])
+        ax.set_xlim(bins[0], bins[-1])
 
     fig.tight_layout()
     plt.ion()
     plt.show()
 
     last_update = time.time()
-    while True:
+    while is_alive():
         if time.time() - last_update > update_interval:
-            for i, ch in enumerate(channels):
+            for i, ch in enumerate(info_df['Channel']):
                 try:
                     new_data = np.load(files[ch])
                 except (EOFError, ValueError):
@@ -186,7 +227,6 @@ def sub_histogram(files, bins, update_interval, name, plot_type):
 
         fig.canvas.flush_events()
         time.sleep(1 / 20)
-    # TODO why dont i count frames?
 
 
 def csv(buffer_io):

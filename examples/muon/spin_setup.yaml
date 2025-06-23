@@ -69,10 +69,18 @@ Workers:
     sources: [PulseParametersUp]
     sinks: [PulseParametersUp_Export]
     config: hist_config_up.yaml
+  showHistUp:
+    function: exporters.visualize_histogram
+    observes: [PulseParametersUp]
+    config: hist_config_up.yaml
   histDown:
     function: exporters.histogram
     sources: [PulseParametersDown]
     sinks: [PulseParametersDown_Export]
+    config: hist_config_down.yaml
+  showHistDown:
+    function: exporters.visualize_histogram
+    observes: [PulseParametersDown]
     config: hist_config_down.yaml
   saveUp:
     function: exporters.csv

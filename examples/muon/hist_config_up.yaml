@@ -4,7 +4,5 @@ bins:
   1st_chB_h: [0, 1000, 75]
   2nd_chA_h: [0, 1000, 75]
   2nd_chB_h: [0, 1000, 75]
-visualize: True
-
 
 

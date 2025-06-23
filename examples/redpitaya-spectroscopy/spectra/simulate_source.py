@@ -39,7 +39,7 @@ def simulate_source(buffer_io):
     file = os.path.join(importer.setup_directory, config.get("file", "spectra/Co-60.html"))
     average_rate = config.get("average_rate", 100)
 
-    number_of_samples = importer.data_out_example.size
+    number_of_samples = importer.data_example.size
 
     t = np.arange(0, number_of_samples)
     # generate pulse form
