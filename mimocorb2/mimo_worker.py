@@ -167,6 +167,13 @@ class BufferIO:
             raise KeyError(f"Key '{key}' not found in configuration of {self.name}.")
         return self.config[key]
 
+    def get(self, key, default=None):
+        """Get the value of a key from the configuration dictionary."""
+        try:
+            return self[key]
+        except KeyError:
+            return default
+
     @classmethod
     def from_setup(cls, name, setup: dict, setup_dir: str, run_dir: str, buffers: dict):
         """Initiate the BufferIO from a setup dictionary."""
