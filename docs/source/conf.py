@@ -1,5 +1,6 @@
 import os
 import sys
+import mimocorb2
 
 sys.path.insert(0, os.path.abspath("../../"))
 
@@ -27,6 +28,12 @@ extensions = [
     'sphinx.ext.duration',
     'sphinx.ext.doctest',
 ]
+
+
+# The short X.Y version.
+version = mimocorb2.__version__
+# The full version, including alpha/beta/rc tags.
+release = mimocorb2.__version__
 
 # sphinx-autodoc-typehints settings
 always_use_bars_union = True

@@ -9,7 +9,7 @@ authors = [
     {name = "Julian Baader", email = "julian.baader@gmx.de"}
 ]
 
-version = "0.1.0"
+dynamic = ["version"]
 
 dependencies = [
     "numpy",
@@ -26,6 +26,14 @@ readme = "README.md"
 license = {file = "LICENSE"}
 #license = "MIT"
 # TODO Keywords
+
+[tool.setuptools.dynamic]
+version = {attr = "mimocorb2.__version__"}
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["mimocorb2*"]
+
 
 [project.scripts]
 mimocorb2 = "mimocorb2.__main__:main"
