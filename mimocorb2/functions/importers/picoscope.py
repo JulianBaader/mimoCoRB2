@@ -3,7 +3,7 @@
 """
 
 import numpy as np
-from mimocorb.buffer_control import rbImport
+from mimocorb2.worker_templates import Importer
 from threading import Event
 import time
 import ctypes
@@ -18,7 +18,7 @@ class pico3000:
     Code derived from picoScope python SDK 3000A rapid block mode example code
     """
 
-    def __init__(self, config_dict=None):
+    def __init__(self, data_example: np.ndarray, config_dict=None):
         """evalutate configuation dictionary and set up callback and variables"""
         # Create a threading Event to speed up data copy (no polling required)
         self.callback_event = Event()
@@ -103,6 +103,8 @@ class pico3000:
             if "analogue_offset_chD" in config_dict:
                 self.analogue_offset_chD = config_dict["analogue_offset_chD"]
 
+        self.number_of_channels = len(data_example.dtype.names)  # number of channels to capture
+
         self.trigger_channel = config_dict["trigger_channel"]
         threshold = config_dict["trigger_threshold"]
         if self.trigger_channel == "EXT":
@@ -114,7 +116,7 @@ class pico3000:
             trigger_channel_name = "PS3000A_EXTERNAL"
         else:
             # trigger channels A - D
-            if self.trigger_channel not in ["A", "B", "C", "D"][: config_dict["channels"]]:
+            if self.trigger_channel not in ["A", "B", "C", "D"][: self.number_of_channels]:
                 self.trigger_channel = "A"
             trigger_channel_name = "PS3000A_CHANNEL_" + self.trigger_channel
             if self.trigger_channel == "A":
@@ -137,8 +139,8 @@ class pico3000:
         self.auto_trigger = 2**16  # in ms
         self.pre_trigger_samples = config_dict["pre_trigger_samples"]
         self.post_trigger_samples = config_dict["post_trigger_samples"]
-        self.total_samples = self.pre_trigger_samples + self.post_trigger_samples
-        if self.total_samples != config_dict["total_samples"]:
+        self.total_samples = len(data_example)  # total samples to capture
+        if self.total_samples != self.pre_trigger_samples + self.post_trigger_samples:
             raise ValueError("ERROR!! pre_trigger_samples, post_trigger_samples and total_samples do not match!")
 
         self.timebase = config_dict[
@@ -157,7 +159,6 @@ class pico3000:
         #!if self.sink.values_per_slot < self.total_samples:
         #!    raise ValueError("ERROR! Ringbuffer size ({:d}) smaller than total samples to capture ({:d})!".format(
         #!        self.sink.values_per_slot, self.total_samples))
-        self.number_of_channels = config_dict["channels"]
 
         # Initialize picoscope (see example)
         self.status["setChA"] = ps.ps3000aSetChannel(
@@ -337,7 +338,7 @@ class pico3000:
             None,
         )  # pParameter
         assert_pico_ok(self.status["runBlock"])
-        start_time = time.time_ns()
+        # start_time = time.time_ns()
         # ready = ctypes.c_int16(0)
         # check = ctypes.c_int16(0)
 
@@ -386,11 +387,11 @@ class pico3000:
                 None,
             )  # pParameter
             assert_pico_ok(self.status["runBlock"])
-            stop_time = time.time_ns()
-            processing_time = (stop_time - start_time) // 1e6  # Transform ns to ms
-            capture_time = (callback_time - start_time) // 1e6  # Transform ns to ms
-            deadtime = 1 - capture_time / processing_time  # in percent
-            start_time = stop_time
+            # stop_time = time.time_ns()
+            # processing_time = (stop_time - start_time) // 1e6  # Transform ns to ms
+            # capture_time = (callback_time - start_time) // 1e6  # Transform ns to ms
+            # deadtime = 1 - capture_time / processing_time  # in percent
+            # start_time = stop_time
             # ready = ctypes.c_int16(0)
             # check = ctypes.c_int16(0)
             # Bulk convert all channels from ADC to mV using numpy vectorization. Using a big numpy array instead of
@@ -405,7 +406,7 @@ class pico3000:
                 chD_buffers_mV = np.stack(self.chD_buffers, axis=0) * (self.chD_range_value / self.max_adc_value)
 
             # Put each of the bulk measurements into its own ring buffer slot
-            time_per_sample = processing_time / self.number_of_memory_segments * 1e-3  # in seconds
+            # time_per_sample = processing_time / self.number_of_memory_segments * 1e-3  # in seconds
 
             for i in range(self.number_of_memory_segments):
                 data[0, :] = chA_buffers_mV[i, :]
@@ -417,17 +418,66 @@ class pico3000:
                     data[3, :] = chD_buffers_mV[i, :]
                 # calculate and set metadata
                 self.trigger_counter += 1
-                timestamp = stop_time * 1e-9 - processing_time * 1e-3 + i * time_per_sample
-                mdata = (self.trigger_counter, timestamp, deadtime)
+                # timestamp = stop_time * 1e-9 - processing_time * 1e-3 + i * time_per_sample
+                # mdata = (self.trigger_counter, timestamp, deadtime)
                 # deliver data (2D numpy) and meta-data (tuple)
-                yield (data, mdata)
+                # TODO readd mdata if whished
+                yield data
 
 
-def picoscope_source(source_list=None, sink_list=None, observe_list=None, config_dict=None, **rb_info):
-    """main function called by run_daq.py"""
+def source(buffer_io):
+    """mimoCoRB2 Function: Picoscope Source
+
+    Read waveform data from usb oscilloscpe
+
+    Type
+    ----
+    Importer
+
+    Buffers
+    -------
+    sources
+        0
+    sinks
+        1
+    observes
+        0
+
+    Configs
+    -------
+    channel_coupling : str
+        TODO
+    trigger_channel : str
+        TODO
+    trigger_threshold : float
+        TODO (in mV)
+    pre_trigger_samples : int
+        TODO
+    post_trigger_samples : int
+        TODO
+    timebase : int
+        TODO (magic number, see picoscope SDK example code)
+    number_of_memory_segments : int
+        TODO (number of segments to capture, must be <= 128MS)
+    channel_range : str, optional (default="20V")
+        TODO
+    channelA_range : str, optional (only used if channel_range not provided) (default="20V")
+    channelB_range : str, optional (only used if channel_range not provided) (default="20V")
+    channelC_range : str, optional (only used if channel_range not provided) (default="20V")
+    channelD_range : str, optional (only used if channel_range not provided) (default="20V")
+    analogue_offset : float, optional (default=0.0)
+        TODO (In V and not adc!)
+    analogue_offset_chA : float, optional (only used if analogue_offset not provided) (default=0.0)
+    analogue_offset_chB : float, optional (only used if analogue_offset not provided) (default=0.0)
+    analogue_offset_chC : float, optional (only used if analogue_offset not provided) (default=0.0)
+    analogue_offset_chD : float, optional (only used if analogue_offset not provided) (default=0.0)
+    trigger_direction : str, optional (default="RISING")
+        TODO
+    """
     # initialize oszilloscope
-    osci = pico3000(config_dict)
+
     # initalize buffer import; data from __call__-method of class pico3000
-    rbInput = rbImport(sink_list=sink_list, config_dict=config_dict, ufunc=osci, **rb_info)
-    rbInput()
+    importer = Importer(buffer_io)
+    osci = pico3000(importer.data_example, buffer_io.config_dict)
+    importer(osci)
     del osci
