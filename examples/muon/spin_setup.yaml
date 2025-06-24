@@ -49,17 +49,17 @@ Buffers:
 
 Workers:
   input:
-    file: simulate_source.py
+    file: modules/simulate_source.py
     function: simulate_source
     sinks: [InputBuffer]
-    config: config.yaml
+    config: configs/config.yaml
   filter:
-    file: lifetime_filter.py
+    file: modules/lifetime_filter.py
     function: calculate_decay_time
     number_of_processes: 3
     sources: [InputBuffer]
     sinks: [AcceptedPulses, PulseParametersUp, PulseParametersDown]
-    config: config.yaml
+    config: configs/config.yaml
   
   save_pulses:
     function: data.export
@@ -68,28 +68,28 @@ Workers:
     function: exporters.histogram
     sources: [PulseParametersUp]
     sinks: [PulseParametersUp_Export]
-    config: hist_config_up.yaml
+    config: configs/hist_config_up.yaml
   showHistUp:
     function: exporters.visualize_histogram
     observes: [PulseParametersUp]
-    config: hist_config_up.yaml
+    config: configs/hist_config_up.yaml
   histDown:
     function: exporters.histogram
     sources: [PulseParametersDown]
     sinks: [PulseParametersDown_Export]
-    config: hist_config_down.yaml
+    config: configs/hist_config_down.yaml
   showHistDown:
     function: exporters.visualize_histogram
     observes: [PulseParametersDown]
-    config: hist_config_down.yaml
+    config: configs/hist_config_down.yaml
   saveUp:
     function: exporters.csv
     sources: [PulseParametersUp_Export]
-    config: hist_config_up.yaml
+    config: configs/hist_config_up.yaml
   saveDown:
     function: exporters.csv
     sources: [PulseParametersDown_Export]
-    config: hist_config_down.yaml
+    config: configs/hist_config_down.yaml
 
 
   oscilloscope:
