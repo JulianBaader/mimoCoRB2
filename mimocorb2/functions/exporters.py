@@ -160,7 +160,12 @@ def visualize_histogram(buffer_io):
     is_alive = IsAlive(buffer_io)
     name = buffer_io.buffer_names_observe[0]
     directory = os.path.join(buffer_io.run_directory, "Histograms_" + name)
-    info_df = pd.read_csv(os.path.join(directory, 'info.csv'))
+    df_file = os.path.join(directory, 'info.csv')
+    while not os.path.isfile(df_file):
+        if not is_alive():
+            return
+        time.sleep(0.5)
+    info_df = pd.read_csv(df_file)
 
     # Get config
     update_interval = buffer_io.get('update_interval', 1)
