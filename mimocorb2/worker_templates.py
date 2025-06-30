@@ -280,12 +280,7 @@ class Filter(Base):
 class Processor(Base):
     """Worker class for processing data from one buffer to other buffer(s).
 
-    Attributes
-    ----------
-    reader : BufferReader
-        BufferReader object for reading data from the buffer
-    writers : list[BufferWriter]
-        List of BufferWriter objects for writing data to the buffers
+    Analyze data using ufunc(data) and send results to the corresponding sinks.
 
     Examples
     --------
