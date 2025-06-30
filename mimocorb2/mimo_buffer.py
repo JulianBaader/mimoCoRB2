@@ -5,6 +5,11 @@ mimo_buffer.py
 Multiple In Multiple Out buffer. A module for managing multiprocessing-safe buffers using shared memory.
 This module is designed for high-performance data processing tasks where data must be shared across multiple processes efficiently.
 
+The buffer itself is implemented as a shared memory which can be accessed by multiple processes through tokens.
+Each token represents a slot in the buffer. Tokens are either stored in the empty_slots queue (the corresponding slot is empty and can be written to) or in the filled_slots queue (the corresponding slot is filled).
+The Interfaces Reader, Writer, and Observer provide context management for reading, writing, and observing data in the buffer, respectively.
+They also handle the management of tokens, ensuring that data can be safely read or written without conflicts.
+
 
 Classes
 -------
