@@ -170,7 +170,7 @@ class BufferIO:
     def get(self, key, default=None):
         """Get the value of a key from the configuration dictionary."""
         try:
-            return self[key]
+            return self.config[key]
         except KeyError:
             return default
 
