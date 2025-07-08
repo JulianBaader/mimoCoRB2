@@ -57,7 +57,9 @@ class mimoBuffer:
     mimoBuffer is a class that implements a shared memory buffer for managing data slots with metadata.
     It provides mechanisms for reading, writing, observing, and managing the state of the buffer,
     including pausing, resuming, and sending flush events.
+
     Attributes
+    ----------
     metadata_dtype : np.dtype
         Data type for the metadata associated with each slot.
     metadata_length : int
@@ -108,7 +110,9 @@ class mimoBuffer:
         Event count at the last statistics update.
     last_deadtime : float
         Dead time at the last statistics update.
+
     Methods
+    -------
     __init__(name: str, slot_count: int, data_length: int, data_dtype: np.dtype) -> None
         Initialize a MimoBuffer instance with the specified parameters.
     get_stats() -> dict
