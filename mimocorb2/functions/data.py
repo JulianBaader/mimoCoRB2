@@ -10,6 +10,51 @@ HEADER = """This is a mimoCoRB file"""
 
 
 class mimoFile:
+    """File handler for mimoCoRB2 data files.
+
+    This class provides methods to read and write data and metadata to a mimo file.
+    Mimo files are specifically designed for storing data from mimoCoRB2 buffers.
+    The file format is binary and includes a header with metadata about the data types and lengths.
+
+    Attributes
+    ----------
+    filename : str
+        The name of the file to read from or write to.
+    data_dtype : np.dtype
+        The data type of the data stored in the file.
+    data_length : int
+        The number of elements in the data array.
+    metadata_dtype : np.dtype
+        The data type of the metadata stored in the file.
+    metadata_length : int
+        The number of elements in the metadata array.
+    mode : str
+        The mode in which the file is opened ('read' or 'write').
+
+    Methods
+    -------
+    from_file(filename: str) -> 'mimoFile':
+        Class method to create a mimoFile instance from an existing file.
+    from_buffer_object(buffer: mimoBuffer, directory: str) -> 'mimoFile':
+        Class method to create a mimoFile instance from a mimoBuffer object.
+    write_data(data: np.ndarray, metadata: np.ndarray) -> None:
+        Writes data and metadata to the file.
+    read_data() -> Generator[Tuple[np.ndarray, np.ndarray], None, None]:
+        Reads data and metadata from the file in a generator fashion.
+    close() -> None:
+        Closes the file if it is open.
+    __enter__() -> 'mimoFile':
+        Context manager entry method to allow usage in a with statement.
+    __exit__(exc_type, exc_value, traceback) -> None:
+        Context manager exit method to ensure the file is closed properly.
+
+    Example
+    -------
+    >>> with mimoFile.from_file('data.mimo') as mf:
+    >>>     for data, metadata in mf.read_data():
+    >>>         print(data, metadata)
+    """
+
     def __init__(
         self,
         filename: str,
