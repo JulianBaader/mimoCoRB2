@@ -1,5 +1,6 @@
 from mimocorb2.mimo_buffer import mimoBuffer
 from mimocorb2.mimo_worker import mimoWorker
+from pathlib import Path
 
 import yaml
 import os
@@ -11,9 +12,9 @@ import graphviz
 
 
 class Control:
-    def __init__(self, setup_dict: dict, setup_directory: str, mode: str = 'kbd') -> None:
-        self.run_directory = None
-        self.setup_dir = setup_directory
+    def __init__(self, setup_dict: dict, setup_dir: Path | str, mode: str = 'kbd') -> None:
+        self.run_dir = None
+        self.setup_dir = Path(setup_dir).resolve()
 
         self.roots = None
 
@@ -21,7 +22,7 @@ class Control:
 
         self.setup = setup_dict
 
-        self.setup_run_directory()
+        self.set_up_run_dir()
 
         self.print_queue = mp.Queue()
 
@@ -33,13 +34,13 @@ class Control:
         self.buffers = {name: mimoBuffer.from_setup(name, setup) for name, setup in self.setup['Buffers'].items()}
 
         self.workers = {
-            name: mimoWorker.from_setup(name, setup, self.setup_dir, self.run_directory, self.buffers, self.print_queue)
+            name: mimoWorker.from_setup(name, setup, self.setup_dir, self.run_dir, self.buffers, self.print_queue)
             for name, setup in self.setup['Workers'].items()
         }
 
         self.find_roots()
         try:
-            self.visualize_data_flow(os.path.join(self.run_directory, 'data_flow'))
+            self.visualize_data_flow(os.path.join(self.run_dir, 'data_flow'))
         except graphviz.backend.ExecutableNotFound as e:
             print("Graphviz executables not found. Data flow visualization will not be generated.")
             print(e)
@@ -99,18 +100,20 @@ class Control:
         copy = self.setup.copy()
         for worker_name, worker in self.workers.items():
             copy['Workers'][worker_name]['config'] = worker.buffer_io.config.copy()
-        setup_file = os.path.join(self.run_directory, 'setup.yaml')
-        with open(setup_file, 'w') as f:
+        setup_file = self.run_dir / 'setup.yaml'
+        with setup_file.open('w') as f:
             yaml.safe_dump(copy, f, default_flow_style=False, sort_keys=False)
 
-    def setup_run_directory(self) -> None:
-        """Setup the run directory"""
-        target_directory = os.path.join(self.setup_dir, self.setup.get('target_directory', 'target'))
-        os.makedirs(target_directory, exist_ok=True)
+    def set_up_run_dir(self) -> None:
+        """Set up the run directory"""
+        target_dir = self.setup_dir / self.setup.get('target_directory', 'target')
+        target_dir.mkdir(parents=True, exist_ok=True)
+
         self.start_time = time.strftime('%Y-%m-%d_%H-%M-%S')
-        self.run_directory = os.path.join(target_directory, 'run' + '_' + self.start_time)
-        os.makedirs(self.run_directory, exist_ok=False)
-        self.run_directory = os.path.abspath(self.run_directory)
+        self.run_dir = target_dir / f'run_{self.start_time}'
+        self.run_dir.mkdir(parents=True, exist_ok=False)
+
+        self.run_dir = self.run_dir.resolve()
 
     def find_roots(self) -> None:
         self.roots = {}
@@ -227,14 +230,17 @@ class Control:
         return stats
 
     @classmethod
-    def from_setup_file(cls, setup_file: str, mode: str = 'kbd') -> 'Control':
+    def from_setup_file(cls, setup_file: Path | str, mode: str = 'kbd') -> 'Control':
         """Create a Control instance from a setup file."""
-        if not os.path.exists(setup_file):
+        setup_file = Path(setup_file)
+        if not setup_file.exists():
             raise FileNotFoundError(f"Setup file {setup_file} does not exist.")
 
-        with open(setup_file, 'r') as f:
+        with setup_file.open('r') as f:
             setup_dict = yaml.safe_load(f)
+
         if not isinstance(setup_dict, dict):
             raise ValueError(f"Setup file {setup_file} does not contain a valid setup dictionary.")
-        setup_directory = os.path.dirname(os.path.abspath(setup_file))
-        return cls(setup_dict, setup_directory, mode=mode)
+
+        setup_dir = setup_file.resolve().parent
+        return cls(setup_dict, setup_dir, mode=mode)

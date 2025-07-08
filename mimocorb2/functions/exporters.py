@@ -4,7 +4,6 @@ import numpy as np
 from numpy.lib import recfunctions as rfn
 import pandas as pd
 import time
-import os
 import matplotlib.pyplot as plt
 
 
@@ -34,7 +33,7 @@ def drain(buffer_io):
 def histogram(buffer_io):
     """mimoCoRB2 Function: Export data as a histogram.
 
-    Saves histograms of the data in the source buffer to npy files in the run_directory for each field in the source buffer.
+    Saves histograms of the data in the source buffer to npy files in the run_dir for each field in the source buffer.
     The histograms are saved in a directory named "Histograms_<source_buffer_name>".
     The directory contains a file named "info.csv" with the histogram configuration and individual npy files for each channel.
     It is possible to visualize the histograms using the `visualize_histogram` function.
@@ -83,8 +82,8 @@ def histogram(buffer_io):
     if data_example.size != 1:
         raise ValueError('histogram exporter only supports data_length = 1')
 
-    directory = os.path.join(buffer_io.run_directory, "Histograms_" + name)
-    os.makedirs(directory, exist_ok=True)
+    directory = buffer_io.run_dir / f"Histograms_{name}"
+    directory.mkdir(parents=True, exist_ok=True)
 
     # Get config
     update_interval = exporter.config.get('update_interval', 1)
@@ -104,13 +103,13 @@ def histogram(buffer_io):
             'NBins': [bin_config[ch][2] for ch in channels],
         }
     )
-    info_df.to_csv(os.path.join(directory, 'info.csv'), index=False)
+    info_df.to_csv(directory / 'info.csv', index=False)
 
     bins = {}
     hists = {}
     files = {}
     for ch in channels:
-        files[ch] = os.path.join(directory, ch + '.npy')
+        files[ch] = directory / f"{ch}.npy"
         bins[ch] = np.linspace(bin_config[ch][0], bin_config[ch][1], bin_config[ch][2])
         hists[ch] = np.histogram([], bins=bins[ch])[0]
 
@@ -159,9 +158,10 @@ def visualize_histogram(buffer_io):
     """
     is_alive = IsAlive(buffer_io)
     name = buffer_io.buffer_names_observe[0]
-    directory = os.path.join(buffer_io.run_directory, "Histograms_" + name)
-    df_file = os.path.join(directory, 'info.csv')
-    while not os.path.isfile(df_file):
+    directory = buffer_io.run_dir / f"Histograms_{name}"
+    df_file = directory / 'info.csv'
+    while not df_file.exists():
+        # Wait for the info.csv file to be created by the histogram exporter
         if not is_alive():
             return
         time.sleep(0.5)
@@ -189,7 +189,7 @@ def visualize_histogram(buffer_io):
         ax = axes[i]
         bins = np.linspace(info_df['Min'][i], info_df['Max'][i], info_df['NBins'][i])
 
-        files[ch] = os.path.join(directory, ch + '.npy')
+        files[ch] = directory / f"{ch}.npy"
         data = np.load(files[ch])
         if plot_type == 'line':
             (hist_artists[ch],) = ax.plot(bins[:-1], data)
@@ -237,7 +237,7 @@ def visualize_histogram(buffer_io):
 def csv(buffer_io):
     """mimoCoRB2 Function: Save data from the source buffer to a CSV file.
 
-    Saves data from the source buffer to a CSV file in the run_directory.
+    Saves data from the source buffer to a CSV file in the run_dir.
     Each field in the source buffer is saved as a column in the CSV file.
 
     Type
@@ -258,7 +258,7 @@ def csv(buffer_io):
     save_interval : int, optional (default=1)
         Interval in seconds to save the CSV file.
     filename : str, optional (default='exporter_name')
-        Name of the CSV file to save the data to. The file will be saved in the run_directory.
+        Name of the CSV file to save the data to. The file will be saved in the run_dir.
 
     Examples
     --------
@@ -270,13 +270,13 @@ def csv(buffer_io):
     data_example = exporter.data_example
     metadata_example = exporter.metadata_example
 
-    run_directory = exporter.run_directory
+    run_dir = exporter.run_dir
     exporter_name = exporter.name
 
     config = exporter.config
     save_interval = config.get('save_interval', 1)
     filename = config.get('filename', exporter_name)
-    filename = os.path.join(run_directory, f"{filename}.csv")
+    filename = run_dir / f"{filename}.csv"
 
     if data_example.size != 1:
         raise ValueError('csv exporter only supports data_length = 1')

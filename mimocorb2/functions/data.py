@@ -4,7 +4,7 @@ from mimocorb2.mimo_buffer import mimoBuffer
 import numpy as np
 import pickle
 import time
-import os
+from pathlib import Path
 
 HEADER = """This is a mimoCoRB file"""
 
@@ -33,9 +33,9 @@ class mimoFile:
 
     Methods
     -------
-    from_file(filename: str) -> 'mimoFile':
+    from_file(filename: Path | str) -> 'mimoFile':
         Class method to create a mimoFile instance from an existing file.
-    from_buffer_object(buffer: mimoBuffer, directory: str) -> 'mimoFile':
+    from_buffer_object(buffer: mimoBuffer, run_dir: Path) -> 'mimoFile':
         Class method to create a mimoFile instance from a mimoBuffer object.
     write_data(data: np.ndarray, metadata: np.ndarray) -> None:
         Writes data and metadata to the file.
@@ -57,7 +57,7 @@ class mimoFile:
 
     def __init__(
         self,
-        filename: str,
+        filename: Path,
         data_dtype: np.dtype,
         data_length: int,
         metadata_dtype: np.dtype,
@@ -76,15 +76,16 @@ class mimoFile:
 
         # Open file based on mode
         if mode == 'write':
-            self.file = open(self.filename, 'ab')  # Append binary for writing
+            self.file = self.filename.open('ab')  # Append binary for writing
         elif mode == 'read':
-            self.file = open(self.filename, 'rb')  # Read binary for reading
+            self.file = self.filename.open('rb')  # Read binary for reading
         else:
             raise ValueError("Mode must be 'read' or 'write'")
 
     @classmethod
-    def from_file(cls, filename: str) -> 'mimoFile':
-        with open(filename, 'rb') as file:
+    def from_file(cls, filename: Path | str) -> 'mimoFile':
+        filename = Path(filename)
+        with filename.open('rb') as file:
             info = pickle.load(file)
         return cls(
             filename,
@@ -96,8 +97,8 @@ class mimoFile:
         )
 
     @classmethod
-    def from_buffer_object(cls, buffer: mimoBuffer, directory: str) -> 'mimoFile':
-        filename = os.path.join(directory, buffer.name + '.mimo')
+    def from_buffer_object(cls, buffer: mimoBuffer, run_dir: Path) -> 'mimoFile':
+        filename = run_dir / f'{buffer.name}.mimo'
         data_example = buffer.data_example
         metadata_example = buffer.metadata_example
         info = {
@@ -108,7 +109,7 @@ class mimoFile:
             'metadata_dtype': metadata_example.dtype,
             'metadata_length': metadata_example.size,
         }
-        with open(filename, 'wb') as file:
+        with filename.open('wb') as file:
             pickle.dump(info, file)
         return cls(
             filename, data_example.dtype, data_example.size, metadata_example.dtype, metadata_example.size, mode='write'
@@ -176,7 +177,7 @@ def export(buffer_io):
     """
     exporter = Exporter(buffer_io)
 
-    file = mimoFile.from_buffer_object(exporter.io.read[0].buffer, exporter.run_directory)
+    file = mimoFile.from_buffer_object(exporter.io.read[0].buffer, exporter.run_dir)
 
     with file:
         for data, metadata in exporter:

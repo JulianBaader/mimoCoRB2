@@ -2,12 +2,13 @@ import multiprocessing
 import io
 import logging
 from typing import Callable
-import os
 import sys
 import yaml
 from mimocorb2.mimo_buffer import BufferReader, BufferWriter, BufferObserver
+from pathlib import Path
 
-FUNCTIONS_FOLDER = os.path.join(os.path.dirname(__file__), 'functions')
+FUNCTIONS_FOLDER = Path(__file__).resolve().parent / 'functions'
+
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +25,7 @@ class Config(dict):
 
     Methods
     -------
-    from_setup(setup: str | dict | list, setup_dir: str)
+    from_setup(setup: str | dict | list, setup_dir: Path)
         Load the configuration from a setup.
     """
 
@@ -32,7 +33,7 @@ class Config(dict):
         super().__init__(config_dict)
 
     @classmethod
-    def from_setup(cls, setup: str | dict | list[str], setup_dir: str):
+    def from_setup(cls, setup: str | dict | list[str], setup_dir: Path):
         """Load the configuration from a setup.
 
         Parameters
@@ -40,7 +41,7 @@ class Config(dict):
         setup : str | dict | list[str]
             If a string or a list of strings is provided, the yaml files relative to the setup_dir are loaded.
             If a dictionary is provided, it is used as the configuration directly.
-        setup_dir : str
+        setup_dir : Path
             The directory where the setup file is located.
 
         Returns
@@ -49,7 +50,7 @@ class Config(dict):
             An instance of the Config class containing the loaded configuration.
         """
         if isinstance(setup, str):
-            with open(os.path.join(setup_dir, setup), 'r') as file:
+            with (setup_dir / setup).open('r') as file:
                 config = yaml.safe_load(file)
         elif isinstance(setup, dict):
             config = setup
@@ -57,7 +58,7 @@ class Config(dict):
             config = {}
             for item in setup:
                 if isinstance(item, str):
-                    with open(os.path.join(setup_dir, item), 'r') as file:
+                    with (setup_dir / item).open('r') as file:
                         config.update(yaml.safe_load(file))
                 elif isinstance(item, dict):
                     config.update(item)
@@ -84,9 +85,9 @@ class BufferIO:
         List of observe buffers.
     config : Config
         Configuration dictionary for the worker.
-    setup_directory : str
+    setup_dir : Path
         Directory where the setup file is located. (Load external data)
-    run_directory : str
+    run_dir : Path
         Directory where the run is located. (Save external data)
     logger : logging.Logger
 
@@ -122,8 +123,8 @@ class BufferIO:
         sinks: list[BufferWriter],
         observes: list[BufferObserver],
         config: Config,
-        setup_directory: str,
-        run_directory: str,
+        setup_dir: Path,
+        run_dir: Path,
     ) -> None:
         self.name = name
         self.read = sources
@@ -131,8 +132,8 @@ class BufferIO:
         self.observe = observes
         self.config = config
         self.logger = logging.getLogger(name=f'{__name__}.{self.name}')
-        self.setup_directory = setup_directory
-        self.run_directory = run_directory
+        self.setup_dir = setup_dir
+        self.run_dir = run_dir
 
         self._set_examples('in', self.read)
         self._set_examples('out', self.write)
@@ -175,7 +176,7 @@ class BufferIO:
             return default
 
     @classmethod
-    def from_setup(cls, name, setup: dict, setup_dir: str, run_dir: str, buffers: dict):
+    def from_setup(cls, name, setup: dict, setup_dir: Path, run_dir: Path, buffers: dict):
         """Initiate the BufferIO from a setup dictionary."""
         sources = []
         for buffer_name in setup.get('sources', []):
@@ -203,8 +204,8 @@ class BufferIO:
             sinks=sinks,
             observes=observes,
             config=config,
-            setup_directory=setup_dir,
-            run_directory=run_dir,
+            setup_dir=setup_dir,
+            run_dir=run_dir,
         )
 
 
@@ -314,7 +315,7 @@ class mimoWorker:
 
     @classmethod
     def from_setup(
-        cls, name: str, setup: dict, setup_dir: str, run_dir, buffers: dict, print_queue: multiprocessing.Queue
+        cls, name: str, setup: dict, setup_dir: Path, run_dir: Path, buffers: dict, print_queue: multiprocessing.Queue
     ) -> 'mimoWorker':
         """Initiate the Worker from a setup dictionary.
 
@@ -327,9 +328,9 @@ class mimoWorker:
             A unique name for the worker group.
         setup : dict
             A dictionary containing the setup configuration.
-        setup_dir : str
+        setup_dir : Path
             The directory where the setup file is located.
-        run_dir : str
+        run_dir : Path
             The directory where the run is located.
         buffers : dict
             A dictionary containing the buffers of the current run.
@@ -349,10 +350,11 @@ class mimoWorker:
             parts = function_name.split('.')
             function_name = parts.pop(-1)
             file_name = parts.pop(-1) + '.py'
-            file = os.path.join(FUNCTIONS_FOLDER, *parts, file_name)
+            file = FUNCTIONS_FOLDER.joinpath(*parts, file_name)
         else:
-            file = os.path.join(setup_dir, file)
-        if not os.path.isfile(file):
+            file = Path(setup_dir) / file
+
+        if not file.is_file():
             raise FileNotFoundError(f"Function file {file} not found for function {function_name}")
 
         return cls(
@@ -370,20 +372,28 @@ class mimoWorker:
         )
 
     @staticmethod
-    def _import_function(file: str, function_name: str) -> Callable:
+    def _import_function(file: str | Path, function_name: str) -> Callable:
         """Import a function from a file and return it as a callable."""
-        directory = os.path.dirname(file)
-        module_name = os.path.basename(file).removesuffix('.py')
+        file_path = Path(file)
+        directory = str(file_path.parent.resolve())
+        module_name = file_path.stem  # filename without '.py'
 
+        # Temporarily modify sys.path to import the module
+        added_to_sys_path = False
         if directory not in sys.path:
             sys.path.append(directory)
+            added_to_sys_path = True
+
+        try:
             module = __import__(module_name, globals(), locals(), fromlist=[function_name])
-            sys.path.remove(directory)
-        else:
-            module = __import__(module_name, globals(), locals(), fromlist=[function_name])
-        if function_name not in vars(module):
-            raise ImportError(f"Function {function_name} not found in module {file}")
-        return vars(module)[function_name]
+        finally:
+            if added_to_sys_path:
+                sys.path.remove(directory)
+
+        if not hasattr(module, function_name):
+            raise ImportError(f"Function {function_name} not found in module {file_path}")
+
+        return getattr(module, function_name)
 
 
 class QueueWriter(io.TextIOBase):
