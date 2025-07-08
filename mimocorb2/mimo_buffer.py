@@ -475,6 +475,12 @@ class BufferReader(Interface):
         Get a token and access the slot for reading.
     __exit__(exc_type, exc_value, traceback)
         Return the token after reading.
+
+    Example
+    -------
+    >>> reader = BufferReader(buffer)
+    >>> with reader as (metadata, data):
+    ...    print(metadata, data)
     """
 
     def __enter__(self) -> list[np.ndarray, np.ndarray] | list[None, None]:
@@ -509,6 +515,12 @@ class BufferWriter(Interface):
         Return the token after writing.
     send_flush_event()
         Send a flush event to notify consumers.
+
+    Example
+    -------
+    >>> writer = BufferWriter(buffer)
+    >>> with writer as (metadata, data):
+    ...     data[:] = np.arange(10)
     """
 
     def __enter__(self) -> list[np.ndarray, np.ndarray]:
@@ -546,6 +558,12 @@ class BufferObserver(Interface):
         Get a token and access the slot for observation.
     __exit__(exc_type, exc_value, traceback)
         Return the token after observation.
+
+    Example
+    -------
+    >>> observer = BufferObserver(buffer)
+    >>> with observer as (metadata, data):
+    ...     print(metadata, data)
     """
 
     def __enter__(self) -> list[np.ndarray, np.ndarray] | list[None, None]:
