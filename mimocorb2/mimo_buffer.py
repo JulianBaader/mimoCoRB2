@@ -350,7 +350,7 @@ class mimoBuffer:
         with self.total_deadtime.get_lock():
             self.total_deadtime.value += self.buffer[token][: self.metadata_byte_size].view(self.metadata_dtype)[
                 "deadtime"
-            ]  # TODO i think this is ugly
+            ][0]  # TODO i think this is ugly
 
         self.filled_slots.put(token)
 

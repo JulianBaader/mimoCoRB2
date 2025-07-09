@@ -12,7 +12,7 @@ def normed_pulse(ch_input, position, prominence, analogue_offset):
     #       rel_height is not good because of the quantized nature of the picoscope data
     #       so we have to "hack" a little bit to always cut 10mV above the analogue offset
     width_data = signal.peak_widths(ch_data, [int(position)], rel_height=(ch_data[int(position)] - 10) / prominence)
-    left_ips, right_ips = width_data[2], width_data[3]
+    left_ips, right_ips = width_data[2][0], width_data[3][0]
     # Crop pulse area and normalize
     pulse_data = ch_data[int(np.floor(left_ips)) : int(np.ceil(right_ips))]
     pulse_int = sum(pulse_data)
