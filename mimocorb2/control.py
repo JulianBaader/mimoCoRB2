@@ -12,13 +12,13 @@ import graphviz
 
 
 class Control:
-    def __init__(self, setup_dict: dict, setup_dir: Path | str, mode: str = 'kbd') -> None:
+    def __init__(self, setup_dict: dict, setup_dir: Path | str, mode: str = 'kbd+stats') -> None:
         self.run_dir = None
         self.setup_dir = Path(setup_dir).resolve()
 
         self.roots = None
 
-        self.mode = mode
+        self.modes = mode.split('+')
 
         self.setup = setup_dict
 
@@ -48,14 +48,14 @@ class Control:
 
     def __call__(self) -> None:
         """Start the control loop as well as the control interfaces."""
-        if self.mode == 'kbd':
+        if 'kbd' in self.modes:
             import mimocorb2.control_terminal as ctrl_term
 
             self.terminal_thread = threading.Thread(
                 target=ctrl_term.control_terminal, args=(self.command_queue, self.stats_queue, self.print_queue)
             )
             self.terminal_thread.start()
-        if self.mode == 'gui':
+        if 'gui' in self.modes:
             import mimocorb2.control_gui as ctrl_gui
 
             infos = ctrl_gui.get_infos_from_control(self)
@@ -63,6 +63,14 @@ class Control:
                 target=ctrl_gui.run_gui, args=(self.command_queue, self.stats_queue, self.print_queue, infos)
             )
             self.gui_process.start()
+        if 'stats' in self.modes:
+            import mimocorb2.control_stats_logger as ctrl_stats_logger
+
+            self.stats_logger_thread = threading.Thread(
+                target=ctrl_stats_logger.control_stats_logger,
+                args=(self.command_queue, self.stats_queue, self.print_queue, self.run_dir),
+            )
+            self.stats_logger_thread.start()
 
         self.start_workers()
         while True:
@@ -91,10 +99,12 @@ class Control:
                 pass
             time.sleep(0.1)
 
-        if self.mode == 'kbd':
+        if 'kbd' in self.modes:
             self.terminal_thread.join()
-        if self.mode == 'gui':
+        if 'gui' in self.modes:
             self.gui_process.join()
+        if 'stats' in self.modes:
+            self.stats_logger_thread.join()
 
     def save_setup(self):
         copy = self.setup.copy()
@@ -230,7 +240,7 @@ class Control:
         return stats
 
     @classmethod
-    def from_setup_file(cls, setup_file: Path | str, mode: str = 'kbd') -> 'Control':
+    def from_setup_file(cls, setup_file: Path | str, mode: str = 'kbd+stats') -> 'Control':
         """Create a Control instance from a setup file."""
         setup_file = Path(setup_file)
         if not setup_file.exists():

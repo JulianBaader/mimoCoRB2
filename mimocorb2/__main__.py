@@ -37,8 +37,8 @@ def parse_args():
     parser.add_argument(
         "-c",
         "--control_mode",
-        choices=["gui", "kbd"],
-        default="gui",
+        choices=["gui+stats", "kbd+stats", "gui", "kbd"],
+        default="gui+stats",
         help="Control mode to use: 'gui' for graphical interface, 'kbd' for keyboard interface (default: gui)",
     )
 
