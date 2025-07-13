@@ -175,6 +175,7 @@ class CpuPlot(MplCanvas):
 
         self.xdata = [-TIME_RATE, 0]
         self.ydatas = {name: [0, 0] for name in self.worker_names}
+        self.ydata_control = [0, 0]
         self.axes.set_xlim(-TIME_RATE, 0)
 
         yticks_log = np.log1p([0, 1, 5, 10, 25, 50, 75, 100])  # log1p values
@@ -185,6 +186,9 @@ class CpuPlot(MplCanvas):
         self.axes.set_yticklabels(ytick_labels)
 
         self.lines = {name: self.axes.plot(self.xdata, self.ydatas[name], label=name)[0] for name in self.worker_names}
+        self.line_control = self.axes.plot(
+            self.xdata, self.ydata_control, label="Control", color='black', linestyle='--'
+        )[0]
         self.axes.legend(loc="upper left")
         self.axes.grid(True, which='major', alpha=0.9)
         self.axes.grid(True, which='minor', alpha=0.5)
@@ -210,6 +214,14 @@ class CpuPlot(MplCanvas):
 
             self.lines[name].set_xdata(shifted_x)
             self.lines[name].set_ydata(self.ydatas[name])
+
+        y_control = np.log1p(stats['control']['cpu_percent'] / self.cpu_count)
+        self.ydata_control.append(y_control)
+        while len(self.ydata_control) > len(self.xdata):
+            self.ydata_control.pop(0)
+
+        self.line_control.set_xdata(shifted_x)
+        self.line_control.set_ydata(self.ydata_control)
 
         self.draw()
 

@@ -4,6 +4,7 @@ from pathlib import Path
 
 import yaml
 import os
+import psutil
 import time
 import queue
 import threading
@@ -234,6 +235,12 @@ class Control:
             }
         return stats
 
+    def get_control_stats(self) -> dict:
+        """Get the statistics of the control itself."""
+        return {
+            'cpu_percent': psutil.cpu_percent(),
+        }
+
     def get_time_active(self) -> float:
         """Return the time the workers have been active."""
         return time.time() - self.run_start_time
@@ -244,12 +251,14 @@ class Control:
         worker_stats = self.get_worker_stats()
         time_active = self.get_time_active()
         total_processes_alive = sum(worker_stats[name]['processes'] for name in worker_stats)
+        control_stats = self.get_control_stats()
 
         stats = {
             'buffers': buffer_stats,
             'workers': worker_stats,
             'time_active': time_active,
             'total_processes_alive': total_processes_alive,
+            'control': control_stats,
         }
         return stats
 
