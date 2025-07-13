@@ -222,9 +222,17 @@ class Control:
         """Get the statistics of all buffers."""
         return {name: b.get_stats() for name, b in self.buffers.items()}
 
-    def get_active_workers(self) -> dict:
-        """Get the number of active processes for each worker."""
-        return {name: sum(w.alive_processes()) for name, w in self.workers.items()}
+    def get_worker_stats(self) -> dict:
+        """Get the statistics of all workers."""
+        stats = {}
+        for name, worker in self.workers.items():
+            worker_stats = worker.get_stats()
+            sum_alive = sum(worker_stats['alive_processes'])
+            stats[name] = {
+                'processes': sum_alive,
+                'cpu_percent': sum(worker_stats['cpu_percents']),
+            }
+        return stats
 
     def get_time_active(self) -> float:
         """Return the time the workers have been active."""
@@ -232,10 +240,16 @@ class Control:
 
     def get_stats(self) -> dict:
         """Get the statistics of all workers and buffers."""
+        buffer_stats = self.get_buffer_stats()
+        worker_stats = self.get_worker_stats()
+        time_active = self.get_time_active()
+        total_processes_alive = sum(worker_stats[name]['processes'] for name in worker_stats)
+
         stats = {
-            'buffers': self.get_buffer_stats(),
-            'workers': self.get_active_workers(),
-            'time_active': self.get_time_active(),
+            'buffers': buffer_stats,
+            'workers': worker_stats,
+            'time_active': time_active,
+            'total_processes_alive': total_processes_alive,
         }
         return stats
 

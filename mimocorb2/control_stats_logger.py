@@ -59,7 +59,7 @@ def control_stats_logger(command_queue: queue, stats_queue: queue, print_queue: 
     while True:
         stats = stats_queue.get()
         # check once per second if there are no workers
-        if sum(stats['workers'].values()) == 0:
+        if stats['total_processes_alive'] == 0:
             break
         time.sleep(1)
         now = time.time()

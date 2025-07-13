@@ -39,8 +39,8 @@ def control_terminal(command_queue: queue, stats_queue: queue, print_queue: queu
                 print("  stats")
                 print("  help")
             elif command == 'exit':
-                worker_stats = stats_queue.get()['workers']
-                if sum(worker_stats.values()) > 0:
+                stats = stats_queue.get()
+                if stats['total_processes_alive'] > 0:
                     print("Warning: Some workers are still active. Use 'shutdown workers' to stop them.")
                 else:
                     command_queue.put(None)

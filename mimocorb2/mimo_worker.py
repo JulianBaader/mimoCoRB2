@@ -1,4 +1,5 @@
 import multiprocessing
+import psutil
 import io
 import logging
 from typing import Callable
@@ -276,7 +277,9 @@ class mimoWorker:
 
         logger.info(f"Creating mimoWorker: {str(self)}")
         self.logger = logging.getLogger(f'{__name__}.{self.name}')
+
         self.processes = []
+        self.sutil_processes = []
 
     def initialize_processes(self) -> None:
         """Initialize worker processes."""
@@ -297,10 +300,26 @@ class mimoWorker:
         """Start worker processes."""
         for process in self.processes:
             process.start()
+            self.sutil_processes.append(psutil.Process(process.pid))
 
-    def alive_processes(self) -> list[bool]:
-        """Checks which processes are still alive."""
-        return [p.is_alive() for p in self.processes]
+    def get_stats(self) -> dict:
+        """Retrieve statistics about the current state of the worker.
+
+        Returns
+        -------
+        dict
+        """
+
+        alive_processes = []
+        cpu_percents = []
+
+        for i in range(len(self.processes)):
+            alive_processes.append(self.processes[i].is_alive())
+            # TODO Check if process is still alive before requesting stats?
+            cpu_percents.append(self.sutil_processes[i].cpu_percent() if alive_processes[-1] else 0)
+
+        stats = {'alive_processes': alive_processes, 'cpu_percents': cpu_percents}
+        return stats
 
     def shutdown(self) -> None:
         """Shutdown worker processes."""

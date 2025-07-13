@@ -3,6 +3,7 @@ from mimocorb2.control import Control
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 import multiprocessing as mp
+import psutil
 import time
 import numpy as np
 import os
@@ -44,6 +45,7 @@ class ControlGui(QtWidgets.QMainWindow):
         self.infos = infos
 
         self.rate_plot = RatePlot(self.infos, self, "ratePlaceholder")
+        self.cpu_plot = CpuPlot(self.infos, self, "cpuPlaceholder")
         self.worker_plot = WorkerPlot(self.infos, self, "workerPlaceholder")
         self.buffer_plot = BufferPlot(self.infos, self, "bufferPlaceholder")
         self.table = Table(self.infos, self, "tablePlaceholder")
@@ -73,6 +75,7 @@ class ControlGui(QtWidgets.QMainWindow):
         try:
             stats = self.stats_queue.get_nowait()
             self.rate_plot.update_plot(stats)
+            self.cpu_plot.update_plot(stats)
             self.buffer_plot.update_plot(stats)
             self.worker_plot.update_plot(stats)
             self.table.update_table(stats)
@@ -82,7 +85,7 @@ class ControlGui(QtWidgets.QMainWindow):
 
     def closeEvent(self, event):
         stats = self.stats_queue.get()
-        if sum(stats['workers'][name] for name in stats['workers']) > 0:
+        if stats['total_processes_alive'] > 0:
             reply = QtWidgets.QMessageBox.question(
                 self,
                 'Shutdown',
@@ -161,6 +164,56 @@ class RatePlot(MplCanvas):
         self.draw()
 
 
+class CpuPlot(MplCanvas):
+    def __init__(self, infos: dict, parent=None, placeholder_name: str = None):
+        super().__init__(infos, parent, placeholder_name)
+        self.axes.set_title("CPU Usage")
+        self.axes.set_xlabel("Time (s)")
+        self.axes.set_ylabel("CPU Usage (%) (Normalized by CPU Count)")
+
+        self.cpu_count = psutil.cpu_count(logical=True)
+
+        self.xdata = [-TIME_RATE, 0]
+        self.ydatas = {name: [0, 0] for name in self.worker_names}
+        self.axes.set_xlim(-TIME_RATE, 0)
+
+        yticks_log = np.log1p([0, 1, 5, 10, 25, 50, 75, 100])  # log1p values
+        ytick_labels = [f"{v}%" for v in [0, 1, 5, 10, 25, 50, 75, 100]]  # readable labels
+        self.axes.set_ylim(yticks_log[0], yticks_log[-1])
+
+        self.axes.set_yticks(yticks_log)
+        self.axes.set_yticklabels(ytick_labels)
+
+        self.lines = {name: self.axes.plot(self.xdata, self.ydatas[name], label=name)[0] for name in self.worker_names}
+        self.axes.legend(loc="upper left")
+        self.axes.grid(True, which='major', alpha=0.9)
+        self.axes.grid(True, which='minor', alpha=0.5)
+
+        self.fig.tight_layout()
+        self.draw()
+
+    def update_plot(self, stats):
+        time_active = stats['time_active']
+
+        self.xdata.append(time_active)
+
+        while self.xdata and self.xdata[0] < time_active - TIME_RATE:
+            self.xdata.pop(0)
+
+        shifted_x = [x - time_active for x in self.xdata]
+
+        for name in self.worker_names:
+            y = np.log1p(stats['workers'][name]['cpu_percent'] / self.cpu_count)
+            self.ydatas[name].append(y)
+            while len(self.ydatas[name]) > len(self.xdata):
+                self.ydatas[name].pop(0)
+
+            self.lines[name].set_xdata(shifted_x)
+            self.lines[name].set_ydata(self.ydatas[name])
+
+        self.draw()
+
+
 class WorkerPlot(MplCanvas):
     def __init__(self, infos: dict, parent=None, placeholder_name: str = None):
         super().__init__(infos, parent, placeholder_name)
@@ -178,7 +231,7 @@ class WorkerPlot(MplCanvas):
         self.draw()
 
     def update_plot(self, stats):
-        number_of_processes = [stats['workers'][name] for name in self.worker_names]
+        number_of_processes = [stats['workers'][name]['processes'] for name in self.worker_names]
         for bar, new_height in zip(self.axes.patches, number_of_processes):
             bar.set_height(new_height)
         self.draw()
@@ -298,9 +351,7 @@ class StatusBar:
     def update_status(self, stats):
         time_active = stats['time_active']
         self.timeActiveLabel.setText(f"Time Active: {time_active:.2f} s")
-
-        processes_alive = sum(stats['workers'][name] for name in stats['workers'])
-        self.processesAliveLabel.setText(f"Processes Alive: {processes_alive}")
+        self.processesAliveLabel.setText(f"Processes Alive: {stats['total_processes_alive']}")
 
 
 class Logs:
