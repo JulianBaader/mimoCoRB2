@@ -49,14 +49,14 @@ class Control:
     def __call__(self) -> None:
         """Start the control loop as well as the control interfaces."""
         if 'kbd' in self.modes:
-            import mimocorb2.control_terminal as ctrl_term
+            import mimocorb2.control_interfaces.control_terminal as ctrl_term
 
             self.terminal_thread = threading.Thread(
                 target=ctrl_term.control_terminal, args=(self.command_queue, self.stats_queue, self.print_queue)
             )
             self.terminal_thread.start()
         if 'gui' in self.modes:
-            import mimocorb2.control_gui as ctrl_gui
+            import mimocorb2.control_interfaces.control_gui as ctrl_gui
 
             infos = ctrl_gui.get_infos_from_control(self)
             self.gui_process = mp.Process(
@@ -64,7 +64,7 @@ class Control:
             )
             self.gui_process.start()
         if 'stats' in self.modes:
-            import mimocorb2.control_stats_logger as ctrl_stats_logger
+            import mimocorb2.control_interfaces.control_stats_logger as ctrl_stats_logger
 
             self.stats_logger_thread = threading.Thread(
                 target=ctrl_stats_logger.control_stats_logger,
