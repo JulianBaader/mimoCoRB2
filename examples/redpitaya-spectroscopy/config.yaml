@@ -15,3 +15,4 @@ tau: 50
 energy_conversion: [3, 0]
 noise: 5
 file: 'spectra/Co-60.html'
+average_rate: 10000

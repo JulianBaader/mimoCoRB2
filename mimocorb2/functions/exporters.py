@@ -160,12 +160,17 @@ def visualize_histogram(buffer_io):
     name = buffer_io.buffer_names_observe[0]
     directory = buffer_io.run_dir / f"Histograms_{name}"
     df_file = directory / 'info.csv'
-    while not df_file.exists():
+    while True:
         # Wait for the info.csv file to be created by the histogram exporter
         if not is_alive():
             return
-        time.sleep(0.5)
-    info_df = pd.read_csv(df_file)
+        try:
+            info_df = pd.read_csv(df_file)
+            break
+        except FileNotFoundError:
+            time.sleep(0.5)
+        except pd.errors.EmptyDataError:
+            time.sleep(0.5)
 
     # Get config
     update_interval = buffer_io.get('update_interval', 1)
