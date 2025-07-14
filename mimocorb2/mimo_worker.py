@@ -308,6 +308,11 @@ class mimoWorker:
         Returns
         -------
         dict
+            Dictionary containing:
+            - alive_processes : list[bool]
+                A list indicating whether each process is alive (True) or not (False).
+            - cpu_percents : list[float]
+                A list of CPU usage percentages for each process. If a process is not alive, its CPU percent is set to 0.
         """
 
         alive_processes = []
@@ -315,7 +320,6 @@ class mimoWorker:
 
         for i in range(len(self.processes)):
             alive_processes.append(self.processes[i].is_alive())
-            # TODO Check if process is still alive before requesting stats?
             cpu_percents.append(self.sutil_processes[i].cpu_percent() if alive_processes[-1] else 0)
 
         stats = {'alive_processes': alive_processes, 'cpu_percents': cpu_percents}

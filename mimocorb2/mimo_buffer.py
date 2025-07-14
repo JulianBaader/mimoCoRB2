@@ -237,18 +237,28 @@ class mimoBuffer:
         self.last_deadtime = 0
 
     def get_stats(self) -> dict:
-        """
-        Retrieve statistics about the current state of the buffer.
-        Returns:
-            dict: A dictionary containing the following statistics:
-                - event_count (int): The total number of events processed.
-                - filled_slots (float): The ratio of filled slots to total slots in the buffer.
-                - empty_slots (float): The ratio of empty slots to total slots in the buffer.
-                - flush_event_received (bool): Indicates whether a flush event has been received.
-                - rate (float): The rate of events processed per second since the last stats retrieval.
-                - average_deadtime (float): The average deadtime per event since the last stats retrieval.
-                - paused_count (int): The total number of times the buffer has been paused.
-                - paused (bool): Indicates whether the buffer is currently paused.
+        """Retrieve statistics about the current state of the buffer.
+
+        Returns
+        -------
+        dict
+            Dictionary containing:
+            - event_count : int
+                The total number of events processed.
+            - filled_slots : float
+                The ratio of filled slots to total slots in the buffer.
+            - empty_slots : float
+                The ratio of empty slots to total slots in the buffer.
+            - flush_event_received : bool
+                Indicates whether a flush event has been received.
+            - rate : float
+                The rate of events processed per second since the last stats retrieval.
+            - average_deadtime : float
+                The average deadtime per event since the last stats retrieval.
+            - paused_count : int
+                The total number of times the buffer has been paused.
+            - paused : bool
+                Indicates whether the buffer is currently paused.
         """
 
         current_time = time.time()
