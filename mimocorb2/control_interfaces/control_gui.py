@@ -439,7 +439,12 @@ if __name__ == '__main__':
         'paused_count': 0,
         'paused': False,
     }
-    worker_example = {1}
+    worker_example = {
+        'processes': 0,
+        'cpu_percent': 0.0,
+    }
+
+    control_example = {'cpu_percent': 0.0}
 
     stats = {
         'buffers': {
@@ -462,6 +467,8 @@ if __name__ == '__main__':
             'accepted_ocilloscope': worker_example.copy(),
         },
         'time_active': 0,
+        'total_processes_alive': 0,
+        'control': control_example.copy(),
     }
 
     def update_stats(stats):
@@ -477,7 +484,9 @@ if __name__ == '__main__':
             buffer['event_count'] += np.random.randint(0, 1000)
             buffer['average_deadtime'] = np.random.uniform(0, 1)
         for name in stats['workers']:
-            stats['workers'][name] = np.random.randint(0, 10)
+            stats['workers'][name]['processes'] = np.random.randint(0, 10)
+            stats['workers'][name]['cpu_percent'] = np.random.uniform(0, 100)
+        stats['control']['cpu_percent'] = np.random.uniform(0, 100)
         return stats
 
     command_queue = mp.Queue()
