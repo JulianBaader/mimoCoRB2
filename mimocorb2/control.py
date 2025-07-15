@@ -13,66 +13,102 @@ import graphviz
 
 
 class Control:
+    """Central controller for managing buffers, workers, and interfaces in the mimoCorb2 framework.
+
+    This class sets up the runtime environment based on a provided setup dictionary or file,
+    initializes and controls all `mimoBuffer` and `mimoWorker` instances, and handles user interaction
+    through terminal, GUI, or logging interfaces. It also tracks and reports system statistics.
+
+    Parameters
+    ----------
+    setup_dict : dict
+        A dictionary containing the setup configuration for buffers and workers.
+        It must define "Buffers" and "Workers" keys, where each buffer/worker has its setup parameters.
+    setup_dir : Path | str
+        The directory path where the setup originated. Used to resolve paths for scripts and outputs.
+    mode : str, optional
+        A '+'-separated string to configure which interfaces to activate.
+        Supported modes: 'kbd' (terminal), 'gui' (graphical interface), 'stats' (logging).
+        Default is 'kbd+stats'.
+
+    Attributes
+    ----------
+    setup : dict
+        The complete configuration for the buffers and workers.
+    setup_dir : Path
+        Path to the setup directory.
+    run_dir : Path
+        Path to the run directory where logs, visualizations, and runtime data are stored.
+    modes : list[str]
+        List of active interface modes.
+    buffers : dict[str, mimoBuffer]
+        Dictionary of buffer names to buffer instances.
+    workers : dict[str, mimoWorker]
+        Dictionary of worker names to worker instances.
+    roots : dict[str, mimoBuffer]
+        Subset of buffers that act as roots (not used as sources or observations).
+    print_queue : mp.Queue
+        Queue used for collecting print/log output from subprocesses.
+    stats_queue : mp.Queue
+        Queue holding the most recent system statistics.
+    command_queue : mp.Queue
+        Queue for control commands issued by interfaces.
+    current_stats : dict
+        Most recently collected system statistics.
+    last_stats_time : float
+        Timestamp of the last statistics update.
+    run_start_time : float
+        Timestamp when the worker processes were started.
+    terminal_thread : threading.Thread
+        Thread running the keyboard control interface (if active).
+    gui_process : mp.Process
+        Process running the GUI interface (if active).
+    stats_logger_thread : threading.Thread
+        Thread running the statistics logger (if active).
+
+    Methods
+    -------
+    __call__()
+        Starts the control loop, interfaces, and workers. Main runtime entry point.
+    get_stats()
+        Returns a complete dictionary of all system statistics (buffers, workers, control, uptime).
+    execute_command(command)
+        Executes a command (e.g., pause/resume/shutdown) targeting buffers or workers.
+    visualize_data_flow(file, **kwargs)
+        Generates a Graphviz visualization of the data flow between buffers and workers.
+    from_setup_file(setup_file, mode='kbd+stats')
+        Class method to create a Control instance from a YAML setup file.
+    """
+
     def __init__(self, setup_dict: dict, setup_dir: Path | str, mode: str = 'kbd+stats') -> None:
-        self.run_dir = None
-        self.setup_dir = Path(setup_dir).resolve()
-
-        self.roots = None
-
-        self.modes = mode.split('+')
-
         self.setup = setup_dict
+        self.setup_dir = Path(setup_dir).resolve()
+        self.modes = mode.split('+')
 
         self.set_up_run_dir()
 
+        # Output queues
         self.print_queue = mp.Queue()
-
-        self.command_queue = mp.Queue()
         self.stats_queue = mp.Queue(1)
+        # Input queue
+        self.command_queue = mp.Queue()
+
         self.last_stats_time = time.time()
         self.current_stats = None
 
         self.buffers = {name: mimoBuffer.from_setup(name, setup) for name, setup in self.setup['Buffers'].items()}
-
         self.workers = {
             name: mimoWorker.from_setup(name, setup, self.setup_dir, self.run_dir, self.buffers, self.print_queue)
             for name, setup in self.setup['Workers'].items()
         }
 
         self.find_roots()
-        try:
-            self.visualize_data_flow(os.path.join(self.run_dir, 'data_flow'))
-        except graphviz.backend.ExecutableNotFound as e:
-            print("Graphviz executables not found. Data flow visualization will not be generated.")
-            print(e)
+        self.visualize_data_flow(os.path.join(self.run_dir, 'data_flow'))
         self.save_setup()
 
     def __call__(self) -> None:
-        """Start the control loop as well as the control interfaces."""
-        if 'kbd' in self.modes:
-            import mimocorb2.control_interfaces.control_terminal as ctrl_term
-
-            self.terminal_thread = threading.Thread(
-                target=ctrl_term.control_terminal, args=(self.command_queue, self.stats_queue, self.print_queue)
-            )
-            self.terminal_thread.start()
-        if 'gui' in self.modes:
-            import mimocorb2.control_interfaces.control_gui as ctrl_gui
-
-            infos = ctrl_gui.get_infos_from_control(self)
-            self.gui_process = mp.Process(
-                target=ctrl_gui.run_gui, args=(self.command_queue, self.stats_queue, self.print_queue, infos)
-            )
-            self.gui_process.start()
-        if 'stats' in self.modes:
-            import mimocorb2.control_interfaces.control_stats_logger as ctrl_stats_logger
-
-            self.stats_logger_thread = threading.Thread(
-                target=ctrl_stats_logger.control_stats_logger,
-                args=(self.command_queue, self.stats_queue, self.print_queue, self.run_dir),
-            )
-            self.stats_logger_thread.start()
-
+        """Start the interfaces, workers, and control loop."""
+        self.start_interfaces()
         self.start_workers()
         while True:
             # update stats every second
@@ -100,12 +136,7 @@ class Control:
                 pass
             time.sleep(0.1)
 
-        if 'kbd' in self.modes:
-            self.terminal_thread.join()
-        if 'gui' in self.modes:
-            self.gui_process.join()
-        if 'stats' in self.modes:
-            self.stats_logger_thread.join()
+        self.join_interfaces()
 
     def save_setup(self):
         copy = self.setup.copy()
@@ -127,6 +158,7 @@ class Control:
         self.run_dir = self.run_dir.resolve()
 
     def find_roots(self) -> None:
+        """Find the root buffers that are not sources of any worker."""
         self.roots = {}
         for worker_name, worker_info in self.setup['Workers'].items():
             if len(worker_info.get('sources', [])) == 0 and len(worker_info.get('observes', [])) == 0:
@@ -134,6 +166,7 @@ class Control:
                     self.roots[buffer_name] = self.buffers[buffer_name]
 
     def visualize_data_flow(self, file: str, **digraph_kwargs) -> None:
+        """Visualize the data flow of the setup using graphviz."""
         dot = graphviz.Digraph(format='svg', **digraph_kwargs)
 
         # Buffer Nodes
@@ -154,7 +187,11 @@ class Control:
             for observe in info.get('observes', []):
                 dot.edge('B' + observe, 'W' + name, style='dotted')
 
-        dot.render(file, cleanup=True)
+        try:
+            dot.render(file, cleanup=True)
+        except graphviz.backend.ExecutableNotFound as e:
+            print("Graphviz executables not found. Data flow visualization will not be generated.")
+            print(e)
 
     def start_workers(self) -> None:
         """Initialize and start all workers."""
@@ -164,79 +201,174 @@ class Control:
         for w in self.workers.values():
             w.start_processes()
 
+    def start_interfaces(self) -> None:
+        """Start the control interfaces."""
+        if 'kbd' in self.modes:
+            import mimocorb2.control_interfaces.control_terminal as ctrl_term
+
+            self.terminal_thread = threading.Thread(
+                target=ctrl_term.control_terminal, args=(self.command_queue, self.stats_queue, self.print_queue)
+            )
+            self.terminal_thread.start()
+        if 'gui' in self.modes:
+            import mimocorb2.control_interfaces.control_gui as ctrl_gui
+
+            infos = ctrl_gui.get_infos_from_control(self)
+            self.gui_process = mp.Process(
+                target=ctrl_gui.run_gui, args=(self.command_queue, self.stats_queue, self.print_queue, infos)
+            )
+            self.gui_process.start()
+        if 'stats' in self.modes:
+            import mimocorb2.control_interfaces.control_stats_logger as ctrl_stats_logger
+
+            self.stats_logger_thread = threading.Thread(
+                target=ctrl_stats_logger.control_stats_logger,
+                args=(self.command_queue, self.stats_queue, self.print_queue, self.run_dir),
+            )
+            self.stats_logger_thread.start()
+
+    def join_interfaces(self) -> None:
+        """Join the control interfaces."""
+        if 'kbd' in self.modes:
+            self.terminal_thread.join()
+        if 'gui' in self.modes:
+            self.gui_process.join()
+        if 'stats' in self.modes:
+            self.stats_logger_thread.join()
+
     def execute_command(self, command: list) -> None:
-        if command[0] == 'buffer':
-            self.execute_buffer_command(command[1:])
-        elif command[0] == 'worker':
-            self.execute_worker_command(command[1:])
-        elif command[0] == 'stats':
-            self.execute_stats_command(command[1:])
+        """Execute a command from the command queue.
+
+        Parameters
+        ----------
+        command : list
+            The command to execute. First element is the command type ('buffer', 'worker', 'stats'), followed by its arguments.
+        """
+        dispatch = {
+            'buffer': self._execute_buffer_command,
+            'worker': self._execute_worker_command,
+        }
+        handler = dispatch.get(command[0])
+        if handler:
+            handler(*command[1:])
         else:
             print(f"Unknown command: {command[0]}")
 
-    def execute_buffer_command(self, command: list) -> None:
-        if command[0] == 'all':
-            target = self.buffers.values()
-        elif command[0] == 'roots':
-            target = self.roots.values()
-        elif command[0] == 'named':
-            names = command[2]
-            for name in names:
-                if name not in self.buffers:
-                    raise ValueError(f"Unknown buffer: {name}")
-            target = [self.buffers[name] for name in names]
-        else:
-            print(f"Unknown buffer target: {command[0]}")
+    def _execute_buffer_command(self, target: str | list, action: str) -> None:
+        """Execute a command for a buffer.
 
-        if command[1] == 'shutdown':
-            for b in target:
-                b.send_flush_event()
-        elif command[1] == 'pause':
-            for b in target:
-                b.pause()
-        elif command[1] == 'resume':
-            for b in target:
-                b.resume()
+        Parameters
+        ----------
+        target : str | list
+            'all' to apply to all buffers
+            'roots' to apply to all root buffers
+            list[str] to apply to specific buffers
+        action : str
+            'shutdown'
+            'pause'
+            'resume'
+        """
+        action_dispatch = {
+            'shutdown': lambda b: b.send_flush_event(),
+            'pause': lambda b: b.pause(),
+            'resume': lambda b: b.resume(),
+        }
+        if target == 'all':
+            targets = self.buffers.keys()
+        elif target == 'roots':
+            targets = self.roots.keys()
+        elif isinstance(target, list):
+            targets = target
         else:
-            print(f"Unknown buffer command: {command[1]}")
+            raise ValueError(f"Invalid target for buffer command: {target}")
 
-    def execute_worker_command(self, command: list) -> None:
-        if command[0] == 'all':
-            target = self.workers.values()
-        elif command[0] == 'named':
-            names = command[2]
-            for name in names:
-                if name not in self.workers:
-                    raise ValueError(f"Unknown worker: {name}")
-            target = [self.workers[name] for name in names]
-        else:
-            print(f"Unknown worker target: {command[0]}")
+        for name in targets:
+            if name in self.buffers:
+                buffer = self.buffers[name]
+                action_func = action_dispatch.get(action)
+                if action_func:
+                    action_func(buffer)
+                else:
+                    print(f"Unknown action for buffer {name}: {action}")
+            else:
+                print(f"Buffer {name} not found.")
 
-        if command[1] == 'shutdown':
-            for w in target:
-                w.shutdown()
+    def _execute_worker_command(self, target: str | list, action: str) -> None:
+        """Execute a command for a worker.
+
+        Parameters
+        ----------
+        target : str | list
+            'all' to apply to all workers
+            list[str] to apply to specific workers
+        action : str
+            'shutdown'
+        """
+        action_dispatch = {
+            'shutdown': lambda w: w.shutdown(),
+        }
+        if target == 'all':
+            targets = self.workers.keys()
+        elif isinstance(target, list):
+            targets = target
         else:
-            print(f"Unknown worker command: {command[1]}")
+            raise ValueError(f"Invalid target for worker command: {target}")
+
+        for name in targets:
+            if name in self.workers:
+                worker = self.workers[name]
+                action_func = action_dispatch.get(action)
+                if action_func:
+                    action_func(worker)
+                else:
+                    print(f"Unknown action for worker {name}: {action}")
+            else:
+                print(f"Worker {name} not found.")
 
     # statistics
     def get_buffer_stats(self) -> dict:
-        """Get the statistics of all buffers."""
+        """Get the statistics of all buffers.
+
+        Returns
+        -------
+        dict
+            buffer_name : dict
+                See mimo_buffer.mimoBuffer.get_stats
+        """
         return {name: b.get_stats() for name, b in self.buffers.items()}
 
     def get_worker_stats(self) -> dict:
-        """Get the statistics of all workers."""
+        """Get the statistics of all workers.
+
+        Returns
+        -------
+        dict
+            worker_name : dict
+                Dictionary containing:
+                - processes : int
+                    Number of processes that are alive in the worker.
+                - cpu_percent : float
+                    Average CPU usage of the worker processes.
+        """
         stats = {}
         for name, worker in self.workers.items():
             worker_stats = worker.get_stats()
             sum_alive = sum(worker_stats['alive_processes'])
             stats[name] = {
                 'processes': sum_alive,
-                'cpu_percent': sum(worker_stats['cpu_percents']),
+                'cpu_percent': sum(worker_stats['cpu_percents']) / sum_alive if sum_alive > 0 else 0,
             }
         return stats
 
     def get_control_stats(self) -> dict:
-        """Get the statistics of the control itself."""
+        """Get the statistics of the control itself.
+
+        Returns
+        -------
+        dict
+            Dictionary containing:
+            - cpu_percent : float
+                CPU usage of the control process."""
         return {
             'cpu_percent': psutil.cpu_percent(),
         }
@@ -246,7 +378,23 @@ class Control:
         return time.time() - self.run_start_time
 
     def get_stats(self) -> dict:
-        """Get the statistics of all workers and buffers."""
+        """Get the statistics of all workers and buffers.
+
+        Returns
+        -------
+        dict
+            Dictionary containing:
+            - buffers : dict
+                Statistics of all buffers. (See Control.get_buffer_stats)
+            - workers : dict
+                Statistics of all workers. (See Control.get_worker_stats)
+            - time_active : float
+                Time the workers have been active in seconds.
+            - total_processes_alive : int
+                Total number of processes that are alive across all workers.
+            - control : dict
+                Statistics of the control itself. (See Control.get_control_stats)
+        """
         buffer_stats = self.get_buffer_stats()
         worker_stats = self.get_worker_stats()
         time_active = self.get_time_active()
