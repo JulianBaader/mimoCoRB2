@@ -19,6 +19,7 @@ dependencies = [
     "pandas",
     "matplotlib",
     "PyQt5",
+    "psutil",
 ]
 requires-python = ">= 3.12"
 
@@ -39,7 +40,8 @@ include = ["mimocorb2*"]
 mimocorb2 = "mimocorb2.__main__:main"
 
 [tool.setuptools.package-data]
-mimocorb2 = ["*.ui"]
+mimocorb2 = ["**/*.ui"]
+
 
 [project.optional-dependencies]
 dev = [
