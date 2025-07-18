@@ -25,6 +25,10 @@ It describes the buffers and the data flow between them.
             sinks: [str]
             observes: [str]
         ...
+    target_directory: str   # Path to the target directory where the run will be stored.
+                            # /path/to/target_directory -> absolute path
+                            # path/to/target_directory -> relative path to the setup file
+                            # ~/path/to/target_directory -> relative path to the user home directory
 
 
 Slot Count

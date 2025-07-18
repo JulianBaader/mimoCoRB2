@@ -146,9 +146,29 @@ class Control:
         with setup_file.open('w') as f:
             yaml.safe_dump(copy, f, default_flow_style=False, sort_keys=False)
 
+    def resolve_path(self, path_input: str) -> Path:
+        """Resolve a path
+
+        Parameters
+        ----------
+        path : str
+            The path to resolve, can be absolute, relative or user home.
+        """
+        path = Path(path_input)
+        if path_input.startswith('~'):
+            # resolve home directory
+            path = path.expanduser()
+
+        if path.is_absolute():
+            # absolute path, no need to resolve
+            return path
+        else:
+            # relative path, resolve relative to setup_dir
+            return self.setup_dir / path
+
     def set_up_run_dir(self) -> None:
         """Set up the run directory"""
-        target_dir = self.setup_dir / self.setup.get('target_directory', 'target')
+        target_dir = self.resolve_path(self.setup.get('target_directory', 'target'))
         target_dir.mkdir(parents=True, exist_ok=True)
 
         self.start_time = time.strftime('%Y-%m-%d_%H-%M-%S')
