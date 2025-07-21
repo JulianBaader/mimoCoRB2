@@ -72,7 +72,8 @@ def oscilloscope(buffer_io):
         ax.hlines(trigger_level, t[0], t[-1], linestyles='dotted', label='Trigger Level')
 
     ys = {ch: np.zeros(number_of_samples) for ch in channels}
-    lines = {ch: ax.plot(t, ys[ch], label=ch)[0] for ch in channels}
+    alpha = 0.5 if len(channels) > 1 else 1.0
+    lines = {ch: ax.plot(t, ys[ch], alpha=alpha, label=ch)[0] for ch in channels}
 
     ax.set_xlabel(t_scaling[2])
     ax.set_ylabel(y_scaling[2])
