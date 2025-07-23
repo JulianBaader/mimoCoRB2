@@ -41,7 +41,7 @@ Workers:
     sinks: [pulse_parameters_export]
     config: histogram_config.yaml
   show_histogram:
-    function: exporters.visualize_histogram
+    function: visualizers.histogram
     observes: [pulse_parameters]
     config: histogram_config.yaml
   pulse_parameters_export:

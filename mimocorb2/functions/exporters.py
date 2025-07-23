@@ -1,10 +1,9 @@
-from mimocorb2.worker_templates import Exporter, IsAlive
+from mimocorb2.worker_templates import Exporter
 
 import numpy as np
 from numpy.lib import recfunctions as rfn
 import pandas as pd
 import time
-import matplotlib.pyplot as plt
 
 
 def drain(buffer_io):
@@ -130,115 +129,6 @@ def histogram(buffer_io):
     save_hists()
 
 
-def visualize_histogram(buffer_io):
-    """mimoCoRB2 Function: Visualize histograms from the histogram exporter.
-
-    Visualizes histograms of the data in the source buffer using matplotlib.
-    The histograms are read from the npy files saved by the histogram exporter.
-
-    Type
-    ----
-    IsAlive
-
-    Buffers
-    -------
-    sources
-        0
-    sinks
-        0
-    observes
-        1 the same as the source buffer of the exporter
-
-    Configs
-    -------
-    update_interval : int, optional (default=1)
-        Interval in seconds to update the histograms.
-    plot_type : str, optional (default='line')
-        Type of plot to use for the histograms. Options are 'line', 'bar', or 'step'.
-    """
-    is_alive = IsAlive(buffer_io)
-    name = buffer_io.buffer_names_observe[0]
-    directory = buffer_io.run_dir / f"Histograms_{name}"
-    df_file = directory / 'info.csv'
-    while True:
-        # Wait for the info.csv file to be created by the histogram exporter
-        if not is_alive():
-            return
-        try:
-            info_df = pd.read_csv(df_file)
-            break
-        except FileNotFoundError:
-            time.sleep(0.5)
-        except pd.errors.EmptyDataError:
-            time.sleep(0.5)
-
-    # Get config
-    update_interval = buffer_io.get('update_interval', 1)
-    plot_type = buffer_io.get('plot_type', 'line')  # 'line', 'bar', or 'step'
-
-    # Make grid of subplots
-    n_channels = len(info_df)
-    fig = plt.figure()
-    fig.canvas.manager.set_window_title('Histogram ' + name)
-    cols = int(np.ceil(np.sqrt(n_channels)))
-    rows = int(np.ceil(n_channels / cols))
-    axes = fig.subplots(rows, cols)
-    if n_channels == 1:
-        axes = np.array([axes])
-    axes = axes.flatten()
-
-    hist_artists = {}
-    files = {}
-    for i in range(n_channels):
-        ch = info_df['Channel'][i]
-        ax = axes[i]
-        bins = np.linspace(info_df['Min'][i], info_df['Max'][i], info_df['NBins'][i])
-
-        files[ch] = directory / f"{ch}.npy"
-        data = np.load(files[ch])
-        if plot_type == 'line':
-            (hist_artists[ch],) = ax.plot(bins[:-1], data)
-        elif plot_type == 'bar':
-            hist_artists[ch] = ax.bar(bins[:-1], data, width=0.8 * np.diff(bins), align='edge')
-        elif plot_type == 'step':
-            (hist_artists[ch],) = ax.step(bins[:-1], data, where='mid')
-        else:
-            raise ValueError("plot_type must be 'line', 'bar', or 'step'.")
-
-        ax.set_title(ch)
-        ax.set_xlabel('Value')
-        ax.set_ylabel('Count')
-        ax.set_xlim(bins[0], bins[-1])
-
-    fig.tight_layout()
-    plt.ion()
-    plt.show()
-
-    last_update = time.time()
-    while is_alive():
-        if time.time() - last_update > update_interval:
-            for i, ch in enumerate(info_df['Channel']):
-                try:
-                    new_data = np.load(files[ch])
-                except (EOFError, ValueError):
-                    continue
-
-                if plot_type == 'line' or plot_type == 'step':
-                    hist_artists[ch].set_ydata(new_data)
-                elif plot_type == 'bar':
-                    for rect, height in zip(hist_artists[ch], new_data):
-                        rect.set_height(height)
-
-                axes[i].relim()
-                axes[i].autoscale_view()
-
-            fig.canvas.draw()
-            last_update = time.time()
-
-        fig.canvas.flush_events()
-        time.sleep(1 / 20)
-
-
 def csv(buffer_io):
     """mimoCoRB2 Function: Save data from the source buffer to a CSV file.
 
@@ -262,7 +152,7 @@ def csv(buffer_io):
     -------
     save_interval : int, optional (default=1)
         Interval in seconds to save the CSV file.
-    filename : str, optional (default='exporter_name')
+    filename : str, optional (default='buffer_name')
         Name of the CSV file to save the data to. The file will be saved in the run_dir.
 
     Examples
@@ -276,11 +166,11 @@ def csv(buffer_io):
     metadata_example = exporter.metadata_example
 
     run_dir = exporter.run_dir
-    exporter_name = exporter.name
+    buffer_name = buffer_io.buffer_names_in[0]
 
     config = exporter.config
     save_interval = config.get('save_interval', 1)
-    filename = config.get('filename', exporter_name)
+    filename = config.get('filename', buffer_name)
     filename = run_dir / f"{filename}.csv"
 
     if data_example.size != 1:

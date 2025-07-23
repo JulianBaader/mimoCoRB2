@@ -70,7 +70,7 @@ Workers:
     sinks: [PulseParametersUp_Export]
     config: configs/hist_config_up.yaml
   showHistUp:
-    function: exporters.visualize_histogram
+    function: visualizers.histogram
     observes: [PulseParametersUp]
     config: configs/hist_config_up.yaml
   histDown:
@@ -79,7 +79,7 @@ Workers:
     sinks: [PulseParametersDown_Export]
     config: configs/hist_config_down.yaml
   showHistDown:
-    function: exporters.visualize_histogram
+    function: visualizers.histogram
     observes: [PulseParametersDown]
     config: configs/hist_config_down.yaml
   saveUp:
