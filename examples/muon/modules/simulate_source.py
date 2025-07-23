@@ -5,6 +5,45 @@ import time
 
 
 def simulate_source(buffer_io):
+    """mimoCoRB2 Function: Simulate a source of muon pulses
+
+    Type
+    ----
+    Importer
+
+    Buffers
+    -------
+    sinks
+        Waveform data
+
+    Configs
+    -------
+    analogue_offset : float
+        Offset applied to the simulated pulses in Volts.
+    trigger_level : float, optional (default=analogue_offset)
+        Trigger level for the first pulse in Volts.
+    sample_time_ns : int
+        Sample time in nanoseconds.
+    pre_trigger_samples : int
+        Number of samples before the trigger.
+    eventcount : int, optional (default=1000)
+        Number of events to simulate. Use -1 for infinite.
+    sleeptime : float, optional (default=0.10)
+        Sleep time between events in seconds. If random is True, this is a random Poisson
+        distributed time.
+    random : bool, optional (default=False)
+        If True, the sleep time is randomly distributed.
+    pulseWindow : int, optional (default=100)
+        Length of the pulse in samples.
+    pulseHeight : float or list of floats, optional (default=250.0)
+        Height of the pulse in mV. If a list, multiple heights are used.
+    pulseSpread : float, optional (default=pulseHeight * 0.3)
+        Spread of the pulse height in mV.
+    prbIteraction : float, optional (default=0.95)
+        Probability of interaction with the detector.
+    prb2ndPulse : float, optional (default=0.10)
+        Probability of a second pulse after the first.
+    """
     importer = Importer(buffer_io)
     config = importer.config
 
