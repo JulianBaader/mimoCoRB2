@@ -371,9 +371,12 @@ class mimoWorker:
 
         if file == '':
             parts = function_name.split('.')
-            function_name = parts.pop(-1)
-            file_name = parts.pop(-1) + '.py'
-            file = FUNCTIONS_FOLDER.joinpath(*parts, file_name)
+            try:
+                function_name = parts.pop(-1)
+                file_name = parts.pop(-1) + '.py'
+                file = FUNCTIONS_FOLDER.joinpath(*parts, file_name)
+            except IndexError:
+                raise ValueError(f"Invalid function name: {setup['function']}")
         else:
             file = Path(setup_dir) / file
 
