@@ -138,10 +138,8 @@ class pico3000:
         self.trigger_delay = 0  # measured in sample cycles!
         self.auto_trigger = 2**16  # in ms
         self.pre_trigger_samples = config_dict["pre_trigger_samples"]
-        self.post_trigger_samples = config_dict["post_trigger_samples"]
         self.total_samples = len(data_example)  # total samples to capture
-        if self.total_samples != self.pre_trigger_samples + self.post_trigger_samples:
-            raise ValueError("ERROR!! pre_trigger_samples, post_trigger_samples and total_samples do not match!")
+        self.post_trigger_samples = self.total_samples - self.pre_trigger_samples
 
         self.timebase = config_dict[
             "timebase"
@@ -452,8 +450,6 @@ def source(buffer_io):
     trigger_threshold : float
         TODO (in mV)
     pre_trigger_samples : int
-        TODO
-    post_trigger_samples : int
         TODO
     timebase : int
         TODO (magic number, see picoscope SDK example code)
