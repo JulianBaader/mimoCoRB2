@@ -9,7 +9,28 @@ METADATA = 1
 # Note: anything that returns a generator must have the yield None, None at the very end, as any code following might not be executed
 
 
-# TODO failing
+class SetupError(RuntimeError):
+    def __init__(self, instance, message: str, exception: Exception = None):
+        instance.logger.error(message)
+        instance.shutdown_sinks()
+        instance.drain_sources()
+        if exception is not None:
+            message += f" ({exception})"
+        super().__init__(message)
+
+
+class UfuncError(RuntimeError):
+    def __init__(self, instance, message: str, exception: Exception = None, ufunc_input=None, ufunc_output=None):
+        instance.logger.error(message)
+        if ufunc_input is not None:
+            instance.logger.error(f"Input: {ufunc_input}")
+        if ufunc_output is not None:
+            instance.logger.error(f"Output: {ufunc_output}")
+        instance.shutdown_sinks()
+        instance.drain_sources()
+        if exception is not None:
+            message += f" ({exception})"
+        super().__init__(message)
 
 
 class Base:
@@ -27,6 +48,17 @@ class Base:
 
         # copy methods from io
         self.shutdown_sinks = io.shutdown_sinks
+
+    def drain_sources(self) -> None:
+        """Drain all sources until they are shutdown."""
+        self.logger.info("Draining sources")
+        active_sources = [source for source in self.read if not source.is_shutdown.value]
+        while active_sources:
+            for source in active_sources:
+                with source as (metadata, data):
+                    if data is None:
+                        continue
+            active_sources = [source for source in self.read if not source.is_shutdown.value]
 
 
 class Importer(Base):
@@ -56,11 +88,11 @@ class Importer(Base):
         self.counter = 0
 
         if len(self.read) != 0:
-            self.fail("Importer must have 0 sources", force_shutdown=True)
+            raise SetupError(self, "Importer must have 0 sources")
         if len(self.write) != 1:
-            self.fail("Importer must have 1 sink", force_shutdown=True)
+            raise SetupError(self, "Importer must have 1 sink")
         if len(self.observe) != 0:
-            self.fail("Importer must have 0 observes", force_shutdown=True)
+            raise SetupError(self, "Importer must have 0 observes")
 
         self.data_example = self.io.data_out_examples[0]
         self.metadata_example = self.io.metadata_out_examples[0]
@@ -77,8 +109,7 @@ class Importer(Base):
             Generator function that yields data and ends with None
         """
         if not callable(ufunc):
-            self.shutdown_sinks()
-            raise RuntimeError("ufunc not callable")
+            raise UfuncError(self, "ufunc not callable")
         self.logger.info("Importer started")
 
         time_last_event = time.time()
@@ -89,11 +120,8 @@ class Importer(Base):
                 data = next(generator)
                 time_data_ready = time.time()
                 timestamp = time.time_ns() * 1e-9  # in s as type float64
-            except Exception:
-                raise NotImplementedError("Generator failed, depending on the debug this should restart the generator")
-                # restart the generator
-                generator = ufunc()
-                continue
+            except Exception as e:
+                raise UfuncError(self, "ufunc failed", e)
             if data is None:
                 self.shutdown_sinks()
                 break
@@ -136,17 +164,17 @@ class Exporter(Base):
         """Checks the setup."""
         super().__init__(io)
         if len(self.read) != 1:
-            self.fail("Exporter must have 1 source", force_shutdown=True)
+            raise SetupError(self, "Exporter must have 1 source")
         if len(self.observe) != 0:
-            self.fail("Exporter must have 0 observes", force_shutdown=True)
+            raise SetupError(self, "Exporter must have 0 observes")
 
         data_in_example = self.io.data_in_examples[0]
         if len(self.write) != 0:
             for do in self.io.data_out_examples:
                 if do.shape != data_in_example.shape:
-                    self.fail("Exporter source and sink shapes do not match", force_shutdown=True)
+                    raise SetupError(self, "Exporter source and sink shapes do not match")
                 if do.dtype != data_in_example.dtype:
-                    self.fail("Exporter source and sink dtypes do not match", force_shutdown=True)
+                    raise SetupError(self, "Exporter source and sink dtypes do not match")
 
         self.data_example = self.io.data_in_examples[0]
         self.metadata_example = self.io.metadata_in_examples[0]
@@ -219,18 +247,18 @@ class Filter(Base):
         """Checks the setup."""
         super().__init__(io)
         if len(self.read) != 1:
-            self.fail("Filter must have 1 source", force_shutdown=True)
+            raise SetupError(self, "Filter must have 1 source")
         if len(self.write) == 0:
-            self.fail("Filter must have at least 1 sink", force_shutdown=True)
+            raise SetupError(self, "Filter must have at least 1 sink")
         if len(self.observe) != 0:
-            self.fail("Filter must have 0 observes", force_shutdown=True)
+            raise SetupError(self, "Filter must have 0 observes")
 
         data_in_example = self.io.data_in_examples[0]
         for do in self.io.data_out_examples:
             if do.shape != data_in_example.shape:
-                self.fail("Exporter source and sink shapes do not match", force_shutdown=True)
+                raise SetupError(self, "Filter source and sink shapes do not match")
             if do.dtype != data_in_example.dtype:
-                self.fail("Exporter source and sink dtypes do not match", force_shutdown=True)
+                raise SetupError(self, "Filter source and sink dtypes do not match")
 
         self.data_example = self.io.data_in_examples[0]
 
@@ -250,8 +278,7 @@ class Filter(Base):
                     False: dont copy data to the corresponding sink
         """
         if not callable(ufunc):
-            self.shutdown_sinks()
-            raise RuntimeError("ufunc not callable")
+            raise UfuncError(self, "ufunc not callable")
         self.true_map = [True] * len(self.io.data_out_examples)
         self.logger.info("Filter started")
         while True:
@@ -260,9 +287,8 @@ class Filter(Base):
                     break
                 try:
                     result = ufunc(data)
-                except Exception:
-                    self.fail("ufunc failed")
-                    continue
+                except Exception as e:
+                    raise UfuncError(self, "ufunc failed", e, ufunc_input=data)
                 if not result:
                     continue
                 if isinstance(result, bool):
@@ -295,11 +321,11 @@ class Processor(Base):
         """Checks the setup."""
         super().__init__(io)
         if len(self.read) != 1:
-            self.fail("Processor must have 1 source", force_shutdown=True)
+            raise SetupError(self, "Processor must have 1 source")
         if len(self.write) == 0:
-            self.fail("Processor must have at least 1 sink", force_shutdown=True)
+            raise SetupError(self, "Processor must have at least 1 sink")
         if len(self.observe) != 0:
-            self.fail("Processor must have 0 observes", force_shutdown=True)
+            raise SetupError(self, "Processor must have 0 observes")
 
     def __call__(self, ufunc: Callable) -> None:
         """Start the processor and process data using ufunc(data).
@@ -323,10 +349,17 @@ class Processor(Base):
                     break
                 try:
                     results = ufunc(data)
-                except Exception:
-                    self.fail("ufunc failed")
+                except Exception as e:
+                    raise UfuncError(self, "ufunc failed", e, ufunc_input=data)
                 if results is None:
                     continue
+                if len(results) != len(self.write):
+                    raise UfuncError(
+                        self,
+                        "ufunc must return a list of results with the same length as the number of sinks",
+                        ufunc_input=data,
+                        ufunc_output=results,
+                    )
                 for i, result in enumerate(results):
                     if result is not None:
                         with self.write[i] as (metadata_buffer, data_buffer):
@@ -361,11 +394,11 @@ class Observer(Base):
         """Checks the setup."""
         super().__init__(io)
         if len(self.read) != 0:
-            self.fail("Observer must have 0 source", force_shutdown=True)
+            raise SetupError(self, "Observer must have 0 source")
         if len(self.write) != 0:
-            self.fail("Observer must have 0 sinks", force_shutdown=True)
+            raise SetupError(self, "Observer must have 0 sinks")
         if len(self.observe) != 1:
-            self.fail("Observer must have 1 observes", force_shutdown=True)
+            raise SetupError(self, "Observer must have 1 observes")
 
         self.data_example = self.io.data_observe_examples[0]
 
@@ -418,11 +451,11 @@ class IsAlive(Base):
         """
         super().__init__(io)
         if len(self.read) != 0:
-            self.fail("IsAlive must have 0 sources", force_shutdown=True)
+            raise SetupError(self, "IsAlive must have 0 sources")
         if len(self.write) != 0:
-            self.fail("IsAlive must have 0 sinks", force_shutdown=True)
+            raise SetupError(self, "IsAlive must have 0 sinks")
         if len(self.observe) != 1:
-            self.fail("IsAlive must have 1 observes", force_shutdown=True)
+            raise SetupError(self, "IsAlive must have 1 observes")
 
     def __call__(self) -> bool:
         """Check if the buffer is alive.
