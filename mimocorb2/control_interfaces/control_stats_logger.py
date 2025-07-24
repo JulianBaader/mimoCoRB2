@@ -43,6 +43,7 @@ def flatten_dict_values(d):
 
 
 def control_stats_logger(command_queue: queue, stats_queue: queue, print_queue: queue, run_dir: Path):
+    time.sleep(1)  # Allow time for the queues to be populated
     stats = stats_queue.get()
     keys = flatten_dict_keys(stats)
     df = pd.DataFrame(columns=keys)
