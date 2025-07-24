@@ -11,6 +11,7 @@ METADATA = 1
 
 class SetupError(RuntimeError):
     def __init__(self, instance, message: str, exception: Exception = None):
+        print(f"Setup error: {message}")
         instance.logger.error(message)
         instance.shutdown_sinks()
         instance.drain_sources()
@@ -22,6 +23,7 @@ class SetupError(RuntimeError):
 class UfuncError(RuntimeError):
     def __init__(self, instance, message: str, exception: Exception = None, ufunc_input=None, ufunc_output=None):
         instance.logger.error(message)
+        print(f"Ufunc error: {message}")
         if ufunc_input is not None:
             instance.logger.error(f"Input: {ufunc_input}")
         if ufunc_output is not None:
