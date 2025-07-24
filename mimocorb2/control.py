@@ -10,6 +10,30 @@ import queue
 import threading
 import multiprocessing as mp
 import graphviz
+import tempfile
+import logging
+
+
+def configure_logging():
+    # Create a named temporary file (not deleted automatically)
+    log_file = tempfile.NamedTemporaryFile(prefix="mimocorb2_", suffix=".log", delete=False)
+    log_path = log_file.name
+    log_file.close()
+
+    # Configure logging to only write to the file
+    logging.basicConfig(
+        level=logging.INFO,
+        format='[%(asctime)s] %(name)s - %(levelname)s - %(message)s',
+        filename=log_path,
+        filemode='w',  # Overwrite log file on each run
+    )
+
+    # Optional: reduce verbosity of 3rd-party libraries
+    logging.getLogger('matplotlib').setLevel(logging.WARNING)
+    logging.getLogger('PyQt5').setLevel(logging.WARNING)
+
+    # Optional: store log path for debugging
+    return log_path
 
 
 class Control:
@@ -81,6 +105,9 @@ class Control:
     """
 
     def __init__(self, setup_dict: dict, setup_dir: Path | str, mode: str = 'kbd+stats') -> None:
+        log_path = configure_logging()
+        print(f"Logs will be saved to: {log_path}")
+
         self.setup = setup_dict
         self.setup_dir = Path(setup_dir).resolve()
         self.modes = mode.split('+')
