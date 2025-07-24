@@ -1,5 +1,5 @@
 # This is a template for documenting mimoCoRB2 functions.
-from mimocorb2.mimo_worker import BufferIO
+from mimocorb2 import BufferIO
 
 
 def mimoCoRB2_function(buffer_io: BufferIO):

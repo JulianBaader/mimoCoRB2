@@ -1,6 +1,5 @@
 import numpy as np
-
-from mimocorb2.worker_templates import Importer, Filter, Processor, Exporter
+import mimocorb2 as mi2
 import time
 
 import multiprocessing as mp
@@ -12,7 +11,7 @@ METADATA = 1
 
 
 def simulate_osc(buffer_io):
-    importer = Importer(buffer_io)
+    importer = mi2.Importer(buffer_io)
     rng = np.random.default_rng(seed=abs(hash(mp.current_process().name)))
 
     def ufunc():
@@ -26,7 +25,7 @@ def simulate_osc(buffer_io):
 
 
 def filter_data(buffer_io):
-    filter = Filter(buffer_io)
+    filter = mi2.Filter(buffer_io)
 
     def ufunc(data):
         # print("hey")
@@ -39,7 +38,7 @@ def filter_data(buffer_io):
 
 
 def calculate_pulse_heights(buffer_io):
-    processor = Processor(buffer_io)
+    processor = mi2.Processor(buffer_io)
     example = buffer_io.data_out_examples[0].copy()
 
     def ufunc(data):
@@ -50,7 +49,7 @@ def calculate_pulse_heights(buffer_io):
 
 
 def print_pulse_heights(buffer_io):
-    exporter = Exporter(buffer_io)
+    exporter = mi2.Exporter(buffer_io)
     for data, metadata in exporter:
         print(data['pulse_height'][0])
         pass

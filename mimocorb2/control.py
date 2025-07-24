@@ -42,69 +42,25 @@ class Control:
     This class sets up the runtime environment based on a provided setup dictionary or file,
     initializes and controls all `mimoBuffer` and `mimoWorker` instances, and handles user interaction
     through terminal, GUI, or logging interfaces. It also tracks and reports system statistics.
-
-    Parameters
-    ----------
-    setup_dict : dict
-        A dictionary containing the setup configuration for buffers and workers.
-        It must define "Buffers" and "Workers" keys, where each buffer/worker has its setup parameters.
-    setup_dir : Path | str
-        The directory path where the setup originated. Used to resolve paths for scripts and outputs.
-    mode : str, optional
-        A '+'-separated string to configure which interfaces to activate.
-        Supported modes: 'kbd' (terminal), 'gui' (graphical interface), 'stats' (logging).
-        Default is 'kbd+stats'.
-
-    Attributes
-    ----------
-    setup : dict
-        The complete configuration for the buffers and workers.
-    setup_dir : Path
-        Path to the setup directory.
-    run_dir : Path
-        Path to the run directory where logs, visualizations, and runtime data are stored.
-    modes : list[str]
-        List of active interface modes.
-    buffers : dict[str, mimoBuffer]
-        Dictionary of buffer names to buffer instances.
-    workers : dict[str, mimoWorker]
-        Dictionary of worker names to worker instances.
-    roots : dict[str, mimoBuffer]
-        Subset of buffers that act as roots (not used as sources or observations).
-    print_queue : mp.Queue
-        Queue used for collecting print/log output from subprocesses.
-    stats_queue : mp.Queue
-        Queue holding the most recent system statistics.
-    command_queue : mp.Queue
-        Queue for control commands issued by interfaces.
-    current_stats : dict
-        Most recently collected system statistics.
-    last_stats_time : float
-        Timestamp of the last statistics update.
-    run_start_time : float
-        Timestamp when the worker processes were started.
-    terminal_thread : threading.Thread
-        Thread running the keyboard control interface (if active).
-    gui_process : mp.Process
-        Process running the GUI interface (if active).
-    stats_logger_thread : threading.Thread
-        Thread running the statistics logger (if active).
-
-    Methods
-    -------
-    __call__()
-        Starts the control loop, interfaces, and workers. Main runtime entry point.
-    get_stats()
-        Returns a complete dictionary of all system statistics (buffers, workers, control, uptime).
-    execute_command(command)
-        Executes a command (e.g., pause/resume/shutdown) targeting buffers or workers.
-    visualize_data_flow(file, **kwargs)
-        Generates a Graphviz visualization of the data flow between buffers and workers.
-    from_setup_file(setup_file, mode='kbd+stats')
-        Class method to create a Control instance from a YAML setup file.
     """
 
     def __init__(self, setup_dict: dict, setup_dir: Path | str, mode: str = 'kbd+stats') -> None:
+        """Initialize the Control instance.
+
+        Parameters
+        ----------
+        setup_dict
+            Dictionary containing the setup configuration. See documentation for details.
+        setup_dir
+            Directory where the setup file is located.
+            All relative paths (configs and functions) will be resolved relative to this directory.
+        mode
+            Modes for the control interface. Can be a combination of:
+            - 'kbd': Terminal interface for command input.
+            - 'gui': GUI interface for control and monitoring.
+            - 'stats': Log statistics to a file.
+            One of kbd or gui is recommended to shutdown the control properly.
+        """
         log_path = configure_logging()
         print(f"Logs will be saved to: {log_path}")
 
@@ -459,7 +415,25 @@ class Control:
 
     @classmethod
     def from_setup_file(cls, setup_file: Path | str, mode: str = 'kbd+stats') -> 'Control':
-        """Create a Control instance from a setup file."""
+        """Create a Control instance from a setup file.
+
+        Parameters
+        ----------
+        setup_file
+            Path to the YAML setup file containing the configuration for buffers and workers.
+            The file should be structured as described in the documentation.
+        mode
+            Modes for the control interface. Can be a combination of:
+            - 'kbd': Terminal interface for command input.
+            - 'gui': GUI interface for control and monitoring.
+            - 'stats': Log statistics to a file.
+            One of kbd or gui is recommended to shutdown the control properly.
+
+        Returns
+        -------
+        Control
+            An instance of the Control class initialized with the setup from the file.
+        """
         setup_file = Path(setup_file)
         if not setup_file.exists():
             raise FileNotFoundError(f"Setup file {setup_file} does not exist.")

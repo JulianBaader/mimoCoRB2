@@ -17,7 +17,7 @@ The relevant configuration parameters can be found in the section
 
 """
 
-from mimocorb2.worker_templates import Processor
+import mimocorb2 as mi2
 import numpy as np
 import os
 import sys
@@ -43,7 +43,7 @@ def calculate_decay_time(buffer_io):
 
     """
 
-    processor = Processor(buffer_io)
+    processor = mi2.Processor(buffer_io)
     config = processor.config
 
     # Load configuration

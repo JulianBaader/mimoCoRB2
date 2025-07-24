@@ -1,4 +1,4 @@
-from mimocorb2.worker_templates import Filter
+from mimocorb2 import Filter
 
 
 def copy(buffer_io):

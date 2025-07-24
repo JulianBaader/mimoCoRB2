@@ -1,4 +1,4 @@
-from mimocorb2.worker_templates import Exporter, Importer
+from mimocorb2 import Exporter, Importer
 from mimocorb2.mimo_buffer import mimoBuffer
 
 import numpy as np

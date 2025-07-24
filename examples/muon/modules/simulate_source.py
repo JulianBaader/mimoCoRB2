@@ -1,5 +1,4 @@
-from mimocorb2.worker_templates import Importer
-
+import mimocorb2 as mi2
 import numpy as np
 import time
 
@@ -44,7 +43,7 @@ def simulate_source(buffer_io):
     prb2ndPulse : float, optional (default=0.10)
         Probability of a second pulse after the first.
     """
-    importer = Importer(buffer_io)
+    importer = mi2.Importer(buffer_io)
     config = importer.config
 
     # get parameters

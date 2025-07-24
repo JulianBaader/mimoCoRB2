@@ -1,5 +1,4 @@
-from mimocorb2.worker_templates import Processor
-from mimocorb2.mimo_worker import BufferIO
+from mimocorb2 import Processor, BufferIO
 import scipy.signal as signal
 
 

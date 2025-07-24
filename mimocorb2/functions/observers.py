@@ -1,4 +1,4 @@
-from mimocorb2.worker_templates import Observer
+from mimocorb2 import Observer
 import matplotlib.pyplot as plt
 import numpy as np
 import time

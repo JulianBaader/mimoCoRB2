@@ -1,5 +1,4 @@
-from mimocorb2.worker_templates import IsAlive
-
+from mimocorb2 import IsAlive
 import numpy as np
 import pandas as pd
 import time

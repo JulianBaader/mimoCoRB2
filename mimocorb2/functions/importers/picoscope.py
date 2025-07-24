@@ -3,7 +3,7 @@
 """
 
 import numpy as np
-from mimocorb2.worker_templates import Importer
+from mimocorb2 import Importer
 from threading import Event
 import time
 import ctypes

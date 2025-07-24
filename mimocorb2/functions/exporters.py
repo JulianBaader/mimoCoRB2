@@ -1,4 +1,4 @@
-from mimocorb2.worker_templates import Exporter
+from mimocorb2 import Exporter
 
 import numpy as np
 from numpy.lib import recfunctions as rfn
