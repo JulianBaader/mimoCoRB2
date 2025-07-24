@@ -57,7 +57,7 @@ def oscilloscope(buffer_io):
     for rch in requested_channels:
         if rch not in available_channels:
             raise ValueError(f"Channel '{rch}' not found in the data")
-    channels = requested_channels
+    channels = list(requested_channels)
 
     fig = plt.figure()
     fig.canvas.manager.set_window_title(f'Oscilloscope: {observer.name}')
@@ -68,12 +68,14 @@ def oscilloscope(buffer_io):
     if ylim is not None:
         ax.set_ylim(ylim[0], ylim[1])
 
-    if trigger_level is not None:
-        ax.hlines(trigger_level, t[0], t[-1], linestyles='dotted', label='Trigger Level')
-
     ys = {ch: np.zeros(number_of_samples) for ch in channels}
     alpha = 0.5 if len(channels) > 1 else 1.0
     lines = {ch: ax.plot(t, ys[ch], alpha=alpha, label=ch)[0] for ch in channels}
+
+    assert 'Trigger Level' not in channels
+    if trigger_level is not None:
+        channels.append('Trigger Level')
+        lines['Trigger Level'] = ax.axhline(trigger_level, linestyle='dotted', label='Trigger Level')
 
     ax.set_xlabel(t_scaling[2])
     ax.set_ylabel(y_scaling[2])
@@ -87,7 +89,10 @@ def oscilloscope(buffer_io):
     for a in legend_artists:
         a.set_picker(5)
 
-    artist_to_channel = {artist: ch for artist, ch in zip(legend_artists, 2 * channels)}
+    artist_to_channel = {artist: ch for artist, ch in zip(legend_lines, channels)}
+    artist_to_channel.update({artist: ch for artist, ch in zip(legend_texts, channels)})
+
+    # artist_to_channel = {artist: ch for artist, ch in zip(legend_artists, 2 * channels)}
     channel_to_texts = {artist_to_channel[text]: text for text in legend_texts}
     channel_to_lines = {artist_to_channel[patch]: patch for patch in legend_lines}
 
@@ -106,7 +111,7 @@ def oscilloscope(buffer_io):
         fig.canvas.draw()
 
     fig.canvas.mpl_connect('pick_event', on_pick)
-
+    fig.tight_layout()
     plt.ion()
     plt.show()
 
@@ -119,6 +124,8 @@ def oscilloscope(buffer_io):
             if data is None:
                 break
             for ch in channels:
+                if ch == 'Trigger Level':
+                    continue
                 ys[ch] = data[ch]
                 lines[ch].set_ydata(ys[ch])
             if ylim is None:
