@@ -53,6 +53,9 @@ class Config(dict):
         if isinstance(setup, str):
             with (setup_dir / setup).open('r') as file:
                 config = yaml.safe_load(file)
+                if config is None:
+                    print(f'Config file {file.name} is empty')
+                    config = {}
         elif isinstance(setup, dict):
             config = setup
         elif isinstance(setup, list):
@@ -60,7 +63,11 @@ class Config(dict):
             for item in setup:
                 if isinstance(item, str):
                     with (setup_dir / item).open('r') as file:
-                        config.update(yaml.safe_load(file))
+                        new_config = yaml.safe_load(file)
+                        if new_config is None:
+                            print(f'Config file {file.name} is empty')
+                            new_config = {}
+                        config.update(new_config)
                 elif isinstance(item, dict):
                     config.update(item)
         else:
