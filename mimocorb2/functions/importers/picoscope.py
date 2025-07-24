@@ -106,13 +106,13 @@ class pico3000:
         self.number_of_channels = len(data_example.dtype.names)  # number of channels to capture
 
         self.trigger_channel = config_dict["trigger_channel"]
-        threshold = config_dict["trigger_threshold"]
+        threshold = config_dict["trigger_level"]
         if self.trigger_channel == "EXT":
             # external trigger
             # range for External Trigger is 5000 mV
             print(self.max_adc)
 
-            self.trigger_threshold = round((threshold * self.max_adc.value) / 5000.0)
+            self.trigger_level = round((threshold * self.max_adc.value) / 5000.0)
             trigger_channel_name = "PS3000A_EXTERNAL"
         else:
             # trigger channels A - D
@@ -120,13 +120,13 @@ class pico3000:
                 self.trigger_channel = "A"
             trigger_channel_name = "PS3000A_CHANNEL_" + self.trigger_channel
             if self.trigger_channel == "A":
-                self.trigger_threshold = mV2adc(threshold, self.channelA_range, self.max_adc)
+                self.trigger_level = mV2adc(threshold, self.channelA_range, self.max_adc)
             elif self.trigger_channel == "B":
-                self.trigger_threshold = mV2adc(threshold, self.channelB_range, self.max_adc)
+                self.trigger_level = mV2adc(threshold, self.channelB_range, self.max_adc)
             elif self.trigger_channel == "C":
-                self.trigger_threshold = mV2adc(threshold, self.channelC_range, self.max_adc)
+                self.trigger_level = mV2adc(threshold, self.channelC_range, self.max_adc)
             elif self.trigger_channel == "D":
-                self.trigger_threshold = mV2adc(threshold, self.channelD_range, self.max_adc)
+                self.trigger_level = mV2adc(threshold, self.channelD_range, self.max_adc)
 
         self.trigger_channel = ps.PS3000A_CHANNEL[trigger_channel_name]
 
@@ -202,7 +202,7 @@ class pico3000:
             self.chandle,
             1,  # enabled
             self.trigger_channel,
-            self.trigger_threshold,
+            self.trigger_level,
             self.trigger_direction,
             self.trigger_delay,
             self.auto_trigger,
@@ -447,7 +447,7 @@ def source(buffer_io):
         TODO
     trigger_channel : str
         TODO
-    trigger_threshold : float
+    trigger_level : float
         TODO (in mV)
     pre_trigger_samples : int
         TODO
