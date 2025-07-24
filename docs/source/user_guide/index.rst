@@ -11,3 +11,5 @@ This user guide provides an in-depth description of mimoCoRB2 features required 
     setup
     provided_functions
     simple_workers
+    complex_workers
+    running_an_experiment
