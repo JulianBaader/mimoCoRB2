@@ -1,4 +1,4 @@
-from . import analyzers, data, exporters, misc, observers
+from . import analyzers, data, exporters, misc, observers, visualizers
 
 __all__ = [
     "analyzers",
@@ -6,4 +6,5 @@ __all__ = [
     "exporters",
     "misc",
     "observers",
+    "visualizers",
 ]

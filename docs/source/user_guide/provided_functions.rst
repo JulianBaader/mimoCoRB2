@@ -7,8 +7,12 @@ Exporters
 ---------
 .. automethod:: mimocorb2.functions.exporters.drain
 .. automethod:: mimocorb2.functions.exporters.histogram
-.. automethod:: mimocorb2.functions.exporters.visualize_histogram
 .. automethod:: mimocorb2.functions.exporters.csv
+
+Visualizers
+-------------
+.. automethod:: mimocorb2.functions.visualizers.csv
+.. automethod:: mimocorb2.functions.visualizers.histogram
 
 Analyzers
 ---------

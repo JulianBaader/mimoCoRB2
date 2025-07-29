@@ -98,5 +98,3 @@ Workers:
   accepted_ocilloscope:
     function: observers.oscilloscope
     observes: [AcceptedPulses]
-
-target_directory: ~/Desktop/mimoCoRB2_runs
