@@ -1,77 +1,47 @@
-# mimoCoRB2
-
-## run examples
-```python main.py <setup_file>```
-
-To shutdown, try **Shutdown Root Buffer**. This will shutdown every buffer which has no function writing to it (i.e. the root buffers). Ideally this shutdown will triple down into every other buffer and shutdown the corresponding processes.
-
-If still some processes are running, try **Shutdown All Buffers**.
-As a last resort use **Kill Workers** which will terminate all remaining processes.
-
-Exit is only cleanly possible when no processes are alive.
-## Infrastructure
-### Buffer Objects
-Buffer Objects consit of two queues and a shared memory.
-The shared memory is divided into multiple slots.
-The queues contain indices to these slots which are handeld as tokens. In the beginning one queue (empty_slots) contains all tokens. By requesting one of those tokens one gains acces to the corresponding slot. After writing to this slot one returns the token to the other queue (filled_slots).
-
-To cleanly handel this requesting and returning context managers (mimoBuffer.Reader, mimoBuffer.Writer, mimoBuffer.Observer) are available.
-
-### Worker Objects
-Worker Objects consit of a callable function and instances of the above mentioned context managers.
-
-The worker can start multiple processes of the callable function which then has acces to the buffers.
-
-### Worker Templates
-There are some template classes provided (Importer, Exporter, Filter, Processor, Observer).
-
-These can be used to simply define worker functions.
-
-### Functions
-Inside the functions folder predefined functions are available.
+Introduction
+============
 
 
-### Setup
-A setup.yaml file is designed as follows
-```yaml
-# Define all Buffers
-Buffers:
-    buffer_name:
-        slot_count: int
-        data_length: int
-        data_dtype:
-            channel_name: str # 'f4'
-            # ... more channels
-        overwrite: bool # optional
-    # ... more buffers
 
-# Define all Workers
-Workers:
-    worker_name: # example for an user defined function
-        file: str
-        function: str
-        sinks: [str] # optional
-        sources: [str] # optional
-        observes: [str] # optional
-        number_of_processes: int # optional, default = 1
-        config: [str] or {...} # optional, default = {}
-    worker_name2:
-        function: 'module_name.function' 
-        # without the file key or with file: ""
-        # the provided function will be used
-        sinks: [str] # optional
-        sources: [str] # optional
-        observes: [str] # optional
-        number_of_processes: int # optional, default = 1
-        config: [str] or {...} # optional, default = {}
+What is mimoCoRB2?
+------------------
+
+mimoCoRB2 (multiple in multiple out configurable ringbuffer manager) provides a
+central component of each data acquisition system needed to record and
+preanalyse data from randomly occurring processes. Typical examples are
+waveform data as provided by detectors common in quantum mechanical
+measurements, or in nuclear, particle and astro particle physics, e. g. photo
+tubes, Geiger counters, avalanche photo-diodes or modern SiPMs. The random
+nature of such processes and the need to keep read-out dead times low requires
+an input buffer for fast collection of data and an efficient buffer manager
+delivering a constant data stream to the subsequent processing steps. While a
+data source feeds data into the buffer, consumer processes receive the data to
+filter, reduce, analyze or simply visualize the recorded data. In order to
+optimally use the available resources, multi-core and multi-processing
+techniques must be applied.
 
 
-# the config can either be a list of config files 
-# or a config dict directly
 
-Options:
-    output_directory: str # optional, default = 'target'
-    debug_workers: bool # optional, default = False
-    overarching_config: [str] or {...}
+This project originated from an effort to structure and generalize data acquisition for several experiments in advanced
+physics laboratory courses at Karlsruhe Institute of Technology (KIT) and has been extensively tested with Ubuntu
+Linux.
+
+
+What can it do?
+---------------
+
+Amongst the core features of mimoCoRB2 are:
+
+* multiprocessing safe ringbuffer for NumPy structured arrays
+* setup of multiple ringbuffers and workers from configuration files
+* templates for common interactions between buffers (importing/exporting, filtering, processing, observing)
+* pre built functions for common operations (oscilloscope, histogram, pulse height analysis)
+* gui for monitoring and controlling the system
+
+Running an example
+------------------
+Clone this repo and move into the directory
+```bash
+pip install .
+mimocorb2 examples/muon/spin_setup.yaml
 ```
-All file references are interpreted relative to the setup file.
