@@ -5,9 +5,10 @@ import scipy.signal as signal
 def pha(buffer_io: BufferIO):
     """mimoCoRB2 Function: Pulse Height Analysis using scipy.signal.find_peaks
 
-    Analyzes pulse heights in a given channel of the input data using scipy.signal.find_peaks.
-    This function processes the input data to find peaks and their properties based on the provided configuration parameters.
-    Depending on the configuration, it can return various peak properties such as heights, thresholds, prominences, widths, and plateau sizes (see scipy documentation).
+    Analyzes pulse heights in a given channel of the input data using `scipy.signal.find_peaks`.
+    This function processes the input data to find peaks and their properties based on the provided
+    configuration parameters. Depending on the configuration, it can return various peak properties
+    such as heights, thresholds, prominences, widths, and plateau sizes (see SciPy documentation).
 
     Type
     ----
@@ -19,42 +20,43 @@ def pha(buffer_io: BufferIO):
         1 source buffer containing the input data with multiple channels
     sinks
         1 with data_length = 1
-        possible field names:
-        - position
-        - peak_heights
-            If height is specified in the config, the height of each peak in the specified channel.
-        - left_thresholds, right_thresholds
-            If threshold is specified in the config, the left and right thresholds of each peak in the specified channel.
-        - prominences, left_bases, right_bases
-            If prominence is specified in the config, the prominence of each peak in the specified channel, along with the left and right bases.
-        - widths, width_heights, left_ips, right_ips
-            If width is specified in the config, the width of each peak in the specified channel.
-        - plateau_sizes, left_edges, right_edges
-            If plateau_size is specified in the config, the plateau size of each peak in the specified channel, along with the left and right edges.
+        Possible field names:
+            - position
+            - peak_heights
+                If `height` is specified in the config, the height of each peak in the specified channel.
+            - left_thresholds, right_thresholds
+                If `threshold` is specified, the left and right thresholds of each peak.
+            - prominences, left_bases, right_bases
+                If `prominence` is specified, the prominence of each peak, and its bases.
+            - widths, width_heights, left_ips, right_ips
+                If `width` is specified, the full width at the specified relative height.
+            - plateau_sizes, left_edges, right_edges
+                If `plateau_size` is specified, the size and edges of the peak plateau.
     observes
         0
 
     Configs
     -------
-    channel : str, optional (default='first channel')
-        Channel name to analyze. If not specified, the first channel in the input data will be used.
-    height : float, optional (default=None)
-        Minimum height of peaks to be detected. If None, peak heights will not be calculated.
-    threshold : float, optional (default=None)
-        Minimum vertical distance to its neighboring samples for a peak to be considered. If None, left and right thresholds will not be calculated.
-    distance : int, optional (default=None)
-        Minimum horizontal distance (in samples) between neighboring peaks. If None, no distance constraint is applied.
-    prominence : float, optional (default=None)
-        Minimum prominence of peaks. If None, prominences will not be calculated.
-    width : float, optional (default=None)
-        Minimum width of peaks. If None, widths will not be calculated.
-    wlen : int, optional (default=None)
-        Window length for peak width calculation. If None, the entire signal is used.
-    rel_height : float, optional (default=0.5)
-        Relative height at which to calculate the width of the peaks. Default is 0.5, meaning the width is calculated at half the peak height.
-    plateau_size : float, optional (default=None)
-        Minimum size of the plateau at the peak. If None, plateau sizes will not be calculated.
+    channel : str, optional (default = 'first channel')
+        Channel name to analyze. If not specified, the first channel in the input will be used.
+    height : float, optional (default = None)
+        Minimum height of peaks. If None, peak heights are not calculated.
+    threshold : float, optional (default = None)
+        Minimum vertical distance to neighbors. If None, thresholds are not calculated.
+    distance : int, optional (default = None)
+        Minimum number of samples between neighboring peaks.
+    prominence : float, optional (default = None)
+        Minimum prominence of peaks.
+    width : float, optional (default = None)
+        Minimum width of peaks.
+    wlen : int, optional (default = None)
+        Window length for prominence and width calculation.
+    rel_height : float, optional (default = 0.5)
+        Relative height for width calculation (default = 0.5).
+    plateau_size : float, optional (default = None)
+        Minimum size of the plateau at the peak.
     """
+
     processor = Processor(buffer_io)
     if len(buffer_io.data_out_examples) != 1:
         raise ValueError("mimocorb2.analyzers.pha only supports one sink.")
