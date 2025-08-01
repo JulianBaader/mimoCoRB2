@@ -20,6 +20,8 @@ class pico3000:
 
     def __init__(self, data_example: np.ndarray, config_dict=None):
         """evalutate configuation dictionary and set up callback and variables"""
+        self.data_example = data_example
+        self.keys = data_example.dtype.names
         # Create a threading Event to speed up data copy (no polling required)
         self.callback_event = Event()
         self.callback_event.clear()
@@ -340,9 +342,6 @@ class pico3000:
         # ready = ctypes.c_int16(0)
         # check = ctypes.c_int16(0)
 
-        # initialize array for data to pass to rbInput
-        data = np.empty((self.number_of_channels, self.total_samples), dtype=np.float32)
-
         while True:
             # Event from callback function (this blocks until callback_event is set get_data_callback() )
             self.callback_event.wait()
@@ -407,20 +406,20 @@ class pico3000:
             # time_per_sample = processing_time / self.number_of_memory_segments * 1e-3  # in seconds
 
             for i in range(self.number_of_memory_segments):
-                data[0, :] = chA_buffers_mV[i, :]
+                self.data_example[self.keys[0]] = chA_buffers_mV[i]
                 if self.number_of_channels > 1:
-                    data[1, :] = chB_buffers_mV[i, :]
+                    self.data_example[self.keys[1]] = chB_buffers_mV[i]
                 if self.number_of_channels > 2:
-                    data[2, :] = chC_buffers_mV[i, :]
+                    self.data_example[self.keys[2]] = chC_buffers_mV[i]
                 if self.number_of_channels > 3:
-                    data[3, :] = chD_buffers_mV[i, :]
+                    self.data_example[self.keys[3]] = chD_buffers_mV[i]
                 # calculate and set metadata
                 self.trigger_counter += 1
                 # timestamp = stop_time * 1e-9 - processing_time * 1e-3 + i * time_per_sample
                 # mdata = (self.trigger_counter, timestamp, deadtime)
                 # deliver data (2D numpy) and meta-data (tuple)
                 # TODO readd mdata if whished
-                yield data
+                yield self.data_example
 
 
 def source(buffer_io):
@@ -437,7 +436,8 @@ def source(buffer_io):
     sources
         0
     sinks
-        1
+        1 data_dtype: {'chA': 'f4', 'chB': 'f4', 'chC': 'f4', 'chD': 'f4'} # recommended
+        first dtype is chA and so on -> not all channels have to be present
     observes
         0
 
@@ -474,6 +474,9 @@ def source(buffer_io):
 
     # initalize buffer import; data from __call__-method of class pico3000
     importer = Importer(buffer_io)
-    osci = pico3000(importer.data_example, buffer_io.config_dict)
+    osci = pico3000(importer.data_example, buffer_io.config)
     importer(osci)
     del osci
+
+
+# TODO make it so that arbitrary channels can be selected
