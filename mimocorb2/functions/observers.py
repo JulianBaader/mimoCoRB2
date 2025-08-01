@@ -36,6 +36,8 @@ def oscilloscope(buffer_io):
         If specified, a horizontal line will be drawn at this level to indicate the trigger level.
     update_interval : float, optional (default=1)
         Interval to update the plot in seconds. Default is 1 second.
+    colors : list of str, optional (default=None)
+        List of colors to be used for the channels. If None, default matplotlib colors will be used.
     """
     # Get info from the buffer
     observer = Observer(buffer_io)
@@ -49,6 +51,10 @@ def oscilloscope(buffer_io):
     y_scaling = observer.config.get('y_scaling', (1, 0, 'Value'))  # (scaling, offset, unit)
     requested_channels = observer.config.get('channels', available_channels)
     trigger_level = observer.config.get('trigger_level')
+    colors = observer.config.get('colors')
+    if colors is None:
+        colors = [None]
+    n_colors = len(colors)
 
     # Apply the t scaling
     t = np.arange(number_of_samples) * t_scaling[0] + t_scaling[1]
@@ -70,7 +76,9 @@ def oscilloscope(buffer_io):
 
     ys = {ch: np.zeros(number_of_samples) for ch in channels}
     alpha = 0.5 if len(channels) > 1 else 1.0
-    lines = {ch: ax.plot(t, ys[ch], alpha=alpha, label=ch)[0] for ch in channels}
+    lines = {
+        ch: ax.plot(t, ys[ch], alpha=alpha, label=ch, color=colors[i % n_colors])[0] for i, ch in enumerate(channels)
+    }
 
     assert 'Trigger Level' not in channels
     if trigger_level is not None:
