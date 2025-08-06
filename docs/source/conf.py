@@ -27,6 +27,7 @@ extensions = [
     'sphinx_autodoc_typehints',
     'sphinx.ext.duration',
     'sphinx.ext.doctest',
+    'sphinxcontrib.tikz',
 ]
 
 
