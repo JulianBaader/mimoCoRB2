@@ -6,6 +6,7 @@ from typing import Callable
 import sys
 import yaml
 from mimocorb2.mimo_buffer import BufferReader, BufferWriter, BufferObserver
+from mimocorb2.helpers import resolve_path
 from pathlib import Path
 
 FUNCTIONS_FOLDER = Path(__file__).resolve().parent / 'functions'
@@ -34,7 +35,7 @@ class Config(dict):
         super().__init__(config_dict)
 
     @classmethod
-    def from_setup(cls, setup: str | dict | list[str], setup_dir: Path):
+    def from_setup(cls, setup: str | dict | list[str], setup_dir: Path, base_config: dict = {}):
         """Load the configuration from a setup.
 
         Parameters
@@ -44,36 +45,74 @@ class Config(dict):
             If a dictionary is provided, it is used as the configuration directly.
         setup_dir : Path
             The directory where the setup file is located.
+        base_config : dict, optional
+            A base configuration dictionary to which the loaded configuration will be merged. Defaults to an empty dictionary.
 
         Returns
         -------
         Config
             An instance of the Config class containing the loaded configuration.
         """
+        config = base_config.copy()
+        config.update(Config.setup_to_dict(setup, setup_dir))
+
+        return cls(config)
+
+    @staticmethod
+    def setup_to_dict(setup: str | dict | list[str | dict], setup_dir: Path) -> dict:
+        """Convert a setup entry to a dictionary.
+
+        This method is used to convert a setup entry to a dictionary.
+        strings are interpreted as file names, which will be loaded (incase of relative paths, relative to the setup_dir).
+
+        Parameters
+        ----------
+        setup : str | dict | list[str | dict]
+            The setup entry to convert.
+        setup_dir : Path
+            The directory where the setup file is located.
+        """
         if isinstance(setup, str):
-            with (setup_dir / setup).open('r') as file:
-                config = yaml.safe_load(file)
-                if config is None:
-                    print(f'Config file {file.name} is empty')
-                    config = {}
+            return Config.load_from_file(setup, setup_dir)
         elif isinstance(setup, dict):
-            config = setup
+            return setup
         elif isinstance(setup, list):
             config = {}
             for item in setup:
                 if isinstance(item, str):
-                    with (setup_dir / item).open('r') as file:
-                        new_config = yaml.safe_load(file)
-                        if new_config is None:
-                            print(f'Config file {file.name} is empty')
-                            new_config = {}
-                        config.update(new_config)
+                    config.update(Config.load_from_file(item, setup_dir))
                 elif isinstance(item, dict):
                     config.update(item)
+            return config
         else:
             raise TypeError("setup must be a string, dict, or list of strings/dicts")
 
-        return cls(config)
+    @staticmethod
+    def load_from_file(file: str | Path, setup_dir: Path) -> dict:
+        """Load a configuration from a file.
+
+        This method loads a configuration from a file and returns it as a dictionary.
+        The file can be a relative path to the setup_dir.
+
+        Parameters
+        ----------
+        file : str | Path
+            The path to the configuration file.
+        setup_dir : Path
+            The directory where the setup file is located.
+
+        Returns
+        -------
+        dict
+            The loaded configuration as a dictionary.
+        """
+        path = resolve_path(file, setup_dir)
+        with path.open('r') as f:
+            config = yaml.safe_load(f)
+            if config is None:
+                print(f'Config file {f.name} is empty')
+                config = {}
+        return config
 
 
 class BufferIO:
@@ -184,7 +223,7 @@ class BufferIO:
             return default
 
     @classmethod
-    def from_setup(cls, name, setup: dict, setup_dir: Path, run_dir: Path, buffers: dict):
+    def from_setup(cls, name, setup: dict, setup_dir: Path, run_dir: Path, buffers: dict, base_config: dict = {}):
         """Initiate the BufferIO from a setup dictionary."""
         sources = []
         for buffer_name in setup.get('sources', []):
@@ -204,7 +243,7 @@ class BufferIO:
                 raise KeyError(f"Observer {buffer_name} of worker {name} is not defined in the setup.")
             observes.append(BufferObserver(buffers[buffer_name]))
 
-        config = Config.from_setup(setup.get('config', {}), setup_dir)
+        config = Config.from_setup(setup.get('config', {}), setup_dir, base_config)
 
         return cls(
             name=name,
@@ -345,7 +384,14 @@ class mimoWorker:
 
     @classmethod
     def from_setup(
-        cls, name: str, setup: dict, setup_dir: Path, run_dir: Path, buffers: dict, print_queue: multiprocessing.Queue
+        cls,
+        name: str,
+        setup: dict,
+        setup_dir: Path,
+        run_dir: Path,
+        buffers: dict,
+        print_queue: multiprocessing.Queue,
+        base_config: dict = {},
     ) -> 'mimoWorker':
         """Initiate the Worker from a setup dictionary.
 
@@ -366,6 +412,8 @@ class mimoWorker:
             A dictionary containing the buffers of the current run.
         print_queue : multiprocessing.Queue
             A queue for capturing print output from the worker processes.
+        base_config : dict, optional
+            A base configuration dictionary to which the loaded configuration will be merged. Defaults to an empty dictionary.
 
         Returns
         -------
@@ -394,11 +442,7 @@ class mimoWorker:
             name=name,
             function=cls._import_function(file, function_name),
             buffer_io=BufferIO.from_setup(
-                name=name,
-                setup=setup,
-                setup_dir=setup_dir,
-                run_dir=run_dir,
-                buffers=buffers,
+                name=name, setup=setup, setup_dir=setup_dir, run_dir=run_dir, buffers=buffers, base_config=base_config
             ),
             number_of_processes=setup.get('number_of_processes', 1),
             print_queue=print_queue,

@@ -19,12 +19,13 @@ It describes the buffers and the data flow between them.
         worker_name_1:
             file: path_to_function_file
             function: function_name
-            config: dict | str | [str]
+            config: dict | str | [str | dict]
             number_of_processes: int
             sources: [str]
             sinks: [str]
             observes: [str]
         ...
+    base_config: dict | str | [str | dict]
     target_directory: str   # Path to the target directory where the run will be stored.
                             # /path/to/target_directory -> absolute path
                             # path/to/target_directory -> relative path to the setup file
